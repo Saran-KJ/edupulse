@@ -1,0 +1,27 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: edupulse-backend
+    runtime: python
+    region: singapore # You can change this to your preferred region
+    plan: free # Use 'starter' or higher for production
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: edupulse-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+
+databases:
+  # PostgreSQL Database
+  - name: edupulse-db
+    databaseName: edupulse
+    user: edupulse_user
+    plan: free # Use 'starter' or higher for production
+    region: singapore # Must match the web service region
