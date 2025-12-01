@@ -1,0 +1,44 @@
+name: edupulse
+description: AI-Powered Student 360° Performance & Activity Management System
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI
+  cupertino_icons: ^1.0.2
+  google_fonts: ^6.1.0
+  fl_chart: ^0.65.0
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # HTTP & API
+  http: ^1.1.2
+  dio: ^5.4.0
+  
+  # Storage
+  shared_preferences: ^2.2.2
+  
+  # PDF & Excel
+  pdf: ^3.10.7
+  printing: ^5.11.1
+  excel: ^4.0.2
+  path_provider: ^2.1.1
+  
+  # Utils
+  intl: ^0.18.1
+  flutter_svg: ^2.0.9
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
