@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import date
 from database import get_db
 import models
 import schemas
@@ -8,72 +9,88 @@ import auth
 
 router = APIRouter(prefix="/api/attendance", tags=["Attendance"])
 
-@router.post("", response_model=schemas.AttendanceResponse)
-async def create_attendance(
-    attendance: schemas.AttendanceCreate,
+@router.post("/bulk", response_model=List[schemas.AttendanceResponse])
+async def create_bulk_attendance(
+    bulk_data: schemas.BulkAttendanceCreate,
     db: Session = Depends(get_db),
     current_user = Depends(auth.require_role([
         models.RoleEnum.ADMIN, 
+        models.RoleEnum.CLASS_ADVISOR,
         models.RoleEnum.FACULTY,
         models.RoleEnum.HOD,
         models.RoleEnum.VICE_PRINCIPAL,
         models.RoleEnum.PRINCIPAL
     ]))
 ):
-    # Calculate attendance percentage
-    percentage = (attendance.attended_classes / attendance.total_classes) * 100 if attendance.total_classes > 0 else 0
+    """Create or update daily attendance in bulk"""
+    created_records = []
     
-    db_attendance = models.Attendance(
-        **attendance.dict(),
-        attendance_percentage=percentage
+    for item in bulk_data.attendance_list:
+        # Check if record already exists for this student and date
+        existing = db.query(models.Attendance).filter(
+            models.Attendance.reg_no == item.reg_no,
+            models.Attendance.date == bulk_data.date
+        ).first()
+        
+        if existing:
+            # Update status
+            existing.status = item.status
+            existing.reason = item.reason
+            created_records.append(existing)
+        else:
+            # Create new record
+            new_record = models.Attendance(
+                reg_no=item.reg_no,
+                student_name=item.student_name,
+                date=bulk_data.date,
+                status=item.status,
+                year=bulk_data.year,
+                section=bulk_data.section,
+                dept=bulk_data.dept,
+                reason=item.reason
+            )
+            db.add(new_record)
+            created_records.append(new_record)
+            
+    db.commit()
+    for r in created_records:
+        db.refresh(r)
+    return created_records
+
+@router.get("/class/{dept}/{year}/{section}/{date_str}", response_model=List[schemas.AttendanceResponse])
+async def get_class_attendance(
+    dept: str,
+    year: int,
+    section: str,
+    date_str: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """Get attendance for a specific class and date"""
+    # Parse date string to date object
+    try:
+        query_date = date.fromisoformat(date_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    # Filter by class details directly
+    query = db.query(models.Attendance).filter(
+        models.Attendance.dept == dept,
+        models.Attendance.year == year,
+        models.Attendance.section == section,
+        models.Attendance.date == query_date
     )
-    db.add(db_attendance)
-    db.commit()
-    db.refresh(db_attendance)
-    return db_attendance
-
-@router.get("/student/{student_id}", response_model=List[schemas.AttendanceResponse])
-async def get_student_attendance(
-    student_id: int,
-    db: Session = Depends(get_db),
-    current_user = Depends(auth.get_current_active_user)
-):
-    attendance = db.query(models.Attendance).filter(
-        models.Attendance.student_id == student_id
-    ).all()
-    return attendance
-
-@router.get("/{attendance_id}", response_model=schemas.AttendanceResponse)
-async def get_attendance(
-    attendance_id: int,
-    db: Session = Depends(get_db),
-    current_user = Depends(auth.get_current_active_user)
-):
-    attendance = db.query(models.Attendance).filter(
-        models.Attendance.attendance_id == attendance_id
-    ).first()
-    if not attendance:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-    return attendance
-
-@router.delete("/{attendance_id}")
-async def delete_attendance(
-    attendance_id: int,
-    db: Session = Depends(get_db),
-    current_user = Depends(auth.require_role([
-        models.RoleEnum.ADMIN, 
-        models.RoleEnum.FACULTY,
-        models.RoleEnum.HOD,
-        models.RoleEnum.VICE_PRINCIPAL,
-        models.RoleEnum.PRINCIPAL
-    ]))
-):
-    db_attendance = db.query(models.Attendance).filter(
-        models.Attendance.attendance_id == attendance_id
-    ).first()
-    if not db_attendance:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
     
-    db.delete(db_attendance)
-    db.commit()
-    return {"message": "Attendance record deleted successfully"}
+    return query.all()
+
+@router.get("/student/{reg_no}", response_model=List[schemas.AttendanceResponse])
+async def get_student_attendance(
+    reg_no: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """Get attendance history for a student"""
+    attendance = db.query(models.Attendance).filter(
+        models.Attendance.reg_no == reg_no
+    ).order_by(models.Attendance.date.desc()).all()
+    return attendance

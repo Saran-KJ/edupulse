@@ -31,32 +31,61 @@ class MLService:
     
     def extract_features(self, db: Session, student_id: int) -> Dict[str, float]:
         """Extract features for a student"""
+        # Get student reg_no
+        student = db.query(models.Student).filter(models.Student.student_id == student_id).first()
+        if not student:
+            return {
+                'attendance_percentage': 0,
+                'internal_avg': 0,
+                'external_gpa': 0,
+                'activity_count': 0,
+                'backlog_count': 0
+            }
+        reg_no = student.reg_no
+
         # Get attendance percentage
-        avg_attendance = db.query(func.avg(models.Attendance.attendance_percentage)).filter(
-            models.Attendance.student_id == student_id
+        total_days = db.query(models.Attendance).filter(
+            models.Attendance.reg_no == reg_no
+        ).count()
+        
+        present_days = db.query(models.Attendance).filter(
+            models.Attendance.reg_no == reg_no,
+            models.Attendance.status.in_(['Present', 'P', 'OD'])
+        ).count()
+        
+        avg_attendance = (present_days / total_days * 100) if total_days > 0 else 0
+        
+        # Get internal marks average (Using Model Exam as proxy)
+        internal_avg = db.query(func.avg(models.Mark.model)).filter(
+            models.Mark.reg_no == reg_no
         ).scalar() or 0
         
-        # Get internal marks average
-        internal_avg = db.query(func.avg(models.Mark.internal_marks)).filter(
-            models.Mark.student_id == student_id
-        ).scalar() or 0
+        # Calculate external GPA (Simplified based on grades)
+        # O=10, A+=9, A=8, B+=7, B=6, C=5, F/AREAR=0
+        grades = db.query(models.Mark.university_result_grade).filter(
+            models.Mark.reg_no == reg_no
+        ).all()
         
-        # Calculate external GPA (simplified: average of external marks / 10)
-        external_avg = db.query(func.avg(models.Mark.external_marks)).filter(
-            models.Mark.student_id == student_id,
-            models.Mark.external_marks.isnot(None)
-        ).scalar() or 0
-        external_gpa = external_avg / 10 if external_avg > 0 else 0
+        total_points = 0
+        count = 0
+        backlog_count = 0
+        
+        grade_map = {'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5}
+        
+        for g in grades:
+            grade = g[0]
+            if grade in grade_map:
+                total_points += grade_map[grade]
+                count += 1
+            elif grade == 'AREAR' or grade == 'F':
+                backlog_count += 1
+                count += 1
+                
+        external_gpa = total_points / count if count > 0 else 0
         
         # Count activities
         activity_count = db.query(func.count(models.ActivityParticipation.participation_id)).filter(
             models.ActivityParticipation.student_id == student_id
-        ).scalar() or 0
-        
-        # Count backlogs (marks with grade F)
-        backlog_count = db.query(func.count(models.Mark.mark_id)).filter(
-            models.Mark.student_id == student_id,
-            models.Mark.grade == 'F'
         ).scalar() or 0
         
         return {

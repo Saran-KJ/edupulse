@@ -88,6 +88,10 @@ async def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
         dept=user.dept,
         year=user.year,
         section=user.section,
+        # Parent-specific fields
+        child_name=user.child_name,
+        child_phone=user.child_phone,
+        occupation=user.occupation,
         is_approved=0,  # Pending approval
         is_active=1     # Active but needs approval
     )

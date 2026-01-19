@@ -17,11 +17,24 @@ class UserCreate(UserBase):
     dept: Optional[str] = None
     year: Optional[str] = None
     section: Optional[str] = None
+    # Parent-specific fields
+    child_name: Optional[str] = None
+    child_phone: Optional[str] = None
+    occupation: Optional[str] = None
 
 class UserResponse(UserBase):
     user_id: int
     is_approved: int
     is_active: int
+    reg_no: Optional[str] = None
+    phone: Optional[str] = None
+    dept: Optional[str] = None
+    year: Optional[str] = None
+    section: Optional[str] = None
+    # Parent-specific fields
+    child_name: Optional[str] = None
+    child_phone: Optional[str] = None
+    occupation: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     
@@ -40,6 +53,9 @@ class AdminUserCreate(BaseModel):
     password: str
     role: RoleEnum
     secret_pin: Optional[str] = None
+    dept: Optional[str] = None
+    year: Optional[str] = None
+    section: Optional[str] = None
 
 class PasswordReset(BaseModel):
     email: EmailStr
@@ -96,9 +112,10 @@ class StudentBase(BaseModel):
     name: str
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
-    dept_id: int
+    dept: str # Changed from dept_id
     year: int
     semester: int
+    section: Optional[str] = None
     dob: Optional[date] = None
     address: Optional[str] = None
 
@@ -111,6 +128,7 @@ class StudentUpdate(BaseModel):
     phone: Optional[str] = None
     year: Optional[int] = None
     semester: Optional[int] = None
+    section: Optional[str] = None
     address: Optional[str] = None
 
 class StudentResponse(StudentBase):
@@ -139,44 +157,97 @@ class SubjectResponse(SubjectBase):
 
 # Mark Schemas
 class MarkBase(BaseModel):
-    student_id: int
-    subject_id: int
+    reg_no: str
+    student_name: str
+    dept: str # Added dept
+    year: int
+    section: str
     semester: int
-    internal_marks: float
-    external_marks: Optional[float] = None
-    total_marks: Optional[float] = None
-    grade: Optional[str] = None
-    exam_date: Optional[date] = None
+    subject_code: str
+    subject_title: str
+    assignment_1: float = 0.0
+    assignment_2: float = 0.0
+    assignment_3: float = 0.0
+    assignment_4: float = 0.0
+    assignment_5: float = 0.0
+    slip_test_1: float = 0.0
+    slip_test_2: float = 0.0
+    slip_test_3: float = 0.0
+    slip_test_4: float = 0.0
+    cia_1: float = 0.0
+    cia_2: float = 0.0
+    model: float = 0.0
+    university_result_grade: Optional[str] = None
 
 class MarkCreate(MarkBase):
     pass
 
+class MarkUpdate(BaseModel):
+    assignment_1: Optional[float] = None
+    assignment_2: Optional[float] = None
+    assignment_3: Optional[float] = None
+    assignment_4: Optional[float] = None
+    assignment_5: Optional[float] = None
+    slip_test_1: Optional[float] = None
+    slip_test_2: Optional[float] = None
+    slip_test_3: Optional[float] = None
+    slip_test_4: Optional[float] = None
+    cia_1: Optional[float] = None
+    cia_2: Optional[float] = None
+    model: Optional[float] = None
+    university_result_grade: Optional[str] = None
+
 class MarkResponse(MarkBase):
-    mark_id: int
+    id: int
     created_at: datetime
+    updated_at: datetime
     
     class Config:
         from_attributes = True
 
+# Bulk Mark Entry Schemas
+class SubjectInput(BaseModel):
+    subject_code: str
+    subject_title: str
+
+class BulkMarkEntry(BaseModel):
+    """Schema for bulk mark entry - list of mark records"""
+    marks: List[MarkCreate]
+
+
 # Attendance Schemas
 class AttendanceBase(BaseModel):
-    student_id: int
-    subject_id: int
-    month: str
+    reg_no: str
+    student_name: str
+    date: date
+    status: str
     year: int
-    total_classes: int
-    attended_classes: int
+    section: str
+    dept: str
+    reason: Optional[str] = None
 
 class AttendanceCreate(AttendanceBase):
     pass
 
 class AttendanceResponse(AttendanceBase):
-    attendance_id: int
-    attendance_percentage: Optional[float] = None
+    id: int
     created_at: datetime
     
     class Config:
         from_attributes = True
+
+class StudentAttendanceInput(BaseModel):
+    reg_no: str
+    student_name: str
+    status: str
+    reason: Optional[str] = None
+
+class BulkAttendanceCreate(BaseModel):
+    date: date
+    year: int
+    section: str
+    dept: str
+    attendance_list: List[StudentAttendanceInput]
 
 # Activity Schemas
 class ActivityBase(BaseModel):
@@ -189,6 +260,13 @@ class ActivityBase(BaseModel):
 class ActivityCreate(ActivityBase):
     pass
 
+class ActivityUpdate(BaseModel):
+    activity_name: Optional[str] = None
+    activity_type: Optional[ActivityTypeEnum] = None
+    level: Optional[str] = None
+    activity_date: Optional[date] = None
+    description: Optional[str] = None
+
 class ActivityResponse(ActivityBase):
     activity_id: int
     created_at: datetime
@@ -199,27 +277,32 @@ class ActivityResponse(ActivityBase):
 # Activity Participation Schemas
 class ActivityParticipationBase(BaseModel):
     activity_id: int
-    student_id: int
+    reg_no: str # Changed from student_id
     role: Optional[str] = None
     achievement: Optional[str] = None
 
 class ActivityParticipationCreate(ActivityParticipationBase):
     pass
 
+class ActivityParticipationUpdate(BaseModel):
+    role: Optional[str] = None
+    achievement: Optional[str] = None
+
 class ActivityParticipationResponse(ActivityParticipationBase):
     participation_id: int
     created_at: datetime
+    activity: Optional[ActivityResponse] = None
     
     class Config:
         from_attributes = True
 
 # Risk Prediction Schemas
 class RiskPredictionRequest(BaseModel):
-    student_id: int
+    reg_no: str # Changed from student_id
 
 class RiskPredictionResponse(BaseModel):
     prediction_id: int
-    student_id: int
+    reg_no: str # Changed from student_id
     risk_level: RiskLevelEnum
     risk_score: float
     attendance_percentage: Optional[float] = None
@@ -247,3 +330,44 @@ class StudentProfile360(BaseModel):
     attendance: List[AttendanceResponse]
     activities: List[ActivityParticipationResponse]
     latest_risk_prediction: Optional[RiskPredictionResponse] = None
+
+class StudentWithActivities(BaseModel):
+    student: StudentResponse
+    activities: List[ActivityParticipationResponse]
+    
+    class Config:
+        from_attributes = True
+
+# Timetable Schemas
+class TimetableBase(BaseModel):
+    dept: str
+    year: int
+    section: str
+    day: str
+    period: int
+    subject_code: str
+    subject_title: str
+    duration: int = 1
+
+class TimetableCreate(TimetableBase):
+    pass
+
+class TimetableResponse(TimetableBase):
+    timetable_id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class TimetableStatusBase(BaseModel):
+    is_published: int
+
+class TimetableStatusResponse(TimetableStatusBase):
+    dept: str
+    year: int
+    section: str
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True

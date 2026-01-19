@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from database import get_db
 import models
 import schemas
@@ -8,54 +8,67 @@ import auth
 
 router = APIRouter(prefix="/api/marks", tags=["Marks"])
 
-@router.post("", response_model=schemas.MarkResponse)
-async def create_mark(
-    mark: schemas.MarkCreate,
+@router.post("/bulk", response_model=List[schemas.MarkResponse])
+async def create_bulk_marks(
+    bulk_data: schemas.BulkMarkEntry,
     db: Session = Depends(get_db),
     current_user = Depends(auth.require_role([
-        models.RoleEnum.ADMIN, 
+        models.RoleEnum.ADMIN,
+        models.RoleEnum.CLASS_ADVISOR,
         models.RoleEnum.FACULTY,
         models.RoleEnum.HOD,
         models.RoleEnum.VICE_PRINCIPAL,
         models.RoleEnum.PRINCIPAL
     ]))
 ):
-    # Calculate total and grade
-    total = mark.internal_marks + (mark.external_marks or 0)
+    """Create or update marks in bulk"""
+    created_marks = []
     
-    # Simple grade calculation
-    if total >= 90:
-        grade = "O"
-    elif total >= 80:
-        grade = "A+"
-    elif total >= 70:
-        grade = "A"
-    elif total >= 60:
-        grade = "B+"
-    elif total >= 50:
-        grade = "B"
-    elif total >= 40:
-        grade = "C"
-    else:
-        grade = "F"
+    for mark_data in bulk_data.marks:
+        # Check if mark already exists
+        existing_mark = db.query(models.Mark).filter(
+            models.Mark.reg_no == mark_data.reg_no,
+            models.Mark.subject_code == mark_data.subject_code,
+            models.Mark.semester == mark_data.semester
+        ).first()
+        
+        if existing_mark:
+            # Update existing mark
+            for key, value in mark_data.dict().items():
+                setattr(existing_mark, key, value)
+            created_marks.append(existing_mark)
+        else:
+            # Create new mark
+            db_mark = models.Mark(**mark_data.dict())
+            db.add(db_mark)
+            created_marks.append(db_mark)
     
-    db_mark = models.Mark(
-        **mark.dict(),
-        total_marks=total,
-        grade=grade
-    )
-    db.add(db_mark)
     db.commit()
-    db.refresh(db_mark)
-    return db_mark
+    for mark in created_marks:
+        db.refresh(mark)
+    
+    return created_marks
 
-@router.get("/student/{student_id}", response_model=List[schemas.MarkResponse])
-async def get_student_marks(
-    student_id: int,
+@router.get("/class/{dept}/{year}/{section}", response_model=List[schemas.MarkResponse])
+async def get_class_marks(
+    dept: str,
+    year: int,
+    section: str,
+    semester: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
-    marks = db.query(models.Mark).filter(models.Mark.student_id == student_id).all()
+    """Get all marks for students in a specific class"""
+    query = db.query(models.Mark).filter(
+        models.Mark.dept == dept,
+        models.Mark.year == year,
+        models.Mark.section == section
+    )
+    
+    if semester:
+        query = query.filter(models.Mark.semester == semester)
+    
+    marks = query.all()
     return marks
 
 @router.get("/{mark_id}", response_model=schemas.MarkResponse)
@@ -64,27 +77,74 @@ async def get_mark(
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
-    mark = db.query(models.Mark).filter(models.Mark.mark_id == mark_id).first()
+    """Get a specific mark by ID"""
+    mark = db.query(models.Mark).filter(models.Mark.id == mark_id).first()
     if not mark:
         raise HTTPException(status_code=404, detail="Mark not found")
     return mark
 
-@router.delete("/{mark_id}")
-async def delete_mark(
+@router.put("/{mark_id}", response_model=schemas.MarkResponse)
+async def update_mark(
     mark_id: int,
+    mark_update: schemas.MarkUpdate,
     db: Session = Depends(get_db),
     current_user = Depends(auth.require_role([
-        models.RoleEnum.ADMIN, 
+        models.RoleEnum.ADMIN,
+        models.RoleEnum.CLASS_ADVISOR,
         models.RoleEnum.FACULTY,
         models.RoleEnum.HOD,
         models.RoleEnum.VICE_PRINCIPAL,
         models.RoleEnum.PRINCIPAL
     ]))
 ):
-    db_mark = db.query(models.Mark).filter(models.Mark.mark_id == mark_id).first()
+    """Update a specific mark"""
+    db_mark = db.query(models.Mark).filter(models.Mark.id == mark_id).first()
+    if not db_mark:
+        raise HTTPException(status_code=404, detail="Mark not found")
+    
+    # Update only provided fields
+    update_data = mark_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_mark, key, value)
+    
+    db.commit()
+    db.refresh(db_mark)
+    return db_mark
+
+@router.delete("/{mark_id}")
+async def delete_mark(
+    mark_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.require_role([
+        models.RoleEnum.ADMIN,
+        models.RoleEnum.CLASS_ADVISOR,
+        models.RoleEnum.FACULTY,
+        models.RoleEnum.HOD,
+        models.RoleEnum.VICE_PRINCIPAL,
+        models.RoleEnum.PRINCIPAL
+    ]))
+):
+    """Delete a specific mark"""
+    db_mark = db.query(models.Mark).filter(models.Mark.id == mark_id).first()
     if not db_mark:
         raise HTTPException(status_code=404, detail="Mark not found")
     
     db.delete(db_mark)
     db.commit()
     return {"message": "Mark deleted successfully"}
+
+@router.get("/student/{reg_no}", response_model=List[schemas.MarkResponse])
+async def get_student_marks(
+    reg_no: str,
+    semester: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """Get all marks for a specific student"""
+    query = db.query(models.Mark).filter(models.Mark.reg_no == reg_no)
+    
+    if semester:
+        query = query.filter(models.Mark.semester == semester)
+    
+    marks = query.all()
+    return marks

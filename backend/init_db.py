@@ -92,75 +92,90 @@ def create_sample_data():
         print("✓ Created subjects")
         
         # Create sample students
-        students = [
-            models.Student(
+        # CSE Students
+        students_cse = [
+            models.StudentCSE(
                 reg_no="2021CSE001",
                 name="Rahul Kumar",
                 email="rahul@student.edu",
                 phone="9876543210",
-                dept_id=dept_cse.dept_id,
+                dept="CSE",
                 year=2,
                 semester=4,
                 dob=date(2003, 5, 15),
-                address="123 Main St, City"
+                address="123 Main St, City",
+                section="A"
             ),
-            models.Student(
+            models.StudentCSE(
                 reg_no="2021CSE002",
                 name="Priya Sharma",
                 email="priya@student.edu",
                 phone="9876543211",
-                dept_id=dept_cse.dept_id,
+                dept="CSE",
                 year=2,
                 semester=4,
                 dob=date(2003, 8, 22),
-                address="456 Park Ave, City"
+                address="456 Park Ave, City",
+                section="A"
             ),
-            models.Student(
+            models.StudentCSE(
                 reg_no="2021CSE003",
                 name="Amit Patel",
                 email="amit@student.edu",
                 phone="9876543212",
-                dept_id=dept_cse.dept_id,
+                dept="CSE",
                 year=2,
                 semester=4,
                 dob=date(2003, 3, 10),
-                address="789 Lake Rd, City"
+                address="789 Lake Rd, City",
+                section="A"
             ),
         ]
+        db.add_all(students_cse)
         
-        db.add_all(students)
+        # ECE Students
+        students_ece = [
+             models.StudentECE(
+                reg_no="2021ECE001",
+                name="ECE Student 1",
+                email="ece1@student.edu",
+                dept="ECE",
+                year=2,
+                semester=4,
+                section="A"
+            )
+        ]
+        db.add_all(students_ece)
+
+        # MECH Students
+        students_mech = [
+             models.StudentMECH(
+                reg_no="2021MECH001",
+                name="MECH Student 1",
+                email="mech1@student.edu",
+                dept="MECH",
+                year=2,
+                semester=4,
+                section="A"
+            )
+        ]
+        db.add_all(students_mech)
+        
         db.commit()
-        print("✓ Created sample students")
+        print("✓ Created sample students in separate tables")
         
-        # Create marks for students
-        for student in students:
-            for subject in subjects[:2]:  # First 2 subjects
-                mark = models.Mark(
-                    student_id=student.student_id,
-                    subject_id=subject.subject_id,
-                    semester=3,
-                    internal_marks=75.0 if student.reg_no == "2021CSE001" else 85.0,
-                    external_marks=70.0 if student.reg_no == "2021CSE001" else 80.0,
-                    total_marks=145.0 if student.reg_no == "2021CSE001" else 165.0,
-                    grade="A" if student.reg_no == "2021CSE001" else "A+",
-                    exam_date=date(2024, 5, 15)
-                )
-                db.add(mark)
-        
-        db.commit()
-        print("✓ Created marks records")
         
         # Create attendance records
-        for student in students:
+        for student in students_cse:
             for subject in subjects[:2]:
                 attendance = models.Attendance(
-                    student_id=student.student_id,
-                    subject_id=subject.subject_id,
-                    month="January",
-                    year=2024,
-                    total_classes=20,
-                    attended_classes=18 if student.reg_no == "2021CSE001" else 19,
-                    attendance_percentage=90.0 if student.reg_no == "2021CSE001" else 95.0
+                    reg_no=student.reg_no,
+                    student_name=student.name,
+                    date=date(2024, 1, 15), # Dummy date
+                    status="Present",
+                    year=2,
+                    section="A",
+                    dept="CSE"
                 )
                 db.add(attendance)
         
@@ -190,10 +205,10 @@ def create_sample_data():
         print("✓ Created activities")
         
         # Create activity participations
-        for student in students[:2]:  # First 2 students
+        for student in students_cse[:2]:  # First 2 students
             participation = models.ActivityParticipation(
                 activity_id=activities[0].activity_id,
-                student_id=student.student_id,
+                reg_no=student.reg_no,
                 role="Participant",
                 achievement="Winner" if student.reg_no == "2021CSE001" else "Participant"
             )

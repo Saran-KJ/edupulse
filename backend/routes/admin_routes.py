@@ -28,6 +28,9 @@ async def create_user(
         password=hashed_password,
         role=user_data.role,
         secret_pin=user_data.secret_pin,
+        dept=user_data.dept,
+        year=user_data.year,
+        section=user_data.section,
         is_approved=1,  # Admin-created users are auto-approved
         is_active=1
     )
@@ -51,12 +54,48 @@ async def approve_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_admin)
 ):
-    """Approve a pending registration request"""
+    """Approve a pending registration request and create student record if applicable"""
     user = db.query(models.User).filter(models.User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    # Approve the user
     user.is_approved = 1
+    
+    # If the user is a student, create a student record in the appropriate department table
+    if user.role == models.RoleEnum.STUDENT and user.reg_no and user.dept:
+        # Determine the correct student model based on department
+        dept_model_map = {
+            "CSE": models.StudentCSE,
+            "ECE": models.StudentECE,
+            "EEE": models.StudentEEE,
+            "MECH": models.StudentMECH,
+            "CIVIL": models.StudentCIVIL,
+            "BIO": models.StudentBIO,
+            "AIDS": models.StudentAIDS
+        }
+        
+        student_model = dept_model_map.get(user.dept)
+        if student_model:
+            # Check if student record already exists
+            existing_student = db.query(student_model).filter(
+                student_model.reg_no == user.reg_no
+            ).first()
+            
+            if not existing_student:
+                # Create new student record
+                new_student = student_model(
+                    reg_no=user.reg_no,
+                    name=user.name,
+                    email=user.email,
+                    phone=user.phone,
+                    dept=user.dept,
+                    year=int(user.year) if user.year else 1,
+                    semester=int(user.year) * 2 if user.year else 1,  # Estimate semester from year
+                    section=user.section if user.section else "A"
+                )
+                db.add(new_student)
+    
     db.commit()
     return {"message": f"User {user.name} approved successfully"}
 
@@ -195,6 +234,10 @@ async def delete_user(
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     
     user_name = user.name
+    
+    # Delete related login logs first
+    db.query(models.LoginLog).filter(models.LoginLog.user_id == user_id).delete()
+    
     db.delete(user)
     db.commit()
     return {"message": f"User {user_name} deleted successfully"}

@@ -8,29 +8,73 @@ import auth
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
 
+def get_student_model(dept: str):
+    if not dept: return None
+    dept = dept.upper()
+    if dept == 'CSE': return models.StudentCSE
+    if dept == 'ECE': return models.StudentECE
+    if dept == 'EEE': return models.StudentEEE
+    if dept == 'MECH': return models.StudentMECH
+    if dept == 'CIVIL': return models.StudentCIVIL
+    if dept == 'BIO.TECH': return models.StudentBIO
+    if dept == 'AIDS': return models.StudentAIDS
+    return None
+
+def get_all_student_models():
+    return [
+        models.StudentCSE, models.StudentECE, models.StudentEEE,
+        models.StudentMECH, models.StudentCIVIL, models.StudentBIO,
+        models.StudentAIDS
+    ]
+
 @router.get("", response_model=List[schemas.StudentResponse])
 async def get_students(
     skip: int = 0,
     limit: int = 100,
-    dept_id: Optional[int] = None,
+    dept: Optional[str] = None, # Changed from dept_id
     year: Optional[int] = None,
+    section: Optional[str] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
-    query = db.query(models.Student)
+    students = []
     
-    if dept_id:
-        query = query.filter(models.Student.dept_id == dept_id)
-    if year:
-        query = query.filter(models.Student.year == year)
-    if search:
-        query = query.filter(
-            (models.Student.name.ilike(f"%{search}%")) |
-            (models.Student.reg_no.ilike(f"%{search}%"))
-        )
-    
-    students = query.offset(skip).limit(limit).all()
+    # If dept is specified, query that table
+    if dept:
+        model = get_student_model(dept)
+        if model:
+            query = db.query(model)
+            if year:
+                query = query.filter(model.year == year)
+            if section:
+                query = query.filter(model.section == section)
+            if search:
+                query = query.filter(
+                    (model.name.ilike(f"%{search}%")) |
+                    (model.reg_no.ilike(f"%{search}%"))
+                )
+            students = query.offset(skip).limit(limit).all()
+    else:
+        # If no dept, query all tables (expensive, but needed if no filter)
+        # For simplicity, let's just return empty or require dept for now
+        # Or iterate all models
+        for model in get_all_student_models():
+            query = db.query(model)
+            if year:
+                query = query.filter(model.year == year)
+            if section:
+                query = query.filter(model.section == section)
+            if search:
+                query = query.filter(
+                    (model.name.ilike(f"%{search}%")) |
+                    (model.reg_no.ilike(f"%{search}%"))
+                )
+            students.extend(query.all())
+        
+        # Apply limit/skip manually
+        students = students[skip: skip + limit]
+
     return students
 
 @router.post("", response_model=schemas.StudentResponse)
@@ -45,45 +89,68 @@ async def create_student(
         models.RoleEnum.PRINCIPAL
     ]))
 ):
-    # Check if registration number exists
-    db_student = db.query(models.Student).filter(models.Student.reg_no == student.reg_no).first()
+    model = get_student_model(student.dept)
+    if not model:
+        raise HTTPException(status_code=400, detail="Invalid department")
+
+    # Check if registration number exists in that dept
+    db_student = db.query(model).filter(model.reg_no == student.reg_no).first()
     if db_student:
         raise HTTPException(status_code=400, detail="Registration number already exists")
     
-    db_student = models.Student(**student.dict())
+    db_student = model(**student.dict())
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
     return db_student
 
-@router.get("/{student_id}", response_model=schemas.StudentResponse)
+@router.get("/{reg_no}", response_model=schemas.StudentResponse)
 async def get_student(
-    student_id: int,
+    reg_no: str,
+    dept: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
-    student = db.query(models.Student).filter(models.Student.student_id == student_id).first()
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-    return student
+    if dept:
+        model = get_student_model(dept)
+        if model:
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+            if student: return student
+    else:
+        # Search all tables
+        for model in get_all_student_models():
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+            if student: return student
+            
+    raise HTTPException(status_code=404, detail="Student not found")
 
-@router.get("/{student_id}/profile", response_model=schemas.StudentProfile360)
+@router.get("/{reg_no}/profile", response_model=schemas.StudentProfile360)
 async def get_student_profile_360(
-    student_id: int,
+    reg_no: str,
+    dept: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
-    student = db.query(models.Student).filter(models.Student.student_id == student_id).first()
+    student = None
+    if dept:
+        model = get_student_model(dept)
+        if model:
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+    else:
+        for model in get_all_student_models():
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+            if student: break
+    
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     
-    marks = db.query(models.Mark).filter(models.Mark.student_id == student_id).all()
-    attendance = db.query(models.Attendance).filter(models.Attendance.student_id == student_id).all()
+    marks = db.query(models.Mark).filter(models.Mark.reg_no == reg_no).all()
+    attendance = db.query(models.Attendance).filter(models.Attendance.reg_no == reg_no).all()
     activities = db.query(models.ActivityParticipation).filter(
-        models.ActivityParticipation.student_id == student_id
+        models.ActivityParticipation.reg_no == reg_no
     ).all()
     latest_prediction = db.query(models.RiskPrediction).filter(
-        models.RiskPrediction.student_id == student_id
+        models.RiskPrediction.reg_no == reg_no
     ).order_by(models.RiskPrediction.prediction_date.desc()).first()
     
     return {
@@ -94,10 +161,11 @@ async def get_student_profile_360(
         "latest_risk_prediction": latest_prediction
     }
 
-@router.put("/{student_id}", response_model=schemas.StudentResponse)
+@router.put("/{reg_no}", response_model=schemas.StudentResponse)
 async def update_student(
-    student_id: int,
+    reg_no: str,
     student_update: schemas.StudentUpdate,
+    dept: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user = Depends(auth.require_role([
         models.RoleEnum.ADMIN, 
@@ -107,28 +175,257 @@ async def update_student(
         models.RoleEnum.PRINCIPAL
     ]))
 ):
-    db_student = db.query(models.Student).filter(models.Student.student_id == student_id).first()
-    if not db_student:
+    student = None
+    if dept:
+        model = get_student_model(dept)
+        if model:
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+    else:
+        for model in get_all_student_models():
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+            if student: break
+
+    if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     
     update_data = student_update.dict(exclude_unset=True)
     for key, value in update_data.items():
-        setattr(db_student, key, value)
+        setattr(student, key, value)
     
     db.commit()
-    db.refresh(db_student)
-    return db_student
+    db.refresh(student)
+    return student
 
-@router.delete("/{student_id}")
+@router.delete("/{reg_no}")
 async def delete_student(
-    student_id: int,
+    reg_no: str,
+    dept: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user = Depends(auth.require_role([models.RoleEnum.ADMIN]))
 ):
-    db_student = db.query(models.Student).filter(models.Student.student_id == student_id).first()
-    if not db_student:
+    student = None
+    if dept:
+        model = get_student_model(dept)
+        if model:
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+    else:
+        for model in get_all_student_models():
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+            if student: break
+
+    if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     
-    db.delete(db_student)
+    db.delete(student)
     db.commit()
     return {"message": "Student deleted successfully"}
+
+@router.get("/me/dashboard-stats")
+async def get_my_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """Get dashboard statistics for the currently logged-in student"""
+    if current_user.role != models.RoleEnum.STUDENT or not current_user.reg_no:
+        raise HTTPException(status_code=403, detail="Only students can access this endpoint")
+    
+    reg_no = current_user.reg_no
+    
+    # Get student info
+    student = None
+    if current_user.dept:
+        model = get_student_model(current_user.dept)
+        if model:
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+    
+    if not student:
+        raise HTTPException(status_code=404, detail="Student record not found")
+    
+    # Calculate attendance percentage
+    attendance_records = db.query(models.Attendance).filter(
+        models.Attendance.reg_no == reg_no
+    ).all()
+    
+    total_attendance = len(attendance_records)
+    present_count = sum(1 for a in attendance_records if a.status in ['Present', 'P', 'OD'])
+    attendance_percentage = round((present_count / total_attendance * 100), 1) if total_attendance > 0 else 0.0
+    
+    # Calculate GPA from marks
+    marks = db.query(models.Mark).filter(models.Mark.reg_no == reg_no).all()
+    
+    # Grade to points mapping
+    grade_points = {
+        'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6,
+        'C': 5, 'RA': 0, 'SA': 0, 'W': 0
+    }
+    
+    total_points = 0
+    total_subjects = 0
+    for mark in marks:
+        if mark.university_result_grade and mark.university_result_grade in grade_points:
+            total_points += grade_points[mark.university_result_grade]
+            total_subjects += 1
+    
+    gpa = round(total_points / total_subjects, 2) if total_subjects > 0 else 0.0
+    
+    # Count activities
+    activities_count = db.query(models.ActivityParticipation).filter(
+        models.ActivityParticipation.reg_no == reg_no
+    ).count()
+    
+    # Get latest risk prediction
+    latest_prediction = db.query(models.RiskPrediction).filter(
+        models.RiskPrediction.reg_no == reg_no
+    ).order_by(models.RiskPrediction.prediction_date.desc()).first()
+    
+    risk_level = latest_prediction.risk_level if latest_prediction else "LOW"
+    risk_score = latest_prediction.risk_score if latest_prediction else 0.0
+    
+    return {
+        "student_info": {
+            "name": student.name,
+            "reg_no": student.reg_no,
+            "dept": student.dept,
+            "year": student.year,
+            "section": student.section,
+            "phone": student.phone,
+            "address": student.address
+        },
+        "attendance_percentage": attendance_percentage,
+        "gpa": gpa,
+        "activities_count": activities_count,
+        "risk_level": risk_level,
+        "risk_score": round(risk_score * 100, 1) if risk_score else 0.0
+    }
+
+@router.put("/me/profile")
+async def update_my_profile(
+    profile_data: dict,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """Update the currently logged-in student's profile"""
+    if current_user.role != models.RoleEnum.STUDENT or not current_user.reg_no:
+        raise HTTPException(status_code=403, detail="Only students can access this endpoint")
+    
+    reg_no = current_user.reg_no
+    
+    # Get student record
+    student = None
+    if current_user.dept:
+        model = get_student_model(current_user.dept)
+        if model:
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+    
+    if not student:
+        raise HTTPException(status_code=404, detail="Student record not found")
+    
+    # Update allowed fields
+    if 'phone' in profile_data and profile_data['phone']:
+        student.phone = profile_data['phone']
+    if 'address' in profile_data:
+        student.address = profile_data['address']
+    
+    # Also update user table phone if provided
+    if 'phone' in profile_data and profile_data['phone']:
+        current_user.phone = profile_data['phone']
+    
+    db.commit()
+    db.refresh(student)
+    
+    return {"message": "Profile updated successfully", "student": student}
+
+@router.get("/parent/dashboard-stats")
+async def get_parent_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """Get dashboard statistics for parent's child (matched by child_phone)"""
+    if current_user.role != models.RoleEnum.PARENT:
+        raise HTTPException(status_code=403, detail="Only parents can access this endpoint")
+    
+    if not current_user.child_phone:
+        raise HTTPException(status_code=400, detail="Child phone number not registered")
+    
+    child_phone = current_user.child_phone
+    
+    # Find child (student) by phone number across all department tables
+    student = None
+    for model in get_all_student_models():
+        student = db.query(model).filter(model.phone == child_phone).first()
+        if student:
+            break
+    
+    if not student:
+        return {
+            "error": "Child not found",
+            "message": f"No student found with phone number {child_phone}",
+            "parent_info": {
+                "name": current_user.name,
+                "child_name": current_user.child_name,
+                "child_phone": current_user.child_phone
+            }
+        }
+    
+    reg_no = student.reg_no
+    
+    # Calculate attendance percentage
+    attendance_records = db.query(models.Attendance).filter(
+        models.Attendance.reg_no == reg_no
+    ).all()
+    
+    total_attendance = len(attendance_records)
+    present_count = sum(1 for a in attendance_records if a.status in ['Present', 'P', 'OD'])
+    attendance_percentage = round((present_count / total_attendance * 100), 1) if total_attendance > 0 else 0.0
+    
+    # Calculate GPA from marks
+    marks = db.query(models.Mark).filter(models.Mark.reg_no == reg_no).all()
+    
+    grade_points = {
+        'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6,
+        'C': 5, 'RA': 0, 'SA': 0, 'W': 0
+    }
+    
+    total_points = 0
+    total_subjects = 0
+    for mark in marks:
+        if mark.university_result_grade and mark.university_result_grade in grade_points:
+            total_points += grade_points[mark.university_result_grade]
+            total_subjects += 1
+    
+    gpa = round(total_points / total_subjects, 2) if total_subjects > 0 else 0.0
+    
+    # Count activities
+    activities_count = db.query(models.ActivityParticipation).filter(
+        models.ActivityParticipation.reg_no == reg_no
+    ).count()
+    
+    # Get latest risk prediction
+    latest_prediction = db.query(models.RiskPrediction).filter(
+        models.RiskPrediction.reg_no == reg_no
+    ).order_by(models.RiskPrediction.prediction_date.desc()).first()
+    
+    risk_level = latest_prediction.risk_level if latest_prediction else "LOW"
+    risk_score = latest_prediction.risk_score if latest_prediction else 0.0
+    
+    return {
+        "parent_info": {
+            "name": current_user.name,
+            "occupation": current_user.occupation
+        },
+        "child_info": {
+            "name": student.name,
+            "reg_no": student.reg_no,
+            "dept": student.dept,
+            "year": student.year,
+            "section": student.section,
+            "semester": student.semester,
+            "phone": student.phone
+        },
+        "attendance_percentage": attendance_percentage,
+        "gpa": gpa,
+        "activities_count": activities_count,
+        "risk_level": risk_level,
+        "risk_score": round(risk_score * 100, 1) if risk_score else 0.0
+    }
+
