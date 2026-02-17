@@ -55,6 +55,7 @@ async def get_class_marks(
     year: int,
     section: str,
     semester: Optional[int] = None,
+    subject_code: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
@@ -67,6 +68,9 @@ async def get_class_marks(
     
     if semester:
         query = query.filter(models.Mark.semester == semester)
+        
+    if subject_code:
+        query = query.filter(models.Mark.subject_code == subject_code)
     
     marks = query.all()
     return marks

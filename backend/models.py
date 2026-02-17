@@ -47,6 +47,7 @@ class User(Base):
     # Parent-specific fields
     child_name = Column(String(100), nullable=True)
     child_phone = Column(String(20), nullable=True)
+    child_reg_no = Column(String(50), nullable=True)
     occupation = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -228,34 +229,53 @@ class LoginLog(Base):
     failure_reason = Column(String(255), nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
-class Timetable(Base):
-    __tablename__ = "timetables"
-
-    timetable_id = Column(Integer, primary_key=True, index=True)
+class StudentActivitySubmission(Base):
+    """Student-submitted activities pending class advisor approval"""
+    __tablename__ = "student_activity_submissions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    reg_no = Column(String(50), nullable=False, index=True)
+    activity_name = Column(String(200), nullable=False)
+    activity_type = Column(Enum(ActivityTypeEnum), nullable=False)
+    level = Column(String(50))  # College, State, National, International
+    activity_date = Column(Date, nullable=False)
+    description = Column(Text)
+    role = Column(String(100))  # Participant, Winner, Organizer
+    achievement = Column(String(200))  # 1st Place, etc.
     dept = Column(String(10), nullable=False)
     year = Column(Integer, nullable=False)
-    section = Column(String(5), nullable=False)
-    day = Column(String(10), nullable=False) # Monday, Tuesday, etc.
-    period = Column(Integer, nullable=False) # 1, 2, 3, 4, 5, 6
+    section = Column(String(10), nullable=False)
+    status = Column(String(20), default="pending")  # pending / approved / rejected
+    reviewer_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    review_comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class FacultyAllocation(Base):
+    __tablename__ = "faculty_allocations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    dept = Column(String(10), nullable=False)
+    year = Column(Integer, nullable=False)
+    section = Column(String(10), nullable=False)
     subject_code = Column(String(20), nullable=False)
     subject_title = Column(String(100), nullable=False)
-    duration = Column(Integer, default=1) # Duration in hours/periods
-    
-
+    faculty_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    faculty_name = Column(String(100), nullable=False)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-class TimetableStatus(Base):
-    """
-    Tracks whether the timetable for a specific class has been published.
-    """
-    __tablename__ = "timetable_status"
+class LearningResource(Base):
+    __tablename__ = "learning_resources"
     
-    status_id = Column(Integer, primary_key=True, index=True)
-    dept = Column(String(10), nullable=False)
-    year = Column(Integer, nullable=False)
-    section = Column(String(5), nullable=False)
-    is_published = Column(Integer, default=0) # 0 = Draft, 1 = Published
-    
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resource_id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    url = Column(String(500), nullable=False)
+    type = Column(String(50), nullable=False) # video, article, course
+    tags = Column(String(200), nullable=True) # comma-separated tags
+    dept = Column(String(10), nullable=True)  # specific to dept or null for all
+    min_risk_level = Column(String(20), nullable=True) # Show only if risk level is at least this (Low, Medium, High)
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -344,25 +344,28 @@ async def get_parent_dashboard_stats(
     if current_user.role != models.RoleEnum.PARENT:
         raise HTTPException(status_code=403, detail="Only parents can access this endpoint")
     
-    if not current_user.child_phone:
-        raise HTTPException(status_code=400, detail="Child phone number not registered")
-    
-    child_phone = current_user.child_phone
-    
-    # Find child (student) by phone number across all department tables
-    student = None
-    for model in get_all_student_models():
-        student = db.query(model).filter(model.phone == child_phone).first()
-        if student:
-            break
+    # Priority 1: Search by Register Number if available
+    if current_user.child_reg_no:
+        child_id = current_user.child_reg_no
+        for model in get_all_student_models():
+            student = db.query(model).filter(model.reg_no == child_id).first()
+            if student: break
+            
+    # Priority 2: Search by Phone Number if Reg No not found or not provided
+    if not student and current_user.child_phone:
+        child_phone = current_user.child_phone
+        for model in get_all_student_models():
+            student = db.query(model).filter(model.phone == child_phone).first()
+            if student: break
     
     if not student:
         return {
             "error": "Child not found",
-            "message": f"No student found with phone number {child_phone}",
+            "message": f"No student found with Reg No: {current_user.child_reg_no or 'N/A'} or Phone: {current_user.child_phone or 'N/A'}",
             "parent_info": {
                 "name": current_user.name,
                 "child_name": current_user.child_name,
+                "child_reg_no": current_user.child_reg_no,
                 "child_phone": current_user.child_phone
             }
         }

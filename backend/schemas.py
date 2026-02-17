@@ -20,6 +20,7 @@ class UserCreate(UserBase):
     # Parent-specific fields
     child_name: Optional[str] = None
     child_phone: Optional[str] = None
+    child_reg_no: Optional[str] = None
     occupation: Optional[str] = None
 
 class UserResponse(UserBase):
@@ -34,6 +35,7 @@ class UserResponse(UserBase):
     # Parent-specific fields
     child_name: Optional[str] = None
     child_phone: Optional[str] = None
+    child_reg_no: Optional[str] = None
     occupation: Optional[str] = None
     created_at: datetime
     updated_at: datetime
@@ -296,7 +298,42 @@ class ActivityParticipationResponse(ActivityParticipationBase):
     class Config:
         from_attributes = True
 
-# Risk Prediction Schemas
+# Student Activity Submission Schemas
+class StudentActivitySubmissionCreate(BaseModel):
+    activity_name: str
+    activity_type: ActivityTypeEnum
+    level: Optional[str] = None
+    activity_date: date
+    description: Optional[str] = None
+    role: Optional[str] = None
+    achievement: Optional[str] = None
+
+class StudentActivitySubmissionResponse(BaseModel):
+    id: int
+    reg_no: str
+    activity_name: str
+    activity_type: ActivityTypeEnum
+    level: Optional[str] = None
+    activity_date: date
+    description: Optional[str] = None
+    role: Optional[str] = None
+    achievement: Optional[str] = None
+    dept: str
+    year: int
+    section: str
+    status: str
+    review_comment: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class StudentActivitySubmissionReview(BaseModel):
+    status: str  # "approved" or "rejected"
+    review_comment: Optional[str] = None
+
+
 class RiskPredictionRequest(BaseModel):
     reg_no: str # Changed from student_id
 
@@ -338,36 +375,39 @@ class StudentWithActivities(BaseModel):
     class Config:
         from_attributes = True
 
-# Timetable Schemas
-class TimetableBase(BaseModel):
+# Faculty Schemas
+class FacultyClassInfo(BaseModel):
+    """Represents a unique class taught by a faculty member"""
     dept: str
     year: int
     section: str
-    day: str
-    period: int
     subject_code: str
     subject_title: str
-    duration: int = 1
+    
+class FacultyDashboardStats(BaseModel):
+    """Statistics for faculty dashboard"""
+    total_classes: int
+    total_students: int
+    subjects_taught: int
 
-class TimetableCreate(TimetableBase):
+# Faculty Allocation Schemas
+class FacultyAllocationBase(BaseModel):
+    dept: str
+    year: int
+    section: str
+    subject_code: str
+    subject_title: str
+    faculty_id: int
+    faculty_name: str
+
+class FacultyAllocationCreate(FacultyAllocationBase):
     pass
 
-class TimetableResponse(TimetableBase):
-    timetable_id: int
+class FacultyAllocationResponse(FacultyAllocationBase):
+    id: int
     created_at: datetime
     updated_at: datetime
     
     class Config:
         from_attributes = True
 
-class TimetableStatusBase(BaseModel):
-    is_published: int
-
-class TimetableStatusResponse(TimetableStatusBase):
-    dept: str
-    year: int
-    section: str
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True

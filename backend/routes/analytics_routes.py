@@ -58,6 +58,27 @@ async def get_dashboard_stats(
         )
         print(f"DEBUG: Attendance count: {attendance_query.count()}")
         
+    elif current_user.role == models.RoleEnum.HOD and current_user.dept:
+        print(f"DEBUG: Filtering for HOD: {current_user.dept}")
+        
+        # Get all student models for this department (usually just one, but helper returns list or model)
+        model = get_student_model(current_user.dept)
+        if model:
+            student_query = db.query(model).filter(model.dept == current_user.dept)
+            total_students = student_query.count()
+            
+            # Filter marks
+            sub_query = db.query(model.reg_no).filter(model.dept == current_user.dept)
+            mark_query = mark_query.filter(models.Mark.reg_no.in_(sub_query))
+            
+            # Filter At Risk
+            at_risk_query = db.query(func.count(models.RiskPrediction.prediction_id)).filter(
+                models.RiskPrediction.risk_level.in_([models.RiskLevelEnum.MEDIUM, models.RiskLevelEnum.HIGH]),
+                models.RiskPrediction.reg_no.in_(sub_query)
+            )
+            at_risk_count = at_risk_query.scalar() or 0
+            
+        attendance_query = attendance_query.filter(models.Attendance.dept == current_user.dept)
     else:
         print(f"DEBUG: No Class Advisor filtering. Role: {current_user.role}, Dept: {current_user.dept}")
         # Global stats - sum of all tables

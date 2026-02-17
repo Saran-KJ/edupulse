@@ -29,10 +29,26 @@ class MLService:
         except Exception as e:
             print(f"Error loading model: {e}")
     
+    def get_student_model(self, dept: str):
+        dept = dept.upper()
+        if dept == 'CSE': return models.StudentCSE
+        elif dept == 'ECE': return models.StudentECE
+        elif dept == 'EEE': return models.StudentEEE
+        elif dept == 'MECH': return models.StudentMECH
+        elif dept == 'CIVIL': return models.StudentCIVIL
+        elif dept == 'BIO': return models.StudentBIO
+        elif dept == 'AIDS': return models.StudentAIDS
+        return None
+
     def extract_features(self, db: Session, student_id: int) -> Dict[str, float]:
         """Extract features for a student"""
-        # Get student reg_no
-        student = db.query(models.Student).filter(models.Student.student_id == student_id).first()
+        # Find student across all dept tables since we only have ID
+        student = None
+        for model in [models.StudentCSE, models.StudentECE, models.StudentEEE, models.StudentMECH, models.StudentCIVIL, models.StudentBIO, models.StudentAIDS]:
+            student = db.query(model).filter(model.student_id == student_id).first()
+            if student:
+                break
+        
         if not student:
             return {
                 'attendance_percentage': 0,
@@ -84,8 +100,9 @@ class MLService:
         external_gpa = total_points / count if count > 0 else 0
         
         # Count activities
+        # Note: ActivityParticipation.student_id was renamed to reg_no in models.py
         activity_count = db.query(func.count(models.ActivityParticipation.participation_id)).filter(
-            models.ActivityParticipation.student_id == student_id
+            models.ActivityParticipation.reg_no == reg_no
         ).scalar() or 0
         
         return {
