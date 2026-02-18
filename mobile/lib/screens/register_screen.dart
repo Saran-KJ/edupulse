@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
-import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String? selectedRole;
@@ -22,6 +20,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _regNoController = TextEditingController();
   final _phoneController = TextEditingController();
   final _sectionController = TextEditingController();
+  // Parent-specific controllers
+  final _childNameController = TextEditingController();
+  final _childPhoneController = TextEditingController();
+  final _childRegNoController = TextEditingController();
+  final _occupationController = TextEditingController();
   
   String? _selectedDept;
   String? _selectedYear;
@@ -32,6 +35,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool get _isStudent => widget.selectedRole == 'Student' || widget.selectedRole == null;
   bool get _isClassAdvisor => widget.selectedRole == 'Class Advisor';
+  bool get _isParent => widget.selectedRole == 'Parent';
+  bool get _isFaculty => widget.selectedRole == 'Faculty';
 
   @override
   void dispose() {
@@ -43,6 +48,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _regNoController.dispose();
     _phoneController.dispose();
     _sectionController.dispose();
+    // Dispose parent controllers
+    _childNameController.dispose();
+    _childPhoneController.dispose();
+    _childRegNoController.dispose();
+    _occupationController.dispose();
     super.dispose();
   }
 
@@ -76,6 +86,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         dept: _selectedDept,
         year: _selectedYear,
         section: _sectionController.text.trim(),
+        // Parent-specific fields
+        childName: _childNameController.text.trim(),
+        childPhone: _childPhoneController.text.trim(),
+        childRegNo: _childRegNoController.text.trim(),
+        occupation: _occupationController.text.trim(),
       );
 
       if (mounted) {
@@ -118,6 +133,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return 'principal';
       case 'Admin':
         return 'admin';
+      case 'Parent':
+        return 'parent';
       default:
         return 'student';
     }
@@ -164,7 +181,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -206,7 +223,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           blurRadius: 30,
                           offset: const Offset(0, 15),
                         ),
@@ -243,6 +260,88 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: 16),
 
+                          // Parent-specific fields: Child's Name
+                          if (_isParent) ...[
+                            TextFormField(
+                              controller: _childNameController,
+                              decoration: InputDecoration(
+                                labelText: "Child's Name",
+                                prefixIcon: const Icon(Icons.child_care),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                              ),
+                              validator: (value) {
+                                if (_isParent && (value == null || value.isEmpty)) {
+                                  return "Please enter your child's name";
+                                }
+                                final nameRegExp = RegExp(r'^[a-zA-Z .]+$');
+                                if (value != null && value.isNotEmpty && !nameRegExp.hasMatch(value)) {
+                                  return 'Only alphabets and dots are allowed';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            // Child's Register Number
+                            TextFormField(
+                              controller: _childRegNoController,
+                              decoration: InputDecoration(
+                                labelText: "Child's Register Number",
+                                prefixIcon: const Icon(Icons.badge_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                helperText: 'Enter student register number (e.g., 2021CSE001)',
+                              ),
+                              validator: (value) {
+                                if (_isParent && (value == null || value.isEmpty)) {
+                                  return "Please enter your child's register number";
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            // Child's Phone Number
+                            TextFormField(
+                              controller: _childPhoneController,
+                              decoration: InputDecoration(
+                                labelText: "Child's Phone Number",
+                                prefixIcon: const Icon(Icons.phone_android),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                helperText: 'Enter 10-digit mobile number (for matching)',
+                              ),
+                              keyboardType: TextInputType.phone,
+                              maxLength: 10,
+                              validator: (value) {
+                                if (_isParent) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Please enter your child's phone number";
+                                  }
+                                  if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                                    return 'Phone number should contain only digits';
+                                  }
+                                  if (value.length != 10) {
+                                    return 'Phone number must be exactly 10 digits';
+                                  }
+                                  if (!RegExp(r'^[6-9]').hasMatch(value)) {
+                                    return 'Phone number must start with 6, 7, 8, or 9';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
                           // Register Number Field
                           if (_isStudent) ...[
                             TextFormField(
@@ -278,16 +377,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                                 filled: true,
                                 fillColor: Colors.grey.shade50,
+                                helperText: 'Enter 10-digit mobile number',
                               ),
                               keyboardType: TextInputType.phone,
+                              maxLength: 10,
                               validator: (value) {
                                 if (_isStudent) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your mobile number';
                                   }
-                                  if (value.length < 10) {
-                                    return 'Enter a valid mobile number';
+                                  // Check if it contains only digits
+                                  if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                                    return 'Mobile number should contain only digits';
                                   }
+                                  // Check if length is exactly 10
+                                  if (value.length != 10) {
+                                    return 'Mobile number must be exactly 10 digits';
+                                  }
+                                  // Check if it starts with 6, 7, 8, or 9
+                                  if (!RegExp(r'^[6-9]').hasMatch(value)) {
+                                    return 'Mobile number must start with 6, 7, 8, or 9';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
+                          // Mobile Number Field for Parent
+                          if (_isParent) ...[
+                            TextFormField(
+                              controller: _phoneController,
+                              decoration: InputDecoration(
+                                labelText: 'Your Mobile Number',
+                                prefixIcon: const Icon(Icons.phone_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                helperText: 'Enter 10-digit mobile number',
+                              ),
+                              keyboardType: TextInputType.phone,
+                              maxLength: 10,
+                              validator: (value) {
+                                if (_isParent) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your mobile number';
+                                  }
+                                  if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                                    return 'Mobile number should contain only digits';
+                                  }
+                                  if (value.length != 10) {
+                                    return 'Mobile number must be exactly 10 digits';
+                                  }
+                                  if (!RegExp(r'^[6-9]').hasMatch(value)) {
+                                    return 'Mobile number must start with 6, 7, 8, or 9';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            // Occupation Field
+                            TextFormField(
+                              controller: _occupationController,
+                              decoration: InputDecoration(
+                                labelText: 'Occupation',
+                                prefixIcon: const Icon(Icons.work_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                              ),
+                              validator: (value) {
+                                if (_isParent && (value == null || value.isEmpty)) {
+                                  return 'Please enter your occupation';
                                 }
                                 return null;
                               },
@@ -324,7 +491,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 16),
 
                           // Year Dropdown
-                          if (_isStudent || _isClassAdvisor) ...[
+                          if (_isStudent || _isClassAdvisor || _isParent || _isFaculty) ...[
                             DropdownButtonFormField<String>(
                               value: _selectedYear,
                               decoration: InputDecoration(
@@ -344,7 +511,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   .toList(),
                               onChanged: (value) => setState(() => _selectedYear = value),
                               validator: (value) {
-                                if ((_isStudent || _isClassAdvisor) && value == null) {
+                                if ((_isStudent || _isClassAdvisor || _isParent || _isFaculty) && value == null) {
                                   return 'Please select a year';
                                 }
                                 return null;
@@ -354,7 +521,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ],
 
                           // Section Field (Conditional)
-                          if (_selectedDept == 'CSE') ...[
+                          if (_selectedDept == 'CSE' || _isFaculty) ...[
                             TextFormField(
                               controller: _sectionController,
                               decoration: InputDecoration(
@@ -367,7 +534,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fillColor: Colors.grey.shade50,
                               ),
                               validator: (value) {
-                                if (_selectedDept == 'CSE' &&
+                                if ((_selectedDept == 'CSE' || _isFaculty) &&
                                     (value == null || value.isEmpty)) {
                                   return 'Please enter your section';
                                 }

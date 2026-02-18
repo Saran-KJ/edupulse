@@ -10,8 +10,9 @@ class MLService:
     def __init__(self):
         self.model = None
         self.scaler = None
-        self.model_path = Path(__file__).parent.parent / "ml_models" / "best_model.pkl"
-        self.scaler_path = Path(__file__).parent.parent / "ml_models" / "feature_scaler.pkl"
+        # ml_service.py is in backend/, models are in backend/ml_models/
+        self.model_path = Path(__file__).parent / "ml_models" / "best_model.pkl"
+        self.scaler_path = Path(__file__).parent / "ml_models" / "feature_scaler.pkl"
         self.load_model()
     
     def load_model(self):
@@ -40,12 +41,12 @@ class MLService:
         elif dept == 'AIDS': return models.StudentAIDS
         return None
 
-    def extract_features(self, db: Session, student_id: int) -> Dict[str, float]:
+    def extract_features(self, db: Session, reg_no: str) -> Dict[str, float]:
         """Extract features for a student"""
-        # Find student across all dept tables since we only have ID
+        # Find student across all dept tables using reg_no
         student = None
         for model in [models.StudentCSE, models.StudentECE, models.StudentEEE, models.StudentMECH, models.StudentCIVIL, models.StudentBIO, models.StudentAIDS]:
-            student = db.query(model).filter(model.student_id == student_id).first()
+            student = db.query(model).filter(model.reg_no == reg_no).first()
             if student:
                 break
         
@@ -57,7 +58,9 @@ class MLService:
                 'activity_count': 0,
                 'backlog_count': 0
             }
-        reg_no = student.reg_no
+        
+        # reg_no is already available
+
 
         # Get attendance percentage
         total_days = db.query(models.Attendance).filter(
@@ -71,10 +74,63 @@ class MLService:
         
         avg_attendance = (present_days / total_days * 100) if total_days > 0 else 0
         
-        # Get internal marks average (Using Model Exam as proxy)
-        internal_avg = db.query(func.avg(models.Mark.model)).filter(
+        # Get internal marks average (Using all available components)
+        # Calculate subject-wise internal marks and then average them
+        marks = db.query(models.Mark).filter(
             models.Mark.reg_no == reg_no
-        ).scalar() or 0
+        ).all()
+        
+        total_internal_percentage = 0
+        subject_count = 0
+        
+        for mark in marks:
+            # Calculate Internal 1
+            st1, st2 = float(mark.slip_test_1 or 0), float(mark.slip_test_2 or 0)
+            a1, a2 = float(mark.assignment_1 or 0), float(mark.assignment_2 or 0)
+            cia1 = float(mark.cia_1 or 0)
+            
+            # Check if Internal 1 has any data
+            has_int1 = (st1 + st2 + a1 + a2 + cia1) > 0
+            int1_score = 0
+            if has_int1:
+                # Progressive logic: use non-zero averages if needed, but for backend simplicity 
+                # we'll stick to the standard formula but only count it if it exists
+                st_avg1 = (st1 + st2) / 2
+                assign_avg1 = (a1 + a2) / 2
+                raw_int1 = (0.3 * st_avg1) + (0.2 * assign_avg1) + (0.5 * cia1)
+                # Max raw for Int 1 is 38 (6 + 2 + 30)
+                int1_score = (raw_int1 / 38) * 100
+            
+            # Calculate Internal 2
+            st3, st4 = float(mark.slip_test_3 or 0), float(mark.slip_test_4 or 0)
+            a3, a4, a5 = float(mark.assignment_3 or 0), float(mark.assignment_4 or 0), float(mark.assignment_5 or 0)
+            cia2 = float(mark.cia_2 or 0)
+            model = float(mark.model or 0)
+            
+            has_int2 = (st3 + st4 + a3 + a4 + a5 + cia2 + model) > 0
+            int2_score = 0
+            if has_int2:
+                st_avg2 = (st3 + st4) / 2
+                assign_avg2 = (a3 + a4 + a5) / 3
+                raw_int2 = (0.25 * st_avg2) + (0.15 * assign_avg2) + (0.3 * cia2) + (0.3 * model)
+                # Max raw for Int 2 is 54.5 (5 + 1.5 + 18 + 30)
+                int2_score = (raw_int2 / 54.5) * 100
+                
+            # Final Subject Internal Calculation
+            if has_int1 and has_int2:
+                final_subject_internal = (0.4 * int1_score) + (0.6 * int2_score)
+            elif has_int1:
+                final_subject_internal = int1_score
+            elif has_int2:
+                final_subject_internal = int2_score
+            else:
+                final_subject_internal = 0
+                
+            if has_int1 or has_int2:
+                total_internal_percentage += final_subject_internal
+                subject_count += 1
+                
+        internal_avg = (total_internal_percentage / subject_count) if subject_count > 0 else 0
         
         # Calculate external GPA (Simplified based on grades)
         # O=10, A+=9, A=8, B+=7, B=6, C=5, F/AREAR=0
@@ -113,10 +169,10 @@ class MLService:
             'backlog_count': backlog_count
         }
     
-    def predict_risk(self, db: Session, student_id: int) -> Dict[str, Any]:
+    def predict_risk(self, db: Session, reg_no: str) -> Dict[str, Any]:
         """Predict academic risk for a student"""
         # Extract features
-        features = self.extract_features(db, student_id)
+        features = self.extract_features(db, reg_no)
         
         # Create feature array
         feature_array = np.array([[
@@ -227,6 +283,96 @@ class MLService:
             reasons.append("Good overall performance")
         
         return "; ".join(reasons)
+
+    def save_prediction(self, db: Session, reg_no: str, prediction_result: Dict[str, Any]):
+        """Save prediction result to database"""
+        try:
+            db_prediction = models.RiskPrediction(
+                reg_no=reg_no,
+                risk_level=prediction_result['risk_level'],
+                risk_score=prediction_result['risk_score'],
+                attendance_percentage=prediction_result['attendance_percentage'],
+                internal_avg=prediction_result['internal_avg'],
+                external_gpa=prediction_result['external_gpa'],
+                activity_count=prediction_result['activity_count'],
+                backlog_count=prediction_result['backlog_count'],
+                reasons=prediction_result['reasons']
+            )
+            db.add(db_prediction)
+            db.commit()
+            db.refresh(db_prediction)
+            print(f"Saved risk prediction for {reg_no}: {prediction_result['risk_level']} ({prediction_result['risk_score']:.1f}%)")
+            return db_prediction
+        except Exception as e:
+            print(f"Error saving prediction for {reg_no}: {e}")
+            db.rollback()
+            return None
+
+    def calculate_subject_risk(self, db: Session, reg_no: str, subject_code: str) -> Dict[str, Any]:
+        """Calculate risk specifically for a given subject"""
+        # Case insensitive match for subject code
+        mark = db.query(models.Mark).filter(
+            models.Mark.reg_no == reg_no,
+            func.lower(models.Mark.subject_code) == subject_code.lower()
+        ).first()
+        
+        if not mark:
+            return {'risk_level': 'Unknown', 'score': 0, 'basis': 'No Data'}
+            
+        # Internal 1
+        st1, st2 = float(mark.slip_test_1 or 0), float(mark.slip_test_2 or 0)
+        a1, a2 = float(mark.assignment_1 or 0), float(mark.assignment_2 or 0)
+        cia1 = float(mark.cia_1 or 0)
+        
+        has_int1 = (st1 + st2 + a1 + a2 + cia1) > 0
+        int1_score = 0
+        if has_int1:
+            st_avg1 = (st1 + st2) / 2
+            assign_avg1 = (a1 + a2) / 2
+            raw_int1 = (0.3 * st_avg1) + (0.2 * assign_avg1) + (0.5 * cia1)
+            int1_score = (raw_int1 / 38) * 100
+        
+        # Internal 2
+        st3, st4 = float(mark.slip_test_3 or 0), float(mark.slip_test_4 or 0)
+        a3, a4, a5 = float(mark.assignment_3 or 0), float(mark.assignment_4 or 0), float(mark.assignment_5 or 0)
+        cia2 = float(mark.cia_2 or 0)
+        model = float(mark.model or 0)
+        
+        has_int2 = (st3 + st4 + a3 + a4 + a5 + cia2 + model) > 0
+        int2_score = 0
+        if has_int2:
+            st_avg2 = (st3 + st4) / 2
+            assign_avg2 = (a3 + a4 + a5) / 3
+            raw_int2 = (0.25 * st_avg2) + (0.15 * assign_avg2) + (0.3 * cia2) + (0.3 * model)
+            int2_score = (raw_int2 / 54.5) * 100
+            
+        # Final Calculation
+        if has_int1 and has_int2:
+            final_score = (0.4 * int1_score) + (0.6 * int2_score)
+            basis = "Full Data"
+        elif has_int1:
+            final_score = int1_score
+            basis = "Internal 1 Only"
+        elif has_int2:
+            final_score = int2_score
+            basis = "Internal 2 Only"
+        else:
+            final_score = 0
+            basis = "No Data"
+            
+        # Determine Risk Level
+        if final_score < 50:
+            risk_level = "High"
+        elif final_score < 65:
+            risk_level = "Medium"
+        else:
+            risk_level = "Low"
+            
+        return {
+            'risk_level': risk_level,
+            'score': final_score,
+            'basis': basis
+        }
 
 # Singleton instance
 ml_service = MLService()

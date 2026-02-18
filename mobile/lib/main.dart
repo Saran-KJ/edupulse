@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'config/app_config.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/login_screen.dart';
-import 'screens/dashboard_screen.dart';
-import 'services/api_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +34,6 @@ class EduPulseApp extends StatelessWidget {
         '/splash': (context) => const SplashScreen(),
         '/role-selection': (context) => const RoleSelectionScreen(),
         '/login': (context) => const LoginScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
       },
     );
   }
@@ -58,39 +54,16 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuth() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AppConfig.tokenKey);
-
+    // Auto-login disabled as per user request
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
-    if (token != null) {
-      // Load token into API service
-      await ApiService().loadToken();
-      
-      // Try to get current user to verify token
-      try {
-        await ApiService().getCurrentUser();
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const DashboardScreen()),
-          );
-        }
-      } catch (e) {
-        // Token invalid, go to role selection
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
-          );
-        }
-      }
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
-      );
-    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {

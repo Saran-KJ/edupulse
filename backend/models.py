@@ -274,8 +274,21 @@ class LearningResource(Base):
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     url = Column(String(500), nullable=False)
-    type = Column(String(50), nullable=False) # video, article, course
+    type = Column(String(50), nullable=False) # video, article, course, quiz
     tags = Column(String(200), nullable=True) # comma-separated tags
+    language = Column(String(50), default="English") # Added for multilingual support
     dept = Column(String(10), nullable=True)  # specific to dept or null for all
     min_risk_level = Column(String(20), nullable=True) # Show only if risk level is at least this (Low, Medium, High)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class StudentLearningProgress(Base):
+    __tablename__ = "student_learning_progress"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    reg_no = Column(String(50), nullable=False)
+    resource_id = Column(Integer, ForeignKey("learning_resources.resource_id"), nullable=False)
+    completed = Column(Integer, default=0) # 0 = false, 1 = true
+    completed_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    resource = relationship("LearningResource")

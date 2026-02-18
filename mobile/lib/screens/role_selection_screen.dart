@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import '../widgets/responsive_layout.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWideScreen = screenWidth >= ResponsiveBreakpoints.tablet;
+    
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -23,18 +27,18 @@ class RoleSelectionScreen extends StatelessWidget {
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: EdgeInsets.all(isWideScreen ? 32.0 : 24.0),
                 child: Column(
                   children: [
-                    const SizedBox(height: 20),
+                    SizedBox(height: isWideScreen ? 30 : 20),
                     Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: EdgeInsets.all(isWideScreen ? 24 : 20),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -42,15 +46,15 @@ class RoleSelectionScreen extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.school,
-                        size: 50,
+                        size: isWideScreen ? 60 : 50,
                         color: Colors.blue.shade800,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    const Text(
+                    SizedBox(height: isWideScreen ? 24 : 20),
+                    Text(
                       'EduPulse',
                       style: TextStyle(
-                        fontSize: 36,
+                        fontSize: isWideScreen ? 42 : 36,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -68,70 +72,18 @@ class RoleSelectionScreen extends StatelessWidget {
                 ),
               ),
               
-              // Role Cards
+              // Role Cards - Responsive grid
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildRoleCard(
-                        context,
-                        role: 'Student',
-                        icon: Icons.person,
-                        description: 'Access your courses and performance',
-                        color: Colors.blue,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRoleCard(
-                        context,
-                        role: 'Class Advisor',
-                        icon: Icons.supervisor_account,
-                        description: 'Monitor and guide your class',
-                        color: Colors.green,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRoleCard(
-                        context,
-                        role: 'Faculty',
-                        icon: Icons.school_outlined,
-                        description: 'Manage courses and students',
-                        color: Colors.orange,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRoleCard(
-                        context,
-                        role: 'HOD',
-                        icon: Icons.business_center,
-                        description: 'Head of Department access',
-                        color: Colors.purple,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRoleCard(
-                        context,
-                        role: 'Vice Principal',
-                        icon: Icons.admin_panel_settings,
-                        description: 'Administrative oversight',
-                        color: Colors.indigo,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRoleCard(
-                        context,
-                        role: 'Principal',
-                        icon: Icons.account_balance,
-                        description: 'Complete institutional control',
-                        color: Colors.red,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRoleCard(
-                        context,
-                        role: 'Admin',
-                        icon: Icons.security,
-                        description: 'System administration',
-                        color: Colors.blueGrey,
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isWideScreen ? 48.0 : 24.0,
+                    vertical: 8,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1000),
+                      child: _buildRoleGrid(context),
+                    ),
                   ),
                 ),
               ),
@@ -142,14 +94,58 @@ class RoleSelectionScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildRoleGrid(BuildContext context) {
+    final roles = [
+      {'role': 'Student', 'icon': Icons.person, 'description': 'Access your courses and performance', 'color': Colors.blue},
+      {'role': 'Parent', 'icon': Icons.family_restroom, 'description': 'Monitor your child\'s progress', 'color': Colors.teal},
+      {'role': 'Class Advisor', 'icon': Icons.supervisor_account, 'description': 'Monitor and guide your class', 'color': Colors.green},
+      {'role': 'Faculty', 'icon': Icons.school_outlined, 'description': 'Manage courses and students', 'color': Colors.orange},
+      {'role': 'HOD', 'icon': Icons.business_center, 'description': 'Head of Department access', 'color': Colors.purple},
+      {'role': 'Vice Principal', 'icon': Icons.admin_panel_settings, 'description': 'Administrative oversight', 'color': Colors.indigo},
+      {'role': 'Principal', 'icon': Icons.account_balance, 'description': 'Complete institutional control', 'color': Colors.red},
+      {'role': 'Admin', 'icon': Icons.security, 'description': 'System administration', 'color': Colors.blueGrey},
+    ];
+
+    final crossAxisCount = ResponsiveBreakpoints.getCrossAxisCount(
+      context,
+      mobile: 1,
+      tablet: 2,
+      desktop: 4,
+    );
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: crossAxisCount == 1 ? 3.2 : 1.4,
+      ),
+      itemCount: roles.length,
+      itemBuilder: (context, index) {
+        final data = roles[index];
+        return _buildRoleCard(
+          context,
+          role: data['role'] as String,
+          icon: data['icon'] as IconData,
+          description: data['description'] as String,
+          color: data['color'] as Color,
+          isCompact: crossAxisCount > 1,
+        );
+      },
+    );
+  }
+
   Widget _buildRoleCard(
     BuildContext context, {
     required String role,
     required IconData icon,
     required String description,
     required Color color,
+    bool isCompact = false,
   }) {
-    return InkWell(
+    return HoverScaleEffect(
       onTap: () {
         Navigator.push(
           context,
@@ -158,71 +154,103 @@ class RoleSelectionScreen extends StatelessWidget {
           ),
         );
       },
-      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isCompact ? 16 : 20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: Row(
-          children: [
-            // Icon Container
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                size: 32,
-                color: color,
-              ),
-            ),
-            const SizedBox(width: 16),
-            
-            // Text Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    role,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Arrow Icon
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 18,
-              color: Colors.grey.shade400,
-            ),
-          ],
-        ),
+        child: isCompact ? _buildCompactContent(role, icon, description, color) : _buildFullContent(role, icon, description, color),
       ),
+    );
+  }
+
+  Widget _buildCompactContent(String role, IconData icon, String description, Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 28, color: color),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          role,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          description,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFullContent(String role, IconData icon, String description, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 32, color: color),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                role,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Icon(
+          Icons.arrow_forward_ios,
+          size: 18,
+          color: Colors.grey.shade400,
+        ),
+      ],
     );
   }
 }

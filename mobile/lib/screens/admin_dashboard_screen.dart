@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/models.dart';
-import 'login_screen.dart';
+import '../widgets/responsive_layout.dart';
+import '../widgets/web_scaffold.dart';
 import 'role_selection_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -14,7 +15,7 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _apiService = ApiService();
-  bool _isLoading = false;
+
   String _selectedFilterRole = 'All';
   final _searchController = TextEditingController();
   String _searchQuery = '';
@@ -44,6 +45,96 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   @override
   Widget build(BuildContext context) {
+    final isWideScreen = MediaQuery.of(context).size.width >= ResponsiveBreakpoints.tablet;
+
+    final tabContent = TabBarView(
+      controller: _tabController,
+      children: [
+        _buildUserManagementTab(),
+        _buildApprovalsTab(),
+        _buildLogsTab(),
+      ],
+    );
+
+    if (isWideScreen) {
+      return Scaffold(
+        body: Row(
+          children: [
+            // Sidebar
+            Container(
+              width: 250,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.blue.shade800, Colors.blue.shade900],
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    height: 120,
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                          child: Icon(Icons.admin_panel_settings, size: 28, color: Colors.blue.shade800),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('Admin Panel', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  const Divider(color: Colors.white24),
+                  _buildSideNavItem(Icons.people, 'Users', 0),
+                  _buildSideNavItem(Icons.verified_user, 'Approvals', 1),
+                  _buildSideNavItem(Icons.security, 'Logs', 2),
+                  const Spacer(),
+                  ListTile(
+                    leading: const Icon(Icons.logout, color: Colors.white70),
+                    title: const Text('Logout', style: TextStyle(color: Colors.white70)),
+                    onTap: _logout,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+            // Main content
+            Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    height: 64,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                    ),
+                    child: Row(
+                      children: [
+                        Text(_getTabTitle(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        const Spacer(),
+                        if (_tabController.index == 0)
+                          ElevatedButton.icon(
+                            onPressed: _showCreateUserDialog,
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Add User'),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade800, foregroundColor: Colors.white),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(child: Container(color: Colors.grey.shade50, child: tabContent)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -51,10 +142,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         backgroundColor: Colors.blue.shade800,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-          ),
+          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -68,14 +156,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildUserManagementTab(),
-          _buildApprovalsTab(),
-          _buildLogsTab(),
-        ],
-      ),
+      body: tabContent,
       floatingActionButton: _tabController.index == 0
           ? FloatingActionButton(
               onPressed: _showCreateUserDialog,
@@ -83,6 +164,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
+    );
+  }
+
+  String _getTabTitle() {
+    switch (_tabController.index) {
+      case 0: return 'User Management';
+      case 1: return 'Pending Approvals';
+      case 2: return 'Login Logs';
+      default: return 'Admin Dashboard';
+    }
+  }
+
+  Widget _buildSideNavItem(IconData icon, String label, int index) {
+    final isSelected = _tabController.index == index;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
+        color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => setState(() => _tabController.animateTo(index)),
+          borderRadius: BorderRadius.circular(12),
+          hoverColor: Colors.white.withValues(alpha: 0.1),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(icon, color: isSelected ? Colors.white : Colors.white70, size: 22),
+                const SizedBox(width: 12),
+                Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -248,50 +364,39 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   Widget _buildUserSubtitle(User user) {
-    final role = user.role.toLowerCase();
+
     
-    if (role == 'student') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (user.regNo != null && user.regNo!.isNotEmpty)
-            Text('Reg No: ${user.regNo}'),
-          Row(
-            children: [
-              if (user.dept != null) Text('Dept: ${user.dept}'),
-              if (user.dept != null && user.year != null) const Text(' | '),
-              if (user.year != null) Text('Year: ${user.year}'),
-            ],
+    // Format: Dept (if exists) then Role
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (user.dept != null && user.dept!.isNotEmpty) 
+          Text('Dept: ${user.dept}', style: const TextStyle(fontSize: 13)),
+        
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
           ),
-          Text(user.email, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        ],
-      );
-    } else if (role == 'faculty' || role == 'class_advisor') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (user.dept != null) Text('Dept: ${user.dept}'),
-          Text(user.email, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        ],
-      );
-    } else if (role == 'hod') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (user.dept != null) Text('Dept: ${user.dept}'),
-          Text(user.email, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        ],
-      );
-    } else {
-      // Default for Admin, Principal, etc.
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(user.role.toUpperCase(), style: TextStyle(color: Colors.blue.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
-          Text(user.email, style: const TextStyle(fontSize: 12)),
-        ],
-      );
-    }
+          child: Text(
+            user.role.toUpperCase().replaceAll('_', ' '),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade800,
+            ),
+          ),
+        ),
+        
+        if (user.email.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(user.email, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ),
+      ],
+    );
   }
 
   // --- Approvals Tab ---
@@ -335,9 +440,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(
+                        const CircleAvatar(
                           backgroundColor: Colors.orange,
-                          child: const Icon(Icons.person_add, color: Colors.white),
+                          child: Icon(Icons.person_add, color: Colors.white),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -358,7 +463,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.blue),
                           ),
@@ -474,95 +579,187 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
     final pinController = TextEditingController();
-    String selectedRole = 'HOD';
+    
+    final formKey = GlobalKey<FormState>(); // Added form key
+    
+    // New controllers for conditional fields
+    String? selectedDept;
+    String? selectedSection;
+    String? selectedYear;
+    
+    String selectedRole = 'Faculty'; // Default to Faculty as it's common
     
     bool obscurePassword = true;
+    
+    final List<String> departments = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AI&DS'];
+    final List<String> sections = ['A', 'B', 'C'];
+    final List<String> years = ['1', '2', '3', '4'];
     
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Create High-Privilege User'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                ),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                ),
-                TextField(
-                  controller: passwordController,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscurePassword ? Icons.visibility_off : Icons.visibility,
+        builder: (context, setState) {
+          // Logic for showing fields
+          bool showDept = ['Faculty', 'Class Advisor', 'HOD'].contains(selectedRole);
+          bool showSection = selectedRole == 'Class Advisor' && selectedDept == 'CSE';
+          bool showYear = selectedRole == 'Class Advisor';
+          
+          return AlertDialog(
+            title: const Text('Create User'),
+            content: SingleChildScrollView(
+              child: Form( // Wrapped in Form
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField( // Changed to TextFormField
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Name'),
+                      validator: (value) { // Added validator
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a name';
+                        }
+                        final nameRegExp = RegExp(r'^[a-zA-Z .]+$');
+                        if (!nameRegExp.hasMatch(value)) {
+                          return 'Only alphabets and dots are allowed';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField( // Changed to TextFormField for consistency
+                      controller: emailController,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                    ),
+                    TextFormField( // Changed to TextFormField
+                      controller: passwordController,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              obscurePassword = !obscurePassword;
+                            });
+                          },
+                        ),
                       ),
-                      onPressed: () {
+                      obscureText: obscurePassword,
+                    ),
+                  TextField(
+                    controller: pinController,
+                    decoration: const InputDecoration(labelText: 'Secret PIN'),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    decoration: const InputDecoration(labelText: 'Role'),
+                    items: const [
+                      DropdownMenuItem(value: 'Faculty', child: Text('Faculty')),
+                      DropdownMenuItem(value: 'Class Advisor', child: Text('Class Advisor')),
+                      DropdownMenuItem(value: 'HOD', child: Text('HOD')),
+                      DropdownMenuItem(value: 'Vice Principal', child: Text('Vice Principal')),
+                      DropdownMenuItem(value: 'Principal', child: Text('Principal')),
+                      DropdownMenuItem(value: 'Admin', child: Text('Admin')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        selectedRole = value!;
+                        // Reset dependent fields if role changes
+                        if (!showDept) selectedDept = null;
+                        if (!showSection) selectedSection = null;
+                        if (!showYear) selectedYear = null;
+                      });
+                    },
+                  ),
+                  
+                  if (showDept) ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedDept,
+                      decoration: const InputDecoration(labelText: 'Department'),
+                      items: departments.map((dept) => DropdownMenuItem(
+                        value: dept,
+                        child: Text(dept),
+                      )).toList(),
+                      onChanged: (value) {
                         setState(() {
-                          obscurePassword = !obscurePassword;
+                          selectedDept = value;
+                          // Reset section if dept changes
+                          if (selectedDept != 'CSE') selectedSection = null;
                         });
                       },
                     ),
-                  ),
-                  obscureText: obscurePassword,
-                ),
-                TextField(
-                  controller: pinController,
-                  decoration: const InputDecoration(labelText: 'Secret PIN'),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedRole,
-                  decoration: const InputDecoration(labelText: 'Role'),
-                  items: const [
-                    DropdownMenuItem(value: 'HOD', child: Text('HOD')),
-                    DropdownMenuItem(value: 'Vice Principal', child: Text('Vice Principal')),
-                    DropdownMenuItem(value: 'Principal', child: Text('Principal')),
-                    DropdownMenuItem(value: 'Admin', child: Text('Admin')),
                   ],
-                  onChanged: (value) => setState(() => selectedRole = value!),
-                ),
-              ],
+
+                  if (showYear) ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedYear,
+                      decoration: const InputDecoration(labelText: 'Year'),
+                      items: years.map((year) => DropdownMenuItem(
+                        value: year,
+                        child: Text(year),
+                      )).toList(),
+                      onChanged: (value) => setState(() => selectedYear = value),
+                    ),
+                  ],
+                  
+                  if (showSection) ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedSection,
+                      decoration: const InputDecoration(labelText: 'Section'),
+                      items: sections.map((sec) => DropdownMenuItem(
+                        value: sec,
+                        child: Text(sec),
+                      )).toList(),
+                      onChanged: (value) => setState(() => selectedSection = value),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  await _apiService.createUser({
-                    'name': nameController.text,
-                    'email': emailController.text,
-                    'password': passwordController.text,
-                    'role': _mapRoleToBackend(selectedRole),
-                    'secret_pin': pinController.text,
-                  });
-                  if (mounted) {
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) { // Check validation
+                    try {
+                      await _apiService.createUser({
+                      'name': nameController.text,
+                      'email': emailController.text,
+                      'password': passwordController.text,
+                      'role': _mapRoleToBackend(selectedRole),
+                      'secret_pin': pinController.text,
+                      'dept': selectedDept,
+                      'section': selectedSection,
+                      'year': selectedYear,
+                    });
+                    if (!context.mounted) return;
                     Navigator.pop(context);
                     setState(() {}); // Refresh list
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('User created successfully')),
                     );
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
                   }
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
-                }
+                } // End if validation
               },
-              child: const Text('Create'),
-            ),
-          ],
-        ),
+                child: const Text('Create'),
+              ),
+            ],
+          );
+        },
       ),
     ).then((_) => setState(() {}));
   }
@@ -600,14 +797,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   'name': nameController.text,
                   'email': emailController.text,
                 });
-                if (mounted) {
-                  Navigator.pop(context);
-                  setState(() {});
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('User updated successfully')),
-                  );
-                }
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('User updated successfully')),
+                );
               } catch (e) {
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Error: $e')),
                 );
@@ -622,43 +819,60 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   void _showResetPasswordDialog(User user) {
     final passwordController = TextEditingController();
-    
+    bool obscureResetPassword = true;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Reset Password for ${user.name}'),
-        content: TextField(
-          controller: passwordController,
-          decoration: const InputDecoration(labelText: 'New Password'),
-          obscureText: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await _apiService.resetUserPassword(
-                  user.userId,
-                  passwordController.text,
-                );
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Password reset successfully')),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
-                );
-              }
-            },
-            child: const Text('Reset'),
-          ),
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text('Reset Password for ${user.name}'),
+            content: TextField(
+              controller: passwordController,
+              decoration: InputDecoration(
+                labelText: 'New Password',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    obscureResetPassword ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      obscureResetPassword = !obscureResetPassword;
+                    });
+                  },
+                ),
+              ),
+              obscureText: obscureResetPassword,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    await _apiService.resetUserPassword(
+                      user.userId,
+                      passwordController.text,
+                    );
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Password reset successfully')),
+                    );
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                },
+                child: const Text('Reset'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -758,6 +972,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   String _mapRoleToBackend(String uiRole) {
     switch (uiRole) {
+      case 'Faculty': return 'faculty';
+      case 'Class Advisor': return 'class_advisor';
       case 'HOD': return 'hod';
       case 'Vice Principal': return 'vice_principal';
       case 'Principal': return 'principal';

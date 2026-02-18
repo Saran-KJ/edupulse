@@ -46,7 +46,21 @@ async def create_bulk_marks(
     db.commit()
     for mark in created_marks:
         db.refresh(mark)
+        
+    # Trigger risk prediction for all affected students
+    # Use a set to avoid duplicate predictions for the same student
+    affected_students = set(mark.reg_no for mark in created_marks)
     
+    from ml_service import ml_service
+    
+    for reg_no in affected_students:
+        try:
+            print(f"Triggering risk update for {reg_no} after bulk upload")
+            prediction = ml_service.predict_risk(db, reg_no)
+            ml_service.save_prediction(db, reg_no, prediction)
+        except Exception as e:
+            print(f"Error updating risk for {reg_no}: {e}")
+            
     return created_marks
 
 @router.get("/class/{dept}/{year}/{section}", response_model=List[schemas.MarkResponse])
@@ -113,6 +127,16 @@ async def update_mark(
     
     db.commit()
     db.refresh(db_mark)
+    
+    # Trigger risk prediction
+    from ml_service import ml_service
+    try:
+        print(f"Triggering risk update for {db_mark.reg_no} after mark update")
+        prediction = ml_service.predict_risk(db, db_mark.reg_no)
+        ml_service.save_prediction(db, db_mark.reg_no, prediction)
+    except Exception as e:
+        print(f"Error updating risk for {db_mark.reg_no}: {e}")
+        
     return db_mark
 
 @router.delete("/{mark_id}")
@@ -133,8 +157,19 @@ async def delete_mark(
     if not db_mark:
         raise HTTPException(status_code=404, detail="Mark not found")
     
+    reg_no = db_mark.reg_no
     db.delete(db_mark)
     db.commit()
+    
+    # Trigger risk prediction
+    from ml_service import ml_service
+    try:
+        print(f"Triggering risk update for {reg_no} after mark deletion")
+        prediction = ml_service.predict_risk(db, reg_no)
+        ml_service.save_prediction(db, reg_no, prediction)
+    except Exception as e:
+        print(f"Error updating risk for {reg_no}: {e}")
+        
     return {"message": "Mark deleted successfully"}
 
 @router.get("/student/{reg_no}", response_model=List[schemas.MarkResponse])

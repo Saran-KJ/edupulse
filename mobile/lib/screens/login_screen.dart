@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
-import 'dashboard_screen.dart';
+
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'student_dashboard_screen.dart';
 import 'admin_dashboard_screen.dart';
-
 import 'class_advisor_dashboard_screen.dart';
+import 'parent_dashboard_screen.dart';
+import 'faculty_dashboard_screen.dart';
+import 'hod_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? selectedRole;
@@ -39,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final loginData = await _apiService.login(
+      await _apiService.login(
         _emailController.text.trim(),
         _passwordController.text,
       );
@@ -53,10 +55,16 @@ class _LoginScreenState extends State<LoginScreen> {
           targetScreen = const StudentDashboardScreen();
         } else if (user.role == 'admin') {
           targetScreen = const AdminDashboardScreen();
-        } else if (user.role == 'class_advisor') {
-          targetScreen = const ClassAdvisorDashboardScreen();
+        } else if (user.role == 'parent') {
+          targetScreen = const ParentDashboardScreen();
+        } else if (user.role == 'faculty') {
+          // Faculty get their own dedicated dashboard
+          targetScreen = const FacultyDashboardScreen();
+        } else if (user.role == 'hod') {
+          targetScreen = const HODDashboardScreen();
         } else {
-          targetScreen = const DashboardScreen();
+          // Other roles (Class Advisor, etc.) go to Class Advisor Dashboard
+          targetScreen = const ClassAdvisorDashboardScreen();
         }
 
         Navigator.of(context).pushReplacement(
@@ -438,6 +446,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return Icons.account_balance;
       case 'Admin':
         return Icons.security;
+      case 'Parent':
+        return Icons.family_restroom;
       default:
         return Icons.person;
     }
@@ -447,6 +457,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (role == null) return true; // Default case
     
     // High-privilege roles cannot self-register
+    // Parent, Student, Class Advisor, and Faculty CAN self-register
     const highPrivilegeRoles = ['HOD', 'Vice Principal', 'Principal', 'Admin'];
     return !highPrivilegeRoles.contains(role);
   }

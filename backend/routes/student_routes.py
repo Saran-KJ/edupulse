@@ -273,13 +273,20 @@ async def get_my_dashboard_stats(
         models.ActivityParticipation.reg_no == reg_no
     ).count()
     
-    # Get latest risk prediction
-    latest_prediction = db.query(models.RiskPrediction).filter(
-        models.RiskPrediction.reg_no == reg_no
-    ).order_by(models.RiskPrediction.prediction_date.desc()).first()
-    
-    risk_level = latest_prediction.risk_level if latest_prediction else "LOW"
-    risk_score = latest_prediction.risk_score if latest_prediction else 0.0
+    # Get LIVE risk prediction (calculate based on current data)
+    from ml_service import ml_service
+    try:
+        print(f"DEBUG: Triggering live risk prediction for {reg_no}")
+        live_prediction = ml_service.predict_risk(db, reg_no)
+        print(f"DEBUG: Prediction result: {live_prediction}")
+        risk_level = live_prediction['risk_level']
+        risk_score = live_prediction['risk_score']
+    except Exception as e:
+        print(f"Error calculating risk: {e}")
+        import traceback
+        traceback.print_exc()
+        risk_level = "LOW"
+        risk_score = 0.0
     
     return {
         "student_info": {
