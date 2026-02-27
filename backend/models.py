@@ -58,8 +58,6 @@ class Department(Base):
     dept_id = Column(Integer, primary_key=True, index=True)
     dept_code = Column(String(20), unique=True, nullable=False)
     dept_name = Column(String(100), nullable=False)
-    
-    subjects = relationship("Subject", back_populates="department")
 
 # Abstract Base Class for Students
 class StudentBase(Base):
@@ -76,6 +74,7 @@ class StudentBase(Base):
     section = Column(String(10), nullable=True)
     dob = Column(Date)
     address = Column(Text)
+    preferred_learning_type = Column(String(50), default="text")  # video_tamil, pdf, visual, text
     created_at = Column(DateTime, default=datetime.utcnow)
 
 # Department-specific Student Tables
@@ -103,14 +102,12 @@ class StudentAIDS(StudentBase):
 class Subject(Base):
     __tablename__ = "subjects"
     
-    subject_id = Column(Integer, primary_key=True, index=True)
-    subject_code = Column(String(20), unique=True, nullable=False)
-    subject_name = Column(String(100), nullable=False)
-    dept_id = Column(Integer, ForeignKey("departments.dept_id"))
-    semester = Column(Integer, nullable=False)
-    credits = Column(Integer, default=3)
-    
-    department = relationship("Department", back_populates="subjects")
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    semester = Column(String(10), nullable=False)
+    subject_code = Column(String(15), nullable=False)
+    subject_title = Column(String(200), nullable=False)
+    category = Column(String(10), nullable=True)  # CORE, LAB, PEC, OEC, EEC
+    credits = Column(Float, default=0)
 
 class Mark(Base):
     __tablename__ = "marks"
@@ -278,7 +275,11 @@ class LearningResource(Base):
     tags = Column(String(200), nullable=True) # comma-separated tags
     language = Column(String(50), default="English") # Added for multilingual support
     dept = Column(String(10), nullable=True)  # specific to dept or null for all
+    subject_code = Column(String(20), nullable=True)  # subject-specific resource (null = general)
     min_risk_level = Column(String(20), nullable=True) # Show only if risk level is at least this (Low, Medium, High)
+    unit = Column(String(20), nullable=True) # e.g. "1", "1,2", "1,2,3,4,5" or null for skill resources
+    resource_level = Column(String(20), nullable=True) # Basic, Intermediate, Advanced
+    skill_category = Column(String(50), nullable=True) # Communication, Programming, Aptitude, etc.
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class StudentLearningProgress(Base):
@@ -292,3 +293,20 @@ class StudentLearningProgress(Base):
     
     # Relationship
     resource = relationship("LearningResource")
+
+class PersonalizedLearningPlan(Base):
+    __tablename__ = "personalized_learning_plans"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    reg_no = Column(String(50), nullable=False, index=True)
+    subject_code = Column(String(20), nullable=False)
+    risk_level = Column(String(20), nullable=False)        # High, Medium, Low
+    focus_type = Column(String(50), nullable=False)         # Academic Recovery / Improvement / Enhancement, Skill Development
+    units = Column(String(50), nullable=True)               # e.g. "1,2" or null for skills
+    skill_category = Column(String(50), nullable=True)      # e.g. "Programming" (only for Skill Dev)
+    resource_level = Column(String(20), nullable=True)      # Basic / Intermediate / Advanced
+    latest_assessment = Column(String(50), nullable=True)   # e.g. "slip_test_1", "cia_1"
+    practice_schedule = Column(Text, nullable=True)          # JSON: daily plan for High, weekly for Medium
+    weekly_goals = Column(Text, nullable=True)               # JSON: target goals per week
+    is_active = Column(Integer, default=1)                  # 1=active, 0=superseded
+    created_at = Column(DateTime, default=datetime.utcnow)

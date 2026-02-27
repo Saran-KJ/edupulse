@@ -117,21 +117,18 @@ async def get_department_faculty(
     
     return faculty_members
 
-@router.get("/subjects/{dept}/{semester}", response_model=List[schemas.SubjectResponse])
-async def get_department_subjects(
-    dept: str,
-    semester: int,
+@router.get("/subjects/{semester}", response_model=List[schemas.SubjectResponse])
+async def get_semester_subjects(
+    semester: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """
-    Get all subjects for a specific department and semester.
+    Get all subjects for a specific semester (I, II, III, IV, V, VI, VII, VIII, PEC, OEC).
     """
     check_hod_role(current_user)
     
-    # We need to join with Department table to filter by dept string code
-    subjects = db.query(models.Subject).join(models.Department).filter(
-        models.Department.dept_code == dept,
+    subjects = db.query(models.Subject).filter(
         models.Subject.semester == semester
     ).all()
     

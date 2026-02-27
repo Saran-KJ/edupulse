@@ -148,3 +148,39 @@ async def get_department_analytics(
         "marks_by_semester": marks_by_semester,
         "attendance_by_year": [] # Placeholder until attendance logic is fixed
     }
+
+
+@router.get("/credits-summary")
+async def get_credits_summary(
+    semester: str = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """
+    Get credit distribution summary from the subjects table.
+    Returns per-semester totals and per-category breakdown.
+    """
+    query = db.query(models.Subject)
+    if semester:
+        query = query.filter(models.Subject.semester == semester)
+
+    subjects = query.all()
+
+    # Per-semester credit totals
+    semester_credits = {}
+    category_credits = {}
+
+    for s in subjects:
+        sem = s.semester or "Unknown"
+        cat = s.category or "Unknown"
+        cred = float(s.credits or 0)
+
+        semester_credits[sem] = semester_credits.get(sem, 0) + cred
+        category_credits[cat] = category_credits.get(cat, 0) + cred
+
+    return {
+        "total_subjects": len(subjects),
+        "total_credits": sum(semester_credits.values()),
+        "semester_credits": semester_credits,
+        "category_credits": category_credits,
+    }

@@ -79,17 +79,9 @@ def create_sample_data():
         db.commit()
         print("✓ Created departments")
         
-        # Create subjects
-        subjects = [
-            models.Subject(subject_code="CS101", subject_name="Data Structures", dept_id=dept_cse.dept_id, semester=3),
-            models.Subject(subject_code="CS102", subject_name="Algorithms", dept_id=dept_cse.dept_id, semester=3),
-            models.Subject(subject_code="CS103", subject_name="Database Systems", dept_id=dept_cse.dept_id, semester=4),
-            models.Subject(subject_code="CS104", subject_name="Operating Systems", dept_id=dept_cse.dept_id, semester=4),
-        ]
-        
-        db.add_all(subjects)
-        db.commit()
-        print("✓ Created subjects")
+        # Subjects are now seeded separately via seed_subjects.py
+        # Run: python seed_subjects.py
+        print("ℹ Subjects: Run 'python seed_subjects.py' to seed Anna University CSE subjects")
         
         # Create sample students
         # CSE Students
@@ -167,17 +159,16 @@ def create_sample_data():
         
         # Create attendance records
         for student in students_cse:
-            for subject in subjects[:2]:
-                attendance = models.Attendance(
-                    reg_no=student.reg_no,
-                    student_name=student.name,
-                    date=date(2024, 1, 15), # Dummy date
-                    status="Present",
-                    year=2,
-                    section="A",
-                    dept="CSE"
-                )
-                db.add(attendance)
+            attendance = models.Attendance(
+                reg_no=student.reg_no,
+                student_name=student.name,
+                date=date(2024, 1, 15), # Dummy date
+                status="Present",
+                year=2,
+                section="A",
+                dept="CSE"
+            )
+            db.add(attendance)
         
         db.commit()
         print("✓ Created attendance records")

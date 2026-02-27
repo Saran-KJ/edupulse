@@ -152,16 +152,25 @@ def generate_synthetic_student_data(num_students=500):
     return np.array(data), np.array(labels)
 
 def train_multiple_models():
-    print("Starting Multi-Model Training Pipeline...")
+    print("=" * 60)
+    print("  EduPulse — Multi-Model Risk Prediction Training Pipeline")
+    print("=" * 60)
     
     try:
         # 1. Generate Data
-        X, y = generate_synthetic_student_data(500)
+        X, y = generate_synthetic_student_data(1000)
         
-        print(f"Dataset shape: {X.shape}")
+        print(f"\nDataset shape: {X.shape}")
+        unique, counts = np.unique(y, return_counts=True)
+        label_names = {0: "Low", 1: "Medium", 2: "High"}
+        print("Class distribution:")
+        for u, c in zip(unique, counts):
+            print(f"  {label_names[u]} Risk ({u}): {c} samples ({c/len(y)*100:.1f}%)")
         
         # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
         
         # Scale features
         scaler = StandardScaler()
@@ -170,8 +179,12 @@ def train_multiple_models():
         
         # 2. Define Models
         models = {
-            "Logistic Regression": LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000),
-            "Random Forest": RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42),
+            "Logistic Regression": LogisticRegression(
+                multi_class='multinomial', solver='lbfgs', max_iter=1000, random_state=42
+            ),
+            "Random Forest": RandomForestClassifier(
+                n_estimators=100, max_depth=10, random_state=42
+            ),
             "XGBoost": XGBClassifier(
                 n_estimators=200, 
                 learning_rate=0.05, 
@@ -179,7 +192,8 @@ def train_multiple_models():
                 use_label_encoder=False, 
                 eval_metric='mlogloss',
                 objective='multi:softprob',
-                num_class=3
+                num_class=3,
+                random_state=42
             )
         }
         
@@ -192,16 +206,46 @@ def train_multiple_models():
         output_dir.mkdir(exist_ok=True)
         
         # 3. Train and Evaluate Loop
-        print("\n--- Model Training & Evaluation ---")
         for name, model in models.items():
-            print(f"\nTraining {name}...")
-            model.fit(X_train_scaled, y_train)
+            print(f"\n{'─' * 60}")
+            print(f"  Training: {name}")
+            print(f"{'─' * 60}")
             
+            model.fit(X_train_scaled, y_train)
             y_pred = model.predict(X_test_scaled)
             accuracy = accuracy_score(y_test, y_pred)
-            results[name] = accuracy
             
-            print(f"{name} Accuracy: {accuracy:.4f}")
+            # Classification report
+            report = classification_report(
+                y_test, y_pred,
+                target_names=["Low Risk", "Medium Risk", "High Risk"],
+                output_dict=True
+            )
+            report_text = classification_report(
+                y_test, y_pred,
+                target_names=["Low Risk", "Medium Risk", "High Risk"]
+            )
+            
+            # Confusion matrix
+            from sklearn.metrics import confusion_matrix
+            cm = confusion_matrix(y_test, y_pred)
+            
+            print(f"\n  Accuracy: {accuracy:.4f} ({accuracy*100:.1f}%)")
+            print(f"\n  Classification Report:")
+            print(report_text)
+            print(f"  Confusion Matrix:")
+            print(f"              Predicted")
+            print(f"              Low  Med  High")
+            for i, row_label in enumerate(["Low ", "Med ", "High"]):
+                print(f"  Actual {row_label} {cm[i]}")
+            
+            results[name] = {
+                "accuracy": round(accuracy, 4),
+                "precision": round(report["weighted avg"]["precision"], 4),
+                "recall": round(report["weighted avg"]["recall"], 4),
+                "f1_score": round(report["weighted avg"]["f1-score"], 4),
+                "confusion_matrix": cm.tolist()
+            }
             
             # Save individual model
             filename = f"model_{name.lower().replace(' ', '_')}.pkl"
@@ -212,14 +256,41 @@ def train_multiple_models():
                 best_model_name = name
                 best_model_obj = model
         
-        # 4. Save Best Model
-        print(f"\n🏆 Best Model: {best_model_name} with {best_accuracy:.4f} accuracy")
+        # 4. Comparison Table
+        print(f"\n{'=' * 60}")
+        print("  MODEL COMPARISON SUMMARY")
+        print(f"{'=' * 60}")
+        print(f"\n  {'Model':<25} {'Accuracy':>10} {'Precision':>10} {'Recall':>10} {'F1-Score':>10}")
+        print(f"  {'─'*25} {'─'*10} {'─'*10} {'─'*10} {'─'*10}")
+        for name, metrics in results.items():
+            marker = " 🏆" if name == best_model_name else "   "
+            print(f"{marker}{name:<24} {metrics['accuracy']:>10.4f} {metrics['precision']:>10.4f} {metrics['recall']:>10.4f} {metrics['f1_score']:>10.4f}")
+        
+        # 5. Save Best Model
+        print(f"\n{'=' * 60}")
+        print(f"  🏆 BEST MODEL: {best_model_name}")
+        print(f"     Accuracy: {best_accuracy:.4f} ({best_accuracy*100:.1f}%)")
+        print(f"{'=' * 60}")
         
         joblib.dump(best_model_obj, output_dir / "best_model.pkl")
         joblib.dump(scaler, output_dir / "feature_scaler.pkl")
         
-        print(f"Updated ml_models/best_model.pkl with {best_model_name}")
-        print("Training pipeline completed!")
+        # 6. Save comparison results to JSON
+        import json
+        comparison = {
+            "best_model": best_model_name,
+            "best_accuracy": best_accuracy,
+            "dataset_size": len(X),
+            "features": ["attendance_percentage", "internal_avg", "external_gpa", "activity_count", "backlog_count"],
+            "models": results
+        }
+        with open(output_dir / "model_comparison.json", "w") as f:
+            json.dump(comparison, f, indent=2)
+        
+        print(f"\n  Saved: ml_models/best_model.pkl ({best_model_name})")
+        print(f"  Saved: ml_models/feature_scaler.pkl")
+        print(f"  Saved: ml_models/model_comparison.json")
+        print(f"\n  Training pipeline completed! ✅")
         
     except Exception as e:
         print(f"An error occurred during training: {e}")
@@ -228,3 +299,4 @@ def train_multiple_models():
 
 if __name__ == "__main__":
     train_multiple_models()
+

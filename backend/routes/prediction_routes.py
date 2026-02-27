@@ -38,6 +38,13 @@ async def predict_student_risk(
     db.commit()
     db.refresh(db_prediction)
     
+    # Trigger personalized learning plan regeneration
+    from routes.learning_routes import generate_plans_for_student
+    try:
+        generate_plans_for_student(db, request.reg_no)
+    except Exception as e:
+        print(f"Error generating plans for {request.reg_no}: {e}")
+    
     return db_prediction
 
 @router.get("/{reg_no}", response_model=schemas.RiskPredictionResponse)
@@ -70,6 +77,13 @@ async def predict_student_risk_get(
     db.add(db_prediction)
     db.commit()
     db.refresh(db_prediction)
+    
+    # Trigger personalized learning plan regeneration
+    from routes.learning_routes import generate_plans_for_student
+    try:
+        generate_plans_for_student(db, reg_no)
+    except Exception as e:
+        print(f"Error generating plans for {reg_no}: {e}")
     
     return db_prediction
 

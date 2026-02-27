@@ -56,7 +56,9 @@ class MLService:
                 'internal_avg': 0,
                 'external_gpa': 0,
                 'activity_count': 0,
-                'backlog_count': 0
+                'backlog_count': 0,
+                'credit_weighted_internal_avg': 0,
+                'high_credit_low_score_count': 0
             }
         
         # reg_no is already available
@@ -161,12 +163,67 @@ class MLService:
             models.ActivityParticipation.reg_no == reg_no
         ).scalar() or 0
         
+        # Feature 4-5: Credit-weighted internal average using subjects table
+        credit_weighted_internal_avg = 0
+        high_credit_low_score_count = 0
+        total_weighted_score = 0
+        total_credits = 0
+
+        for mark in marks:
+            has_data = False
+            # Re-compute per-subject internal score for credit weighting
+            st1, st2 = float(mark.slip_test_1 or 0), float(mark.slip_test_2 or 0)
+            a1, a2 = float(mark.assignment_1 or 0), float(mark.assignment_2 or 0)
+            cia1_ = float(mark.cia_1 or 0)
+            has_i1 = (st1 + st2 + a1 + a2 + cia1_) > 0
+            i1 = 0
+            if has_i1:
+                i1 = ((0.3 * (st1+st2)/2) + (0.2 * (a1+a2)/2) + (0.5 * cia1_)) / 38 * 100
+
+            st3, st4 = float(mark.slip_test_3 or 0), float(mark.slip_test_4 or 0)
+            a3_, a4_, a5_ = float(mark.assignment_3 or 0), float(mark.assignment_4 or 0), float(mark.assignment_5 or 0)
+            cia2_ = float(mark.cia_2 or 0)
+            mdl = float(mark.model or 0)
+            has_i2 = (st3 + st4 + a3_ + a4_ + a5_ + cia2_ + mdl) > 0
+            i2 = 0
+            if has_i2:
+                i2 = ((0.25*(st3+st4)/2)+(0.15*(a3_+a4_+a5_)/3)+(0.3*cia2_)+(0.3*mdl)) / 54.5 * 100
+
+            if has_i1 and has_i2:
+                subj_score = 0.4 * i1 + 0.6 * i2
+                has_data = True
+            elif has_i1:
+                subj_score = i1
+                has_data = True
+            elif has_i2:
+                subj_score = i2
+                has_data = True
+            else:
+                subj_score = 0
+
+            if has_data:
+                # Look up credit from subjects table
+                subj_record = db.query(models.Subject).filter(
+                    models.Subject.subject_code == mark.subject_code
+                ).first()
+                credit = float(subj_record.credits) if subj_record and subj_record.credits else 3.0  # default 3
+                total_weighted_score += subj_score * credit
+                total_credits += credit
+
+                # Flag high-credit subjects with low scores
+                if credit >= 4 and subj_score < 50:
+                    high_credit_low_score_count += 1
+
+        credit_weighted_internal_avg = (total_weighted_score / total_credits) if total_credits > 0 else internal_avg
+
         return {
             'attendance_percentage': avg_attendance,
             'internal_avg': internal_avg,
             'external_gpa': external_gpa,
             'activity_count': activity_count,
-            'backlog_count': backlog_count
+            'backlog_count': backlog_count,
+            'credit_weighted_internal_avg': credit_weighted_internal_avg,
+            'high_credit_low_score_count': high_credit_low_score_count
         }
     
     def predict_risk(self, db: Session, reg_no: str) -> Dict[str, Any]:
@@ -247,6 +304,17 @@ class MLService:
             risk_score += features['backlog_count'] * 10
             reasons.append(f"{features['backlog_count']} backlog(s)")
         
+        # Credit-weighted checks (Features 4-5)
+        cw_avg = features.get('credit_weighted_internal_avg', features['internal_avg'])
+        if cw_avg < 50:
+            risk_score += 10
+            reasons.append(f"Low credit-weighted avg: {cw_avg:.1f}")
+
+        hc_low = features.get('high_credit_low_score_count', 0)
+        if hc_low > 0:
+            risk_score += hc_low * 8
+            reasons.append(f"{int(hc_low)} high-credit subject(s) at risk")
+
         # Determine risk level
         if risk_score >= 60:
             risk_level = "High"
@@ -278,6 +346,9 @@ class MLService:
             reasons.append("No extracurricular activities")
         if features['backlog_count'] > 0:
             reasons.append(f"{features['backlog_count']} backlog(s)")
+        hc_low = features.get('high_credit_low_score_count', 0)
+        if hc_low > 0:
+            reasons.append(f"{int(hc_low)} high-credit subject(s) struggling")
         
         if not reasons:
             reasons.append("Good overall performance")

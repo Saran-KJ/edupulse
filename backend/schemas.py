@@ -142,17 +142,17 @@ class StudentResponse(StudentBase):
 
 # Subject Schemas
 class SubjectBase(BaseModel):
+    semester: str
     subject_code: str
-    subject_name: str
-    dept_id: int
-    semester: int
-    credits: int = 3
+    subject_title: str
+    category: Optional[str] = None  # CORE, LAB, PEC, OEC, EEC
+    credits: float = 0
 
 class SubjectCreate(SubjectBase):
     pass
 
 class SubjectResponse(SubjectBase):
-    subject_id: int
+    id: int
     
     class Config:
         from_attributes = True
@@ -410,4 +410,84 @@ class FacultyAllocationResponse(FacultyAllocationBase):
     
     class Config:
         from_attributes = True
+
+# Personalized Learning Plan Schemas
+class PersonalizedLearningPlanResponse(BaseModel):
+    id: int
+    reg_no: str
+    subject_code: str
+    risk_level: str
+    focus_type: str
+    units: Optional[str] = None
+    skill_category: Optional[str] = None
+    resource_level: Optional[str] = None
+    latest_assessment: Optional[str] = None
+    is_active: int = 1
+    created_at: datetime
+    pending_choice: bool = False  # True if LOW risk and no choice made yet
+    
+    class Config:
+        from_attributes = True
+
+class LowRiskChoiceRequest(BaseModel):
+    subject_code: str
+    choice: str  # "academic_enhancement" or "skill_development"
+
+class SkillSelectionRequest(BaseModel):
+    subject_code: str
+    skill: str  # "Communication", "Programming", "Aptitude", etc.
+
+class LearningPlanResourceResponse(BaseModel):
+    resource_id: int
+    title: str
+    description: Optional[str] = None
+    url: str
+    type: str
+    tags: Optional[str] = None
+    unit: Optional[str] = None
+    resource_level: Optional[str] = None
+    skill_category: Optional[str] = None
+    is_completed: bool = False
+    
+    class Config:
+        from_attributes = True
+
+class PreferredLearningTypeRequest(BaseModel):
+    learning_type: str  # "video_tamil", "pdf", "visual", "text"
+
+class SubjectLearningStatus(BaseModel):
+    subject_code: str
+    subject_title: str
+    risk_level: str
+    focus_type: str
+    progress_percentage: float = 0.0
+    practice_schedule: Optional[str] = None
+    weekly_goals: Optional[str] = None
+
+class OverallLearningViewResponse(BaseModel):
+    overall_risk: str
+    priority_subjects: List[SubjectLearningStatus]
+    study_strategy: dict
+    total_progress: float
+    preferred_learning_type: str
+
+class StudentLearningStatusResponse(BaseModel):
+    reg_no: str
+    student_name: str
+    overall_risk: str
+    high_risk_count: int
+    medium_risk_count: int
+    low_risk_count: int
+    overall_progress: float
+    subjects: List[SubjectLearningStatus]
+
+class HighRiskAlertResponse(BaseModel):
+    reg_no: str
+    student_name: str
+    dept: str
+    year: int
+    section: str
+    high_risk_subjects: List[str]
+    alert_severity: str  # "critical", "warning"
+    recommended_actions: List[str]
 
