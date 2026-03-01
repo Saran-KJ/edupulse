@@ -167,36 +167,36 @@ class MarkBase(BaseModel):
     semester: int
     subject_code: str
     subject_title: str
-    assignment_1: float = 0.0
-    assignment_2: float = 0.0
-    assignment_3: float = 0.0
-    assignment_4: float = 0.0
-    assignment_5: float = 0.0
-    slip_test_1: float = 0.0
-    slip_test_2: float = 0.0
-    slip_test_3: float = 0.0
-    slip_test_4: float = 0.0
-    cia_1: float = 0.0
-    cia_2: float = 0.0
-    model: float = 0.0
+    assignment_1: Optional[int] = None
+    assignment_2: Optional[int] = None
+    assignment_3: Optional[int] = None
+    assignment_4: Optional[int] = None
+    assignment_5: Optional[int] = None
+    slip_test_1: Optional[int] = None
+    slip_test_2: Optional[int] = None
+    slip_test_3: Optional[int] = None
+    slip_test_4: Optional[int] = None
+    cia_1: Optional[int] = None
+    cia_2: Optional[int] = None
+    model: Optional[int] = None
     university_result_grade: Optional[str] = None
 
 class MarkCreate(MarkBase):
     pass
 
 class MarkUpdate(BaseModel):
-    assignment_1: Optional[float] = None
-    assignment_2: Optional[float] = None
-    assignment_3: Optional[float] = None
-    assignment_4: Optional[float] = None
-    assignment_5: Optional[float] = None
-    slip_test_1: Optional[float] = None
-    slip_test_2: Optional[float] = None
-    slip_test_3: Optional[float] = None
-    slip_test_4: Optional[float] = None
-    cia_1: Optional[float] = None
-    cia_2: Optional[float] = None
-    model: Optional[float] = None
+    assignment_1: Optional[int] = None
+    assignment_2: Optional[int] = None
+    assignment_3: Optional[int] = None
+    assignment_4: Optional[int] = None
+    assignment_5: Optional[int] = None
+    slip_test_1: Optional[int] = None
+    slip_test_2: Optional[int] = None
+    slip_test_3: Optional[int] = None
+    slip_test_4: Optional[int] = None
+    cia_1: Optional[int] = None
+    cia_2: Optional[int] = None
+    model: Optional[int] = None
     university_result_grade: Optional[str] = None
 
 class MarkResponse(MarkBase):
@@ -490,4 +490,20 @@ class HighRiskAlertResponse(BaseModel):
     high_risk_subjects: List[str]
     alert_severity: str  # "critical", "warning"
     recommended_actions: List[str]
+
+# Assessment Unit Mapping Schemas
+class AssessmentUnitMappingBase(BaseModel):
+    assessment_name: str
+    units: str
+
+class AssessmentUnitMappingCreate(AssessmentUnitMappingBase):
+    pass
+
+class AssessmentUnitMappingResponse(AssessmentUnitMappingBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
 

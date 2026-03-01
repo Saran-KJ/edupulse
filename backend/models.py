@@ -126,24 +126,24 @@ class Mark(Base):
     subject_title = Column(String(100), nullable=False)
     
     # Assignments (out of 10 each)
-    assignment_1 = Column(Float, default=0.0)
-    assignment_2 = Column(Float, default=0.0)
-    assignment_3 = Column(Float, default=0.0)
-    assignment_4 = Column(Float, default=0.0)
-    assignment_5 = Column(Float, default=0.0)
+    assignment_1 = Column(Integer, default=0)
+    assignment_2 = Column(Integer, default=0)
+    assignment_3 = Column(Integer, default=0)
+    assignment_4 = Column(Integer, default=0)
+    assignment_5 = Column(Integer, default=0)
     
     # Slip Tests (out of 10 each)
-    slip_test_1 = Column(Float, default=0.0)
-    slip_test_2 = Column(Float, default=0.0)
-    slip_test_3 = Column(Float, default=0.0)
-    slip_test_4 = Column(Float, default=0.0)
+    slip_test_1 = Column(Integer, default=0)
+    slip_test_2 = Column(Integer, default=0)
+    slip_test_3 = Column(Integer, default=0)
+    slip_test_4 = Column(Integer, default=0)
     
     # CIA (Continuous Internal Assessment)
-    cia_1 = Column(Float, default=0.0)
-    cia_2 = Column(Float, default=0.0)
+    cia_1 = Column(Integer, default=0)
+    cia_2 = Column(Integer, default=0)
     
     # Model exam
-    model = Column(Float, default=0.0)
+    model = Column(Integer, default=0)
     
     # University result
     university_result_grade = Column(String(5), nullable=True)
@@ -310,3 +310,14 @@ class PersonalizedLearningPlan(Base):
     weekly_goals = Column(Text, nullable=True)               # JSON: target goals per week
     is_active = Column(Integer, default=1)                  # 1=active, 0=superseded
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class AssessmentUnitMapping(Base):
+    """Maps an assessment name to the syllabus units it covers."""
+    __tablename__ = "assessment_unit_mapping"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    assessment_name = Column(String(50), nullable=False, unique=True, index=True)
+    units = Column(String(50), nullable=False) # e.g. "1,2"
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

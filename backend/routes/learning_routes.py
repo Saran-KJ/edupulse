@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from database import get_db
+import models
 from models import (
     User, LearningResource, StudentBase, StudentCSE, StudentECE, StudentEEE,
     StudentMECH, StudentCIVIL, StudentBIO, StudentAIDS, StudentLearningProgress,
@@ -16,17 +17,8 @@ import json
 
 router = APIRouter()
 
-# ─── Assessment to Unit Mapping ────────────────────────────────────────
-ASSESSMENT_UNIT_MAP = {
-    "slip_test_1": ["1"],
-    "slip_test_2": ["2"],
-    "slip_test_3": ["3"],
-    "slip_test_4": ["4"],
-    "cia_1": ["1", "2"],
-    "cia_2": ["3", "4"],
-    "model": ["1", "2", "3", "4", "5"],
-    "university_exam": ["1", "2", "3", "4", "5"],
-}
+
+
 
 # Assessment detection order: latest first
 ASSESSMENT_FIELDS = [
@@ -191,11 +183,17 @@ def generate_plan_for_subject(db: Session, reg_no: str, subject_code: str) -> Op
     if not mark:
         return None
 
-    # Determine latest assessment and mapped units
+    # Determine latest assessment
     latest_assessment = detect_latest_assessment(mark)
-    mapped_units = ASSESSMENT_UNIT_MAP.get(latest_assessment, ["1"])
+    
+    # Fetch mapped units from DB instead of hardcoded dictionary
+    assessment_mapping = db.query(models.AssessmentUnitMapping).filter(
+        models.AssessmentUnitMapping.assessment_name == latest_assessment
+    ).first()
+    
+    mapped_units = assessment_mapping.units.split(",") if assessment_mapping else ["1"]
 
-    # Get subject risk level (ML-based)
+    # Get subject risk level (ML-based Log Regression)
     subject_risk = ml_service.calculate_subject_risk(db, reg_no, subject_code)
     risk_level = subject_risk.get('risk_level', 'Low')
     if risk_level == 'Unknown':
@@ -562,6 +560,12 @@ def get_plan_resources(
 
     return {
         "plan": {
+            "Risk Level": plan.risk_level,
+            "Focus Type": plan.focus_type,
+            "Unit(s) or Skill": plan.skill_category if plan.focus_type == "Skill Development" else plan.units,
+            "Assigned Learning Resource(s)": resource_list,
+            
+            # Keep original fields for backward compatibility with frontend
             "id": plan.id,
             "risk_level": plan.risk_level,
             "focus_type": plan.focus_type,
@@ -618,6 +622,14 @@ def get_overall_learning_view(
     risk_counts = {"High": 0, "Medium": 0, "Low": 0}
 
     for mark in marks:
+        # Check if subject is LAB to skip it from learning plans
+        subject = db.query(models.Subject).filter(
+            func.lower(models.Subject.subject_code) == mark.subject_code.lower()
+        ).first()
+        
+        if subject and subject.category == 'LAB':
+            continue
+
         # Get active plan
         plan = db.query(PersonalizedLearningPlan).filter(
             PersonalizedLearningPlan.reg_no == student.reg_no,

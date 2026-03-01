@@ -202,6 +202,7 @@ async def delete_mark(
 async def get_student_marks(
     reg_no: str,
     semester: Optional[int] = None,
+    exclude_labs: Optional[bool] = False,
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
@@ -210,6 +211,14 @@ async def get_student_marks(
     
     if semester:
         query = query.filter(models.Mark.semester == semester)
+        
+    if exclude_labs:
+        query = query.join(
+            models.Subject,
+            models.Mark.subject_code == models.Subject.subject_code
+        ).filter(
+            models.Subject.category != 'LAB'
+        )
     
     marks = query.all()
     return marks

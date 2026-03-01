@@ -13,6 +13,12 @@ class MLService:
         # ml_service.py is in backend/, models are in backend/ml_models/
         self.model_path = Path(__file__).parent / "ml_models" / "best_model.pkl"
         self.scaler_path = Path(__file__).parent / "ml_models" / "feature_scaler.pkl"
+        
+        self.subject_model_path = Path(__file__).parent / "ml_models" / "subject_model.pkl"
+        self.subject_scaler_path = Path(__file__).parent / "ml_models" / "subject_scaler.pkl"
+        
+        self.subject_model = None
+        self.subject_scaler = None
         self.load_model()
     
     def load_model(self):
@@ -27,6 +33,14 @@ class MLService:
             if self.scaler_path.exists():
                 self.scaler = joblib.load(self.scaler_path)
                 print("Feature scaler loaded successfully")
+                
+            if self.subject_model_path.exists():
+                self.subject_model = joblib.load(self.subject_model_path)
+                print("Subject ML model loaded successfully")
+            if self.subject_scaler_path.exists():
+                self.subject_scaler = joblib.load(self.subject_scaler_path)
+                print("Subject feature scaler loaded successfully")
+                
         except Exception as e:
             print(f"Error loading model: {e}")
     
@@ -86,6 +100,13 @@ class MLService:
         subject_count = 0
         
         for mark in marks:
+            # Skip lab subjects from dragging down the overall internal average
+            subject = db.query(models.Subject).filter(
+                func.lower(models.Subject.subject_code) == mark.subject_code.lower()
+            ).first()
+            if subject and subject.category == 'LAB':
+                continue
+                
             # Calculate Internal 1
             st1, st2 = float(mark.slip_test_1 or 0), float(mark.slip_test_2 or 0)
             a1, a2 = float(mark.assignment_1 or 0), float(mark.assignment_2 or 0)
@@ -95,12 +116,9 @@ class MLService:
             has_int1 = (st1 + st2 + a1 + a2 + cia1) > 0
             int1_score = 0
             if has_int1:
-                # Progressive logic: use non-zero averages if needed, but for backend simplicity 
-                # we'll stick to the standard formula but only count it if it exists
                 st_avg1 = (st1 + st2) / 2
                 assign_avg1 = (a1 + a2) / 2
                 raw_int1 = (0.3 * st_avg1) + (0.2 * assign_avg1) + (0.5 * cia1)
-                # Max raw for Int 1 is 38 (6 + 2 + 30)
                 int1_score = (raw_int1 / 38) * 100
             
             # Calculate Internal 2
@@ -115,7 +133,6 @@ class MLService:
                 st_avg2 = (st3 + st4) / 2
                 assign_avg2 = (a3 + a4 + a5) / 3
                 raw_int2 = (0.25 * st_avg2) + (0.15 * assign_avg2) + (0.3 * cia2) + (0.3 * model)
-                # Max raw for Int 2 is 54.5 (5 + 1.5 + 18 + 30)
                 int2_score = (raw_int2 / 54.5) * 100
                 
             # Final Subject Internal Calculation
@@ -170,6 +187,13 @@ class MLService:
         total_credits = 0
 
         for mark in marks:
+            # Skip lab subjects from dragging down the credit-weighted internal average
+            subject = db.query(models.Subject).filter(
+                func.lower(models.Subject.subject_code) == mark.subject_code.lower()
+            ).first()
+            if subject and subject.category == 'LAB':
+                continue
+                
             has_data = False
             # Re-compute per-subject internal score for credit weighting
             st1, st2 = float(mark.slip_test_1 or 0), float(mark.slip_test_2 or 0)
@@ -390,18 +414,20 @@ class MLService:
         if not mark:
             return {'risk_level': 'Unknown', 'score': 0, 'basis': 'No Data'}
             
+        # Check if it's a Lab paper
+        subject = db.query(models.Subject).filter(
+            func.lower(models.Subject.subject_code) == subject_code.lower()
+        ).first()
+        
+        if subject and subject.category == 'LAB':
+            # Lab papers don't have standard internals like slip tests/CIAs, so they look like 0 marks.
+            # Skip ML prediction and assign Low risk automatically to prevent false positives.
+            return {'risk_level': 'Low', 'score': 100, 'basis': 'Lab Practical (Skipped)'}
+            
         # Internal 1
         st1, st2 = float(mark.slip_test_1 or 0), float(mark.slip_test_2 or 0)
         a1, a2 = float(mark.assignment_1 or 0), float(mark.assignment_2 or 0)
         cia1 = float(mark.cia_1 or 0)
-        
-        has_int1 = (st1 + st2 + a1 + a2 + cia1) > 0
-        int1_score = 0
-        if has_int1:
-            st_avg1 = (st1 + st2) / 2
-            assign_avg1 = (a1 + a2) / 2
-            raw_int1 = (0.3 * st_avg1) + (0.2 * assign_avg1) + (0.5 * cia1)
-            int1_score = (raw_int1 / 38) * 100
         
         # Internal 2
         st3, st4 = float(mark.slip_test_3 or 0), float(mark.slip_test_4 or 0)
@@ -409,39 +435,69 @@ class MLService:
         cia2 = float(mark.cia_2 or 0)
         model = float(mark.model or 0)
         
-        has_int2 = (st3 + st4 + a3 + a4 + a5 + cia2 + model) > 0
-        int2_score = 0
-        if has_int2:
-            st_avg2 = (st3 + st4) / 2
-            assign_avg2 = (a3 + a4 + a5) / 3
-            raw_int2 = (0.25 * st_avg2) + (0.15 * assign_avg2) + (0.3 * cia2) + (0.3 * model)
-            int2_score = (raw_int2 / 54.5) * 100
+        # Attendance 
+        # For simplicity in this demo, calculate an aggregate matching the student's overall attendance
+        total_days = db.query(models.Attendance).filter(models.Attendance.reg_no == reg_no).count()
+        present_days = db.query(models.Attendance).filter(models.Attendance.reg_no == reg_no, models.Attendance.status.in_(['Present', 'P', 'OD'])).count()
+        attendance = (present_days / total_days * 100) if total_days > 0 else 0
             
-        # Final Calculation
-        if has_int1 and has_int2:
-            final_score = (0.4 * int1_score) + (0.6 * int2_score)
-            basis = "Full Data"
-        elif has_int1:
-            final_score = int1_score
-            basis = "Internal 1 Only"
-        elif has_int2:
-            final_score = int2_score
-            basis = "Internal 2 Only"
-        else:
-            final_score = 0
-            basis = "No Data"
+        feature_array = np.array([[
+            round(st1, 2), round(st2, 2), round(a1, 2), round(a2, 2), round(cia1, 2),
+            round(st3, 2), round(st4, 2), round(a3, 2), round(a4, 2), round(a5, 2), round(cia2, 2), round(model, 2),
+            round(attendance, 2)
+        ]])
+        
+        if self.subject_model and self.subject_scaler:
+            scaled = self.subject_scaler.transform(feature_array)
+            pred = self.subject_model.predict(scaled)[0]
+            probability = self.subject_model.predict_proba(scaled)[0]
             
-        # Determine Risk Level
-        if final_score < 50:
-            risk_level = "High"
-        elif final_score < 65:
-            risk_level = "Medium"
+            risk_level_map = {0: "Low", 1: "Medium", 2: "High"}
+            risk_level = risk_level_map.get(pred, "Low")
+            score = probability[pred] * 100
+            basis = "ML Model (Logistic Regression)"
         else:
-            risk_level = "Low"
+            # Fallback Rule-based Calculation
+            has_int1 = (st1 + st2 + a1 + a2 + cia1) > 0
+            int1_score = 0
+            if has_int1:
+                st_avg1 = (st1 + st2) / 2
+                assign_avg1 = (a1 + a2) / 2
+                raw_int1 = (0.3 * st_avg1) + (0.2 * assign_avg1) + (0.5 * cia1)
+                int1_score = (raw_int1 / 38) * 100
+            
+            has_int2 = (st3 + st4 + a3 + a4 + a5 + cia2 + model) > 0
+            int2_score = 0
+            if has_int2:
+                st_avg2 = (st3 + st4) / 2
+                assign_avg2 = (a3 + a4 + a5) / 3
+                raw_int2 = (0.25 * st_avg2) + (0.15 * assign_avg2) + (0.3 * cia2) + (0.3 * model)
+                int2_score = (raw_int2 / 54.5) * 100
+                
+            if has_int1 and has_int2:
+                final_score = (0.4 * int1_score) + (0.6 * int2_score)
+                basis = "Rule-based: Full Data"
+            elif has_int1:
+                final_score = int1_score
+                basis = "Rule-based: Internal 1 Only"
+            elif has_int2:
+                final_score = int2_score
+                basis = "Rule-based: Internal 2 Only"
+            else:
+                final_score = 0
+                basis = "Rule-based: No Data"
+                
+            if final_score < 50:
+                risk_level = "High"
+            elif final_score < 65:
+                risk_level = "Medium"
+            else:
+                risk_level = "Low"
+            score = final_score
             
         return {
             'risk_level': risk_level,
-            'score': final_score,
+            'score': score,
             'basis': basis
         }
 
