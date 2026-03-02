@@ -54,7 +54,6 @@ def seed_new_departments():
                     email=a["email"],
                     password=get_password_hash("advisor123"),
                     role=models.RoleEnum.CLASS_ADVISOR,
-                    secret_pin="1234",
                     is_approved=1,
                     is_active=1,
                     dept=a["dept"],

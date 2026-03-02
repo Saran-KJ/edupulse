@@ -38,7 +38,6 @@ class User(Base):
     role = Column(Enum(RoleEnum), nullable=False)
     is_approved = Column(Integer, default=0)  # 0 = pending, 1 = approved
     is_active = Column(Integer, default=1)    # 0 = disabled, 1 = active
-    secret_pin = Column(String(10), nullable=True)
     reg_no = Column(String(50), nullable=True)
     phone = Column(String(20), nullable=True)
     dept = Column(String(50), nullable=True)
@@ -74,6 +73,20 @@ class StudentBase(Base):
     section = Column(String(10), nullable=True)
     dob = Column(Date)
     address = Column(Text)
+    blood_group = Column(String(20), nullable=True)
+    religion = Column(String(50), nullable=True)
+    caste = Column(String(50), nullable=True)
+    abc_id = Column(String(50), nullable=True)
+    aadhar_no = Column(String(50), nullable=True)
+    father_name = Column(String(100), nullable=True)
+    father_occupation = Column(String(100), nullable=True)
+    father_phone = Column(String(20), nullable=True)
+    mother_name = Column(String(100), nullable=True)
+    mother_occupation = Column(String(100), nullable=True)
+    mother_phone = Column(String(20), nullable=True)
+    guardian_name = Column(String(100), nullable=True)
+    guardian_occupation = Column(String(100), nullable=True)
+    guardian_phone = Column(String(20), nullable=True)
     preferred_learning_type = Column(String(50), default="text")  # video_tamil, pdf, visual, text
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -321,3 +334,13 @@ class AssessmentUnitMapping(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PasswordReset(Base):
+    __tablename__ = "password_resets"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(100), index=True, nullable=False)
+    otp = Column(String(6), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

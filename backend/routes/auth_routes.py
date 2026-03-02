@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import datetime, timedelta
+import random
 from database import get_db
 from config import get_settings
 import schemas
@@ -82,7 +83,6 @@ async def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
         email=user.email,
         password=hashed_password,
         role=user.role,
-        secret_pin=user.secret_pin,
         reg_no=user.reg_no,
         phone=user.phone,
         dept=user.dept,
@@ -101,19 +101,75 @@ async def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
-@router.post("/forgot-password")
-async def forgot_password(reset_data: schemas.PasswordReset, db: Session = Depends(get_db)):
-    # Find user by email
-    user = db.query(models.User).filter(models.User.email == reset_data.email).first()
+@router.post("/forgot-password/request-otp")
+async def request_password_reset_otp(request_data: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == request_data.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+        
+    # Generate 6-digit OTP
+    otp = "".join([str(random.randint(0, 9)) for _ in range(6)])
     
-    # Verify secret PIN
-    if not user.secret_pin or user.secret_pin != reset_data.secret_pin:
-        raise HTTPException(status_code=400, detail="Invalid secret PIN")
+    # Expire in 10 minutes
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
     
+    # Delete existing OTPs for this email to prevent spam/clutter
+    db.query(models.PasswordReset).filter(models.PasswordReset.email == request_data.email).delete()
+    
+    reset_entry = models.PasswordReset(
+        email=request_data.email,
+        otp=otp,
+        expires_at=expires_at
+    )
+    db.add(reset_entry)
+    db.commit()
+    
+    # Send email
+    email_sent = auth.send_otp_email(request_data.email, otp)
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send OTP email. Please check server configuration.")
+        
+    return {"message": "OTP sent successfully to your email"}
+
+@router.post("/forgot-password/verify-otp")
+async def verify_password_reset_otp(verify_data: schemas.PasswordResetVerify, db: Session = Depends(get_db)):
+    # Find OTP
+    reset_entry = db.query(models.PasswordReset).filter(
+        models.PasswordReset.email == verify_data.email,
+        models.PasswordReset.otp == verify_data.otp
+    ).first()
+    
+    if not reset_entry:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+    if reset_entry.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="OTP has expired")
+        
+    return {"message": "OTP verified successfully"}
+
+@router.post("/forgot-password/confirm")
+async def confirm_password_reset(confirm_data: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
+    # Verify OTP again to be secure
+    reset_entry = db.query(models.PasswordReset).filter(
+        models.PasswordReset.email == confirm_data.email,
+        models.PasswordReset.otp == confirm_data.otp
+    ).first()
+    
+    if not reset_entry:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+    if reset_entry.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="OTP has expired")
+        
     # Update password
-    user.password = auth.get_password_hash(reset_data.new_password)
+    user = db.query(models.User).filter(models.User.email == confirm_data.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.password = auth.get_password_hash(confirm_data.new_password)
+    
+    # Clean up OTP
+    db.delete(reset_entry)
     db.commit()
     
     return {"message": "Password reset successful"}

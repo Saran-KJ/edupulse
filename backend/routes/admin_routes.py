@@ -27,7 +27,6 @@ async def create_user(
         email=user_data.email,
         password=hashed_password,
         role=user_data.role,
-        secret_pin=user_data.secret_pin,
         dept=user_data.dept,
         year=user_data.year,
         section=user_data.section,

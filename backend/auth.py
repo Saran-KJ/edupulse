@@ -2,6 +2,9 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 import bcrypt
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -114,3 +117,63 @@ def require_admin(current_user: models.User = Depends(get_current_active_user)):
             detail="Admin access required"
         )
     return current_user
+
+def send_otp_email(to_email: str, otp: str):
+    """Send OTP via email for password reset."""
+    if not settings.smtp_password:
+        print("Warning: SMTP password not set, skipping email sending.")
+        return False
+        
+    sender_email = settings.smtp_email
+    sender_password = settings.smtp_password
+
+    # Create the email message
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Your Verification Code - EduPulse"
+    message["From"] = sender_email
+    message["To"] = to_email
+
+    # Email body
+    text = f"""\
+    Hello,
+    
+    You have requested to reset your password.
+    Your verification code is: {otp}
+    
+    This code is valid for 10 minutes.
+    If you did not request this, please ignore this email.
+    
+    Regards,
+    EduPulse Team
+    """
+    
+    html = f"""\
+    <html>
+      <body>
+        <h2>Password Reset Verification</h2>
+        <p>Hello,</p>
+        <p>You have requested to reset your password.</p>
+        <p>Your verification code is: <strong><span style="font-size: 24px;">{otp}</span></strong></p>
+        <p>This code is valid for 10 minutes.</p>
+        <p><em>If you did not request this, please ignore this email.</em></p>
+        <br>
+        <p>Regards,<br>EduPulse Team</p>
+      </body>
+    </html>
+    """
+
+    part1 = MIMEText(text, "plain")
+    part2 = MIMEText(html, "html")
+    message.attach(part1)
+    message.attach(part2)
+
+    try:
+        # Connect to Gmail SMTP server
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, to_email, message.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False

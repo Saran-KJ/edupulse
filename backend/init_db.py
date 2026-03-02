@@ -29,7 +29,6 @@ def create_sample_data():
             email="admin65@gmail.com",
             password=get_password_hash("1234678@"),
             role=models.RoleEnum.ADMIN,
-            secret_pin="1234",
             is_approved=1,
             is_active=1
         )
@@ -40,7 +39,6 @@ def create_sample_data():
             email="hod.cse@edupulse.com",
             password=get_password_hash("hod123"),
             role=models.RoleEnum.HOD,
-            secret_pin="5678",
             is_approved=1,
             is_active=1
         )
@@ -50,7 +48,6 @@ def create_sample_data():
             email="faculty@edupulse.com",
             password=get_password_hash("faculty123"),
             role=models.RoleEnum.FACULTY,
-            secret_pin="9012",
             is_approved=1,
             is_active=1
         )
@@ -61,7 +58,6 @@ def create_sample_data():
             email="pending@student.edu",
             password=get_password_hash("student123"),
             role=models.RoleEnum.STUDENT,
-            secret_pin="3456",
             is_approved=0,  # Pending approval
             is_active=1
         )

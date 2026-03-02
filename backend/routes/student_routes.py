@@ -296,7 +296,8 @@ async def get_my_dashboard_stats(
             "year": student.year,
             "section": student.section,
             "phone": student.phone,
-            "address": student.address
+            "address": student.address,
+            "email": current_user.email
         },
         "attendance_percentage": attendance_percentage,
         "gpa": gpa,
@@ -327,20 +328,51 @@ async def update_my_profile(
     if not student:
         raise HTTPException(status_code=404, detail="Student record not found")
     
-    # Update allowed fields
-    if 'phone' in profile_data and profile_data['phone']:
-        student.phone = profile_data['phone']
-    if 'address' in profile_data:
-        student.address = profile_data['address']
+    # Update allowed fields dynamically
+    allowed_fields = [
+        'phone', 'address', 'email', 'blood_group', 'religion', 'caste', 
+        'abc_id', 'aadhar_no', 'father_name', 'father_occupation', 'father_phone',
+        'mother_name', 'mother_occupation', 'mother_phone', 'guardian_name', 
+        'guardian_occupation', 'guardian_phone', 'dob'
+    ]
     
-    # Also update user table phone if provided
+    for field in allowed_fields:
+        if field in profile_data:
+            setattr(student, field, profile_data[field])
+    
+    # Track if email changed to reissue token
+    email_changed = False
+    
+    # Also update user table phone/email if provided
     if 'phone' in profile_data and profile_data['phone']:
         current_user.phone = profile_data['phone']
+    if 'email' in profile_data and profile_data['email']:
+        if current_user.email != profile_data['email']:
+            email_changed = True
+        current_user.email = profile_data['email']
     
     db.commit()
     db.refresh(student)
     
-    return {"message": "Profile updated successfully", "student": student}
+    response_data = {
+        "message": "Profile updated successfully", 
+        "student": student
+    }
+    
+    # If the email changed, the frontend needs a new token because the token 
+    # subject (`sub`) is the email address.
+    if email_changed:
+        from datetime import timedelta
+        import config
+        settings = config.get_settings()
+        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+        new_token = auth.create_access_token(
+            data={"sub": current_user.email}, expires_delta=access_token_expires
+        )
+        response_data["access_token"] = new_token
+        response_data["token_type"] = "bearer"
+    
+    return response_data
 
 @router.get("/parent/dashboard-stats")
 async def get_parent_dashboard_stats(

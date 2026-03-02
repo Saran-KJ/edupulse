@@ -11,7 +11,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    secret_pin: Optional[str] = None
     reg_no: Optional[str] = None
     phone: Optional[str] = None
     dept: Optional[str] = None
@@ -54,14 +53,20 @@ class AdminUserCreate(BaseModel):
     email: EmailStr
     password: str
     role: RoleEnum
-    secret_pin: Optional[str] = None
     dept: Optional[str] = None
     year: Optional[str] = None
     section: Optional[str] = None
 
-class PasswordReset(BaseModel):
+class PasswordResetRequest(BaseModel):
     email: EmailStr
-    secret_pin: str
+
+class PasswordResetVerify(BaseModel):
+    email: EmailStr
+    otp: str
+
+class PasswordResetConfirm(BaseModel):
+    email: EmailStr
+    otp: str
     new_password: str
 
 class PendingUserResponse(BaseModel):
@@ -120,6 +125,20 @@ class StudentBase(BaseModel):
     section: Optional[str] = None
     dob: Optional[date] = None
     address: Optional[str] = None
+    blood_group: Optional[str] = None
+    religion: Optional[str] = None
+    caste: Optional[str] = None
+    abc_id: Optional[str] = None
+    aadhar_no: Optional[str] = None
+    father_name: Optional[str] = None
+    father_occupation: Optional[str] = None
+    father_phone: Optional[str] = None
+    mother_name: Optional[str] = None
+    mother_occupation: Optional[str] = None
+    mother_phone: Optional[str] = None
+    guardian_name: Optional[str] = None
+    guardian_occupation: Optional[str] = None
+    guardian_phone: Optional[str] = None
 
 class StudentCreate(StudentBase):
     pass
@@ -132,6 +151,21 @@ class StudentUpdate(BaseModel):
     semester: Optional[int] = None
     section: Optional[str] = None
     address: Optional[str] = None
+    dob: Optional[date] = None
+    blood_group: Optional[str] = None
+    religion: Optional[str] = None
+    caste: Optional[str] = None
+    abc_id: Optional[str] = None
+    aadhar_no: Optional[str] = None
+    father_name: Optional[str] = None
+    father_occupation: Optional[str] = None
+    father_phone: Optional[str] = None
+    mother_name: Optional[str] = None
+    mother_occupation: Optional[str] = None
+    mother_phone: Optional[str] = None
+    guardian_name: Optional[str] = None
+    guardian_occupation: Optional[str] = None
+    guardian_phone: Optional[str] = None
 
 class StudentResponse(StudentBase):
     student_id: int
