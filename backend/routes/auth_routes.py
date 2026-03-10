@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -13,18 +13,20 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 settings = get_settings()
 
 @router.post("/login", response_model=schemas.Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db), request: Request = None):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db), request: Request = None, background_tasks: BackgroundTasks = None):
     result = auth.authenticate_user(db, form_data.username, form_data.password)
     
     # Handle tuple return (user, error_message) or False
     if isinstance(result, tuple):
         user, error_msg = result
         if user:
-            # Successful login
-            auth.log_login_attempt(
-                db, form_data.username, True, user.user_id,
-                ip_address=request.client.host if request else None
-            )
+            # Successful login — log in background (non-blocking)
+            if background_tasks:
+                background_tasks.add_task(
+                    auth.log_login_attempt,
+                    db, form_data.username, True, user.user_id,
+                    ip_address=request.client.host if request else None
+                )
             access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
             access_token = auth.create_access_token(
                 data={"sub": user.email}, expires_delta=access_token_expires

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 from models import RoleEnum, RiskLevelEnum, ActivityTypeEnum
 
@@ -381,6 +381,7 @@ class RiskPredictionResponse(BaseModel):
     external_gpa: Optional[float] = None
     activity_count: Optional[int] = None
     backlog_count: Optional[int] = None
+    learning_path_preference: Optional[str] = None
     reasons: Optional[str] = None
     prediction_date: datetime
     
@@ -471,6 +472,10 @@ class SkillSelectionRequest(BaseModel):
     subject_code: str
     skill: str  # "Communication", "Programming", "Aptitude", etc.
 
+class GlobalPathPreferenceRequest(BaseModel):
+    choice: str  # "Academic Enhancement" or "Skill Development"
+    sub_choice: Optional[str] = None
+
 class LearningPlanResourceResponse(BaseModel):
     resource_id: int
     title: str
@@ -541,3 +546,56 @@ class AssessmentUnitMappingResponse(AssessmentUnitMappingBase):
     class Config:
         from_attributes = True
 
+class YouTubeVideoResponse(BaseModel):
+    video_id: str
+    title: str
+    thumbnail: str
+    video_url: str
+
+class LearningResourcesResponse(BaseModel):
+    subject: str
+    risk_level: str
+    focus_type: str
+    weak_unit: str
+    recommended_videos: List[YouTubeVideoResponse]
+
+    class Config:
+        from_attributes = True
+
+# Quiz Schemas
+class QuizQuestionBase(BaseModel):
+    question: str
+    option_a: str
+    option_b: str
+    option_c: str
+    option_d: str
+    correct_answer: str
+
+class QuizQuestionResponse(QuizQuestionBase):
+    id: int
+    subject: str
+    unit: int
+    difficulty_level: str
+    
+    class Config:
+        from_attributes = True
+
+class QuizGenerationResponse(BaseModel):
+    subject: str
+    unit: int
+    risk_level: str
+    total_questions: int
+    quiz: List[QuizQuestionResponse]
+
+class QuizAttemptSubmission(BaseModel):
+    subject: str
+    unit: int
+    answers: Dict[int, str] # question_id -> selected_option
+    risk_level: str
+
+class QuizAttemptResponse(BaseModel):
+    total_questions: int
+    correct_answers: int
+    wrong_answers: int
+    score: float
+    status: str # "success"

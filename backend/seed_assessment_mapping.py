@@ -10,6 +10,11 @@ import models
 
 # Map to populate AssessmentUnitMapping table
 ASSESSMENT_UNIT_MAP_SEED = [
+    {"assessment_name": "assignment_1", "units": "1"},
+    {"assessment_name": "assignment_2", "units": "2"},
+    {"assessment_name": "assignment_3", "units": "3"},
+    {"assessment_name": "assignment_4", "units": "4"},
+    {"assessment_name": "assignment_5", "units": "1,2,3,4,5"},
     {"assessment_name": "slip_test_1", "units": "1"},
     {"assessment_name": "slip_test_2", "units": "2"},
     {"assessment_name": "slip_test_3", "units": "3"},

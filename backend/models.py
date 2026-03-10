@@ -88,6 +88,9 @@ class StudentBase(Base):
     guardian_occupation = Column(String(100), nullable=True)
     guardian_phone = Column(String(20), nullable=True)
     preferred_learning_type = Column(String(50), default="text")  # video_tamil, pdf, visual, text
+    learning_path_preference = Column(String(50), nullable=True)   # Academic Enhancement / Skill Development
+    learning_sub_preference = Column(String(50), nullable=True)    # Aptitude, Programming, etc.
+    overall_study_strategy = Column(Text, nullable=True)         # JSON cache of AI-generated strategy
     created_at = Column(DateTime, default=datetime.utcnow)
 
 # Department-specific Student Tables
@@ -293,6 +296,7 @@ class LearningResource(Base):
     unit = Column(String(20), nullable=True) # e.g. "1", "1,2", "1,2,3,4,5" or null for skill resources
     resource_level = Column(String(20), nullable=True) # Basic, Intermediate, Advanced
     skill_category = Column(String(50), nullable=True) # Communication, Programming, Aptitude, etc.
+    content = Column(Text, nullable=True)  # Self-written in-app content (JSON string with sections + quiz)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class StudentLearningProgress(Base):
@@ -344,3 +348,47 @@ class PasswordReset(Base):
     otp = Column(String(6), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class YouTubeRecommendation(Base):
+    __tablename__ = "youtube_recommendations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    reg_no = Column(String(50), nullable=False, index=True)
+    subject_code = Column(String(20), nullable=False)
+    unit = Column(String(10), nullable=True)
+    video_id = Column(String(100), nullable=False)
+    title = Column(String(255), nullable=False)
+    thumbnail = Column(String(500), nullable=True)
+    video_url = Column(String(500), nullable=False)
+    risk_level = Column(String(20), nullable=True)
+    language = Column(String(50), nullable=True)  # Added to cache per language
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class QuizQuestion(Base):
+    __tablename__ = "quiz_questions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    subject = Column(String(100), nullable=False)
+    unit = Column(Integer, nullable=False)
+    question = Column(Text, nullable=False)
+    option_a = Column(String(500), nullable=False)
+    option_b = Column(String(500), nullable=False)
+    option_c = Column(String(500), nullable=False)
+    option_d = Column(String(500), nullable=False)
+    correct_answer = Column(String(500), nullable=False)
+    difficulty_level = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class StudentQuizAttempt(Base):
+    __tablename__ = "student_quiz_attempts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    reg_no = Column(String(50), nullable=False, index=True)
+    subject = Column(String(100), nullable=False)
+    unit = Column(Integer, nullable=False)
+    total_questions = Column(Integer, nullable=False)
+    correct_answers = Column(Integer, nullable=False)
+    wrong_answers = Column(Integer, nullable=False)
+    score = Column(Float, nullable=False) # (Correct / Total) * 100
+    risk_level = Column(String(20), nullable=False)
+    attempted_at = Column(DateTime, default=datetime.utcnow)

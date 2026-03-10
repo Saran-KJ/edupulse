@@ -240,3 +240,51 @@ async def delete_user(
     db.delete(user)
     db.commit()
     return {"message": f"User {user_name} deleted successfully"}
+
+@router.post("/promote-semester")
+async def promote_semester(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin)
+):
+    """
+    Automatically update student semester and academic year at the beginning of a new semester.
+    Formula: current_year = ceil(current_semester / 2)
+    """
+    import math
+    
+    # List of all department student models
+    student_models = [
+        models.StudentCSE,
+        models.StudentECE,
+        models.StudentEEE,
+        models.StudentMECH,
+        models.StudentCIVIL,
+        models.StudentBIO,
+        models.StudentAIDS
+    ]
+    
+    total_promoted = 0
+    
+    for student_model in student_models:
+        students = db.query(student_model).all()
+        for student in students:
+            # Increment semester
+            student.semester += 1
+            
+            # Recalculate year: current_year = ceil(current_semester / 2)
+            student.year = math.ceil(student.semester / 2)
+            
+            # Update corresponding User record if it exists
+            user = db.query(models.User).filter(models.User.reg_no == student.reg_no).first()
+            if user:
+                user.year = str(student.year)
+                user.dept = student.dept # Ensure dept is synced
+            
+            total_promoted += 1
+            
+    db.commit()
+    
+    return {
+        "message": "Students promoted successfully",
+        "total_students_updated": total_promoted
+    }

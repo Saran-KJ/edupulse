@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     smtp_email: str = "edupulsesmartlearn@gmail.com"
     smtp_password: str = ""
+    youtube_api_key: str = ""
+    gemini_api_key: str = ""
     
     class Config:
         env_file = ".env"

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/predict", tags=["ML Prediction"])
 @router.post("/risk", response_model=schemas.RiskPredictionResponse)
 async def predict_student_risk(
     request: schemas.RiskPredictionRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
@@ -38,18 +39,22 @@ async def predict_student_risk(
     db.commit()
     db.refresh(db_prediction)
     
-    # Trigger personalized learning plan regeneration
-    from routes.learning_routes import generate_plans_for_student
-    try:
-        generate_plans_for_student(db, request.reg_no)
-    except Exception as e:
-        print(f"Error generating plans for {request.reg_no}: {e}")
+    # Clear overall study strategy cache for the student
+    from routes.learning_routes import _get_student, generate_plans_for_student_task
+    student = _get_student(db, current_user)
+    if student:
+        student.overall_study_strategy = None
+        db.commit()
+
+    # Trigger personalized learning plan regeneration in background
+    background_tasks.add_task(generate_plans_for_student_task, request.reg_no)
     
     return db_prediction
 
 @router.get("/{reg_no}", response_model=schemas.RiskPredictionResponse)
 async def predict_student_risk_get(
     reg_no: str,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
@@ -78,12 +83,15 @@ async def predict_student_risk_get(
     db.commit()
     db.refresh(db_prediction)
     
-    # Trigger personalized learning plan regeneration
-    from routes.learning_routes import generate_plans_for_student
-    try:
-        generate_plans_for_student(db, reg_no)
-    except Exception as e:
-        print(f"Error generating plans for {reg_no}: {e}")
+    # Clear overall study strategy cache for the student
+    from routes.learning_routes import _get_student, generate_plans_for_student_task
+    student = _get_student(db, current_user)
+    if student:
+        student.overall_study_strategy = None
+        db.commit()
+
+    # Trigger personalized learning plan regeneration in background
+    background_tasks.add_task(generate_plans_for_student_task, reg_no)
     
     return db_prediction
 

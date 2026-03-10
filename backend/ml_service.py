@@ -116,10 +116,16 @@ class MLService:
             has_int1 = (st1 + st2 + a1 + a2 + cia1) > 0
             int1_score = 0
             if has_int1:
-                st_avg1 = (st1 + st2) / 2
-                assign_avg1 = (a1 + a2) / 2
+                # Only average over tests that were actually entered (non-zero)
+                st1_vals = [v for v in [st1, st2] if v > 0]
+                st_avg1 = sum(st1_vals) / len(st1_vals) if st1_vals else 0
+                a1_vals = [v for v in [a1, a2] if v > 0]
+                assign_avg1 = sum(a1_vals) / len(a1_vals) if a1_vals else 0
                 raw_int1 = (0.3 * st_avg1) + (0.2 * assign_avg1) + (0.5 * cia1)
-                int1_score = (raw_int1 / 38) * 100
+                
+                # Dynamic max based on what's available: ST=20, Assign=10, CIA=60
+                max_int1 = (0.3 * 20 if st1_vals else 0) + (0.2 * 10 if a1_vals else 0) + (0.5 * 60 if cia1 > 0 else 0)
+                int1_score = (raw_int1 / max_int1) * 100 if max_int1 > 0 else 0
             
             # Calculate Internal 2
             st3, st4 = float(mark.slip_test_3 or 0), float(mark.slip_test_4 or 0)
@@ -130,10 +136,16 @@ class MLService:
             has_int2 = (st3 + st4 + a3 + a4 + a5 + cia2 + model) > 0
             int2_score = 0
             if has_int2:
-                st_avg2 = (st3 + st4) / 2
-                assign_avg2 = (a3 + a4 + a5) / 3
+                # Only average over tests that were actually entered (non-zero)
+                st2_vals = [v for v in [st3, st4] if v > 0]
+                st_avg2 = sum(st2_vals) / len(st2_vals) if st2_vals else 0
+                a2_vals = [v for v in [a3, a4, a5] if v > 0]
+                assign_avg2 = sum(a2_vals) / len(a2_vals) if a2_vals else 0
                 raw_int2 = (0.25 * st_avg2) + (0.15 * assign_avg2) + (0.3 * cia2) + (0.3 * model)
-                int2_score = (raw_int2 / 54.5) * 100
+                
+                # Dynamic max based on what's available: ST=20, Assign=10, CIA=60, Model=100
+                max_int2 = (0.25 * 20 if st2_vals else 0) + (0.15 * 10 if a2_vals else 0) + (0.3 * 60 if cia2 > 0 else 0) + (0.3 * 100 if model > 0 else 0)
+                int2_score = (raw_int2 / max_int2) * 100 if max_int2 > 0 else 0
                 
             # Final Subject Internal Calculation
             if has_int1 and has_int2:
@@ -202,7 +214,11 @@ class MLService:
             has_i1 = (st1 + st2 + a1 + a2 + cia1_) > 0
             i1 = 0
             if has_i1:
-                i1 = ((0.3 * (st1+st2)/2) + (0.2 * (a1+a2)/2) + (0.5 * cia1_)) / 38 * 100
+                _st1v = [v for v in [st1, st2] if v > 0]
+                _a1v = [v for v in [a1, a2] if v > 0]
+                raw_i1 = (0.3 * (sum(_st1v)/len(_st1v) if _st1v else 0)) + (0.2 * (sum(_a1v)/len(_a1v) if _a1v else 0)) + (0.5 * cia1_)
+                max_i1 = (0.3 * 20 if _st1v else 0) + (0.2 * 10 if _a1v else 0) + (0.5 * 60 if cia1_ > 0 else 0)
+                i1 = (raw_i1 / max_i1) * 100 if max_i1 > 0 else 0
 
             st3, st4 = float(mark.slip_test_3 or 0), float(mark.slip_test_4 or 0)
             a3_, a4_, a5_ = float(mark.assignment_3 or 0), float(mark.assignment_4 or 0), float(mark.assignment_5 or 0)
@@ -211,7 +227,11 @@ class MLService:
             has_i2 = (st3 + st4 + a3_ + a4_ + a5_ + cia2_ + mdl) > 0
             i2 = 0
             if has_i2:
-                i2 = ((0.25*(st3+st4)/2)+(0.15*(a3_+a4_+a5_)/3)+(0.3*cia2_)+(0.3*mdl)) / 54.5 * 100
+                _st2v = [v for v in [st3, st4] if v > 0]
+                _a2v = [v for v in [a3_, a4_, a5_] if v > 0]
+                raw_i2 = (0.25*(sum(_st2v)/len(_st2v) if _st2v else 0))+(0.15*(sum(_a2v)/len(_a2v) if _a2v else 0))+(0.3*cia2_)+(0.3*mdl)
+                max_i2 = (0.25 * 20 if _st2v else 0) + (0.15 * 10 if _a2v else 0) + (0.3 * 60 if cia2_ > 0 else 0) + (0.3 * 100 if mdl > 0 else 0)
+                i2 = (raw_i2 / max_i2) * 100 if max_i2 > 0 else 0
 
             if has_i1 and has_i2:
                 subj_score = 0.4 * i1 + 0.6 * i2
@@ -255,6 +275,14 @@ class MLService:
         # Extract features
         features = self.extract_features(db, reg_no)
         
+        # Get student's global preference
+        student_pref = None
+        for model in [models.StudentCSE, models.StudentECE, models.StudentEEE, models.StudentMECH, models.StudentCIVIL, models.StudentBIO, models.StudentAIDS]:
+            student = db.query(model).filter(model.reg_no == reg_no).first()
+            if student:
+                student_pref = student.learning_path_preference
+                break
+
         # Create feature array
         feature_array = np.array([[
             features['attendance_percentage'],
@@ -266,7 +294,7 @@ class MLService:
         
         # If model is not loaded, use rule-based prediction
         if self.model is None or self.scaler is None:
-            return self._rule_based_prediction(features)
+            return self._rule_based_prediction(features, student_pref)
         
         # Scale features
         feature_scaled = self.scaler.transform(feature_array)
@@ -289,10 +317,11 @@ class MLService:
             'risk_level': risk_level,
             'risk_score': risk_score,
             'reasons': reasons,
+            'learning_path_preference': student_pref,
             **features
         }
     
-    def _rule_based_prediction(self, features: Dict[str, float]) -> Dict[str, Any]:
+    def _rule_based_prediction(self, features: Dict[str, float], student_pref: str = None) -> Dict[str, Any]:
         """Fallback rule-based prediction when model is not available"""
         risk_score = 0
         reasons = []
@@ -353,6 +382,7 @@ class MLService:
             'risk_level': risk_level,
             'risk_score': min(risk_score, 100),
             'reasons': "; ".join(reasons) if reasons else "Good performance",
+            'learning_path_preference': student_pref,
             **features
         }
     
@@ -447,59 +477,79 @@ class MLService:
             round(attendance, 2)
         ]])
         
-        if self.subject_model and self.subject_scaler:
+        # Robust Rule-based Calculation (Always calculate this first for verification)
+        has_int1 = (st1 + st2 + a1 + a2 + cia1) > 0
+        int1_score = 0
+        if has_int1:
+            _st1v = [v for v in [st1, st2] if v > 0]
+            st_avg1 = sum(_st1v) / len(_st1v) if _st1v else 0
+            _a1v = [v for v in [a1, a2] if v > 0]
+            assign_avg1 = sum(_a1v) / len(_a1v) if _a1v else 0
+            raw_int1 = (0.3 * st_avg1) + (0.2 * assign_avg1) + (0.5 * cia1)
+            max_int1 = (0.3 * 20 if _st1v else 0) + (0.2 * 10 if _a1v else 0) + (0.5 * 60 if cia1 > 0 else 0)
+            int1_score = (raw_int1 / max_int1) * 100 if max_int1 > 0 else 0
+        
+        has_int2 = (st3 + st4 + a3 + a4 + a5 + cia2 + model) > 0
+        int2_score = 0
+        if has_int2:
+            _st2v = [v for v in [st3, st4] if v > 0]
+            st_avg2 = sum(_st2v) / len(_st2v) if _st2v else 0
+            _a2v = [v for v in [a3, a4, a5] if v > 0]
+            assign_avg2 = sum(_a2v) / len(_a2v) if _a2v else 0
+            raw_int2 = (0.25 * st_avg2) + (0.15 * assign_avg2) + (0.3 * cia2) + (0.3 * model)
+            max_int2 = (0.25 * 20 if _st2v else 0) + (0.15 * 10 if _a2v else 0) + (0.3 * 60 if cia2 > 0 else 0) + (0.3 * 100 if model > 0 else 0)
+            int2_score = (raw_int2 / max_int2) * 100 if max_int2 > 0 else 0
+            
+        if has_int1 and has_int2:
+            final_rule_score = (0.4 * int1_score) + (0.6 * int2_score)
+            basis_rule = "Rule-based: Full Data"
+        elif has_int1:
+            final_rule_score = int1_score
+            basis_rule = "Rule-based: Internal 1 Only"
+        elif has_int2:
+            final_rule_score = int2_score
+            basis_rule = "Rule-based: Internal 2 Only"
+        else:
+            final_rule_score = 0
+            basis_rule = "Rule-based: No Data"
+
+        if final_rule_score < 50:
+            rule_risk = "High"
+        elif final_rule_score < 65:
+            rule_risk = "Medium"
+        else:
+            rule_risk = "Low"
+
+        # ML Model Path
+        if self.subject_model and self.subject_scaler and has_int1 and has_int2:
+            # Only use ML if both internals have data, otherwise it's too biased by zeros
             scaled = self.subject_scaler.transform(feature_array)
             pred = self.subject_model.predict(scaled)[0]
             probability = self.subject_model.predict_proba(scaled)[0]
             
             risk_level_map = {0: "Low", 1: "Medium", 2: "High"}
-            risk_level = risk_level_map.get(pred, "Low")
-            score = probability[pred] * 100
-            basis = "ML Model (Logistic Regression)"
+            ml_risk = risk_level_map.get(pred, "Low")
+            ml_score = probability[pred] * 100
+            
+            # If ML says High but Rule says Low (due to zeros), respect the rule
+            if ml_risk == "High" and rule_risk == "Low":
+                return {
+                    'risk_level': rule_risk,
+                    'score': final_rule_score,
+                    'basis': f"{basis_rule} (ML Overridden)"
+                }
+                
+            return {
+                'risk_level': ml_risk,
+                'score': ml_score,
+                'basis': "ML Model (Logistic Regression)"
+            }
         else:
-            # Fallback Rule-based Calculation
-            has_int1 = (st1 + st2 + a1 + a2 + cia1) > 0
-            int1_score = 0
-            if has_int1:
-                st_avg1 = (st1 + st2) / 2
-                assign_avg1 = (a1 + a2) / 2
-                raw_int1 = (0.3 * st_avg1) + (0.2 * assign_avg1) + (0.5 * cia1)
-                int1_score = (raw_int1 / 38) * 100
-            
-            has_int2 = (st3 + st4 + a3 + a4 + a5 + cia2 + model) > 0
-            int2_score = 0
-            if has_int2:
-                st_avg2 = (st3 + st4) / 2
-                assign_avg2 = (a3 + a4 + a5) / 3
-                raw_int2 = (0.25 * st_avg2) + (0.15 * assign_avg2) + (0.3 * cia2) + (0.3 * model)
-                int2_score = (raw_int2 / 54.5) * 100
-                
-            if has_int1 and has_int2:
-                final_score = (0.4 * int1_score) + (0.6 * int2_score)
-                basis = "Rule-based: Full Data"
-            elif has_int1:
-                final_score = int1_score
-                basis = "Rule-based: Internal 1 Only"
-            elif has_int2:
-                final_score = int2_score
-                basis = "Rule-based: Internal 2 Only"
-            else:
-                final_score = 0
-                basis = "Rule-based: No Data"
-                
-            if final_score < 50:
-                risk_level = "High"
-            elif final_score < 65:
-                risk_level = "Medium"
-            else:
-                risk_level = "Low"
-            score = final_score
-            
-        return {
-            'risk_level': risk_level,
-            'score': score,
-            'basis': basis
-        }
+            return {
+                'risk_level': rule_risk,
+                'score': final_rule_score,
+                'basis': basis_rule
+            }
 
 # Singleton instance
 ml_service = MLService()

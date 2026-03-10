@@ -20,7 +20,8 @@ from routes import (
     faculty_routes,
     hod_routes,
     learning_routes,
-    subject_routes
+    subject_routes,
+    quiz_routes
 )
 
 # Create database tables
@@ -35,7 +36,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,6 +56,7 @@ app.include_router(faculty_routes.router)
 app.include_router(hod_routes.router)
 app.include_router(learning_routes.router, prefix="/api/learning", tags=["Learning"])
 app.include_router(subject_routes.router)
+app.include_router(quiz_routes.router)
 
 @app.get("/")
 async def root():

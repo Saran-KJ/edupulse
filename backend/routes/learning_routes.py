@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, BackgroundTasks
 from sqlalchemy.orm import Session
-from database import get_db
+from sqlalchemy import func
+from database import get_db, SessionLocal
 import models
 from models import (
     User, LearningResource, StudentBase, StudentCSE, StudentECE, StudentEEE,
     StudentMECH, StudentCIVIL, StudentBIO, StudentAIDS, StudentLearningProgress,
-    PersonalizedLearningPlan, Mark, Subject
+    PersonalizedLearningPlan, Mark, Subject, YouTubeRecommendation
 )
 from auth import get_current_user
 from ml_service import ml_service
@@ -14,6 +15,18 @@ from pydantic import BaseModel
 from datetime import datetime
 import schemas
 import json
+import requests
+import config as cfg
+import gemini_service
+
+settings = cfg.get_settings()
+
+YOUTUBE_API_KEY = settings.youtube_api_key
+YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
+
+# For embedded video support, provide video watch URL and embed URL
+WATCH_URL_BASE = "https://www.youtube.com/watch?v="
+EMBED_URL_BASE = "https://www.youtube.com/embed/"
 
 router = APIRouter()
 
@@ -26,10 +39,14 @@ ASSESSMENT_FIELDS = [
     ("model", "model"),
     ("cia_2", "cia_2"),
     ("slip_test_4", "slip_test_4"),
+    ("assignment_4", "assignment_4"),
     ("slip_test_3", "slip_test_3"),
+    ("assignment_3", "assignment_3"),
     ("cia_1", "cia_1"),
     ("slip_test_2", "slip_test_2"),
+    ("assignment_2", "assignment_2"),
     ("slip_test_1", "slip_test_1"),
+    ("assignment_1", "assignment_1"),
 ]
 
 STUDENT_MODEL_MAP = {
@@ -183,15 +200,37 @@ def generate_plan_for_subject(db: Session, reg_no: str, subject_code: str) -> Op
     if not mark:
         return None
 
-    # Determine latest assessment
-    latest_assessment = detect_latest_assessment(mark)
+    # Determine all published assessments and aggregate units
+    published_assessments = []
+    for assessment_key, field_name in ASSESSMENT_FIELDS:
+        if field_name == "university_result_grade":
+            val = getattr(mark, field_name, None)
+            if val and val.strip():
+                published_assessments.append(assessment_key)
+        else:
+            val = float(getattr(mark, field_name, 0) or 0)
+            if val > 0:
+                published_assessments.append(assessment_key)
     
-    # Fetch mapped units from DB instead of hardcoded dictionary
-    assessment_mapping = db.query(models.AssessmentUnitMapping).filter(
-        models.AssessmentUnitMapping.assessment_name == latest_assessment
-    ).first()
+    latest_assessment = published_assessments[0] if published_assessments else "slip_test_1"
     
-    mapped_units = assessment_mapping.units.split(",") if assessment_mapping else ["1"]
+    # Collect all unique units from all published assessments
+    mapped_units_set = set()
+    if not published_assessments:
+        mapped_units_set.add("1")
+    else:
+        for assessment in published_assessments:
+            mapping = db.query(models.AssessmentUnitMapping).filter(
+                models.AssessmentUnitMapping.assessment_name == assessment
+            ).first()
+            if mapping:
+                for u in mapping.units.split(","):
+                    mapped_units_set.add(u.strip())
+    
+    if not mapped_units_set:
+        mapped_units_set.add("1")
+        
+    mapped_units = sorted(list(mapped_units_set), key=lambda x: int(x) if x.isdigit() else 999)
 
     # Get subject risk level (ML-based Log Regression)
     subject_risk = ml_service.calculate_subject_risk(db, reg_no, subject_code)
@@ -209,31 +248,46 @@ def generate_plan_for_subject(db: Session, reg_no: str, subject_code: str) -> Op
         focus_type = "Academic Improvement"
         resource_level = "Intermediate"
     else:
-        # LOW risk: check if there's an existing active plan with a choice
-        existing_plan = db.query(PersonalizedLearningPlan).filter(
-            PersonalizedLearningPlan.reg_no == reg_no,
-            PersonalizedLearningPlan.subject_code == subject_code,
-            PersonalizedLearningPlan.is_active == 1,
-            PersonalizedLearningPlan.risk_level == "Low"
-        ).first()
-
-        if existing_plan and existing_plan.focus_type in ["Academic Enhancement", "Skill Development"]:
-            # Preserve the student's existing choice
-            existing_plan.units = units_str
-            existing_plan.latest_assessment = latest_assessment
-            existing_plan.practice_schedule = _generate_practice_schedule(risk_level, subject_code, units_str)
-            existing_plan.weekly_goals = _generate_weekly_goals(risk_level, subject_code)
-            db.commit()
-            db.refresh(existing_plan)
-            return existing_plan
+        # LOW risk subject: check overall risk to see if they get a choice
+        overall_risk_data = ml_service.predict_risk(db, reg_no)
+        overall_risk = overall_risk_data.get('risk_level', 'Low')
+        
+        if overall_risk != "Low":
+            # If OVERALL risk is not Low, force Academic Enhancement (no choice)
+            focus_type = "Academic Enhancement"
+            resource_level = "Advanced"
         else:
-            # No choice made yet — mark as pending
-            focus_type = "Pending Choice"
-            resource_level = None
+            # Overall risk is also LOW — respect global preference
+            from models import User
+            user = db.query(User).filter(models.User.reg_no == reg_no).first()
+            student_pref = None
+            if user:
+                student_model = STUDENT_MODEL_MAP.get(user.dept)
+                if student_model:
+                    student = db.query(student_model).filter(student_model.reg_no == reg_no).first()
+                    if student:
+                        student_pref = student.learning_path_preference
+            
+            if student_pref:
+                focus_type = student_pref
+                resource_level = "Advanced" if focus_type == "Academic Enhancement" else "Intermediate"
+            else:
+                # No choice made yet — mark as pending
+                focus_type = "Pending Choice"
+                resource_level = None
 
-    # Rule-based: Generate practice schedule and weekly goals
+    # Rule-based fallback: Generate practice schedule and weekly goals
     practice_schedule = _generate_practice_schedule(risk_level, subject_code, units_str)
     weekly_goals = _generate_weekly_goals(risk_level, subject_code)
+
+    # Use Gemini if focus_type is set (not pending)
+    if focus_type != "Pending Choice":
+        ai_schedule, ai_goals = gemini_service.generate_subject_plan(
+            subject_code, risk_level, focus_type
+        )
+        if ai_schedule and ai_goals:
+            practice_schedule = json.dumps(ai_schedule)
+            weekly_goals = json.dumps(ai_goals)
 
     # Deactivate old plans for this student+subject
     db.query(PersonalizedLearningPlan).filter(
@@ -270,6 +324,137 @@ def generate_plans_for_student(db: Session, reg_no: str):
             generate_plan_for_subject(db, reg_no, sc)
         except Exception as e:
             print(f"Error generating plan for {reg_no}/{sc}: {e}")
+
+
+def fetch_youtube_recommendations(
+    db: Session, 
+    reg_no: str, 
+    subject_code: str, 
+    subject_title: str,
+    units: List[str], 
+    risk_level: str, 
+    language: str
+) -> List[Dict[str, Any]]:
+    """
+    Fetch YouTube learning resources dynamically.
+    Iterates through each unit to provide unit-specific results.
+    """
+    all_recommendations = []
+    
+    for single_unit in units:
+        # 1. Check Cache (valid for 24 hours)
+        cached = db.query(YouTubeRecommendation).filter(
+            YouTubeRecommendation.reg_no == reg_no,
+            YouTubeRecommendation.subject_code == subject_code,
+            YouTubeRecommendation.unit == single_unit,
+            YouTubeRecommendation.risk_level == risk_level,
+            YouTubeRecommendation.language == language
+        ).all()
+        
+        if cached:
+            for c in cached:
+                all_recommendations.append({
+                    "resource_id": 1000000 + c.id,
+                    "title": c.title,
+                    "description": f"Recommended video for {subject_title} Unit {single_unit}",
+                    "url": c.video_url,
+                    "type": "video",
+                    "tags": f"YouTube,Dynamic,{risk_level}",
+                    "unit": c.unit,
+                    "resource_level": risk_level,
+                    "language": language,
+                    "is_completed": False,
+                    "is_dynamic": True
+                })
+            print(f"DEBUG: Found {len(cached)} cached YouTube recommendations for {subject_code} Unit {single_unit}")
+            continue
+
+        # 2. Build Query for this unit
+        # Wrapping subject_title in quotes helps exact matching
+        query = f'"{subject_title}" Unit {single_unit} engineering lecture university syllabus -experience -warning -shorts -vlog -update -notice -nptel_experience'
+        
+        if risk_level == "High":
+            query += " basic concepts and introduction"
+        elif risk_level == "Medium":
+            query += " detailed explanation and examples"
+        else:
+            query += " advanced topics and applications"
+
+        if language == "Tamil":
+            query += " in Tamil"
+        elif language == "English":
+            query += " in English"
+
+        # 3. Call YouTube API
+        if not YOUTUBE_API_KEY:
+            continue
+
+        try:
+            params = {
+                "part": "snippet",
+                "q": query,
+                "key": YOUTUBE_API_KEY,
+                "maxResults": 5, # Fetch more to allow filtering
+                "type": "video",
+                "videoEmbeddable": "true",
+                "relevanceLanguage": "ta" if language == "Tamil" else "en"
+            }
+            print(f"DEBUG: Calling YouTube API for query: {query}")
+            resp = requests.get(YOUTUBE_SEARCH_URL, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+
+            count_saved = 0
+            for item in data.get("items", []):
+                if count_saved >= 2: break # Limit to 2 filtered results per unit
+
+                video_id = item["id"]["videoId"]
+                title = item["snippet"]["title"]
+                thumb = item["snippet"]["thumbnails"]["default"]["url"]
+                video_url = f"https://www.youtube.com/watch?v={video_id}"
+
+                # Post-fetch filtering to catch common irrelevant educational "meta" content
+                title_lower = title.lower()
+                irrelevant_keywords = ["don't watch", "warning", "notice", "update", "experience", "vlog", "shorts", "news", "wrong"]
+                if any(kw in title_lower for kw in irrelevant_keywords):
+                    print(f"DEBUG: Skipping irrelevant video: {title}")
+                    continue
+
+                # Save to Cache
+                rec_entry = YouTubeRecommendation(
+                    reg_no=reg_no,
+                    subject_code=subject_code,
+                    unit=single_unit,
+                    video_id=video_id,
+                    title=title,
+                    thumbnail=thumb,
+                    video_url=video_url,
+                    risk_level=risk_level,
+                    language=language
+                )
+                db.add(rec_entry)
+                db.flush()
+                count_saved += 1
+                db.flush()
+                
+                all_recommendations.append({
+                    "resource_id": 1000000 + (rec_entry.id or 0),
+                    "title": title,
+                    "description": f"Recommended video for {subject_title} Unit {single_unit}",
+                    "url": video_url,
+                    "type": "video",
+                    "tags": f"YouTube,Dynamic,{risk_level}",
+                    "unit": single_unit,
+                    "resource_level": risk_level,
+                    "language": language,
+                    "is_completed": False,
+                    "is_dynamic": True
+                })
+        except Exception as e:
+            print(f"Error fetching YouTube results for unit {single_unit}: {e}")
+
+    db.commit()
+    return all_recommendations
 
 
 # ─── API Endpoints ─────────────────────────────────────────────────────
@@ -361,14 +546,12 @@ def submit_low_risk_choice(
     db.commit()
     db.refresh(plan)
 
-    needs_skill_selection = (request.choice == "skill_development")
-
     return {
         "status": "success",
         "plan_id": plan.id,
         "focus_type": plan.focus_type,
-        "needs_skill_selection": needs_skill_selection,
-        "available_skills": AVAILABLE_SKILLS if needs_skill_selection else None,
+        "needs_skill_selection": False,  # Student can browse ALL skills freely
+        "available_skills": None,
     }
 
 
@@ -408,6 +591,47 @@ def submit_skill_selection(
     }
 
 
+@router.post("/global-path")
+def set_global_path_preference(
+    request: schemas.GlobalPathPreferenceRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Set the global learning path preference for a Low-risk student."""
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Only students can set preferences")
+
+    # 1. Verify Overall Risk is LOW
+    risk_data = ml_service.predict_risk(db, current_user.reg_no)
+    if risk_data.get('risk_level') != 'Low':
+        raise HTTPException(status_code=400, detail="Only Overall Low-risk students can set a global preference.")
+    
+    # 2. Update Student Record and Clear Cache
+    student = _get_student(db, current_user)
+    student.learning_path_preference = request.choice
+    student.learning_sub_preference = request.sub_choice
+    student.overall_study_strategy = None  # Clear cache to force AI re-generation
+    db.commit()
+    
+    # 3. Refresh subject plans in background (takes ~15-20s as it calls Gemini for each)
+    background_tasks.add_task(generate_plans_for_student_task, current_user.reg_no)
+    
+    msg = f"Global preference set to {request.choice}"
+    if request.sub_choice:
+        msg += f" ({request.sub_choice})"
+    
+    return {"status": "success", "message": f"{msg}. Plans are being updated in the background."}
+
+def generate_plans_for_student_task(reg_no: str):
+    """Background task to generate plans for a student."""
+    db = SessionLocal()
+    try:
+        generate_plans_for_student(db, reg_no)
+    finally:
+        db.close()
+
+
 @router.get("/plan/resources/{subject_code}")
 def get_plan_resources(
     subject_code: str,
@@ -434,6 +658,14 @@ def get_plan_resources(
         plan = generate_plan_for_subject(db, student.reg_no, subject_code)
         if not plan:
             return {"plan": None, "resources": [], "progress": {"total": 0, "completed": 0, "percentage": 0}}
+    else:
+        # Check if plan risk is stale compared to live prediction
+        current_risk_data = ml_service.calculate_subject_risk(db, student.reg_no, subject_code)
+        current_risk = current_risk_data.get('risk_level', 'Low')
+        
+        if plan.risk_level != current_risk:
+            print(f"DEBUG: Risk discrepancy detected for {subject_code} ({plan.risk_level} vs {current_risk}). Regenerating plan.")
+            plan = generate_plan_for_subject(db, student.reg_no, subject_code)
 
     if plan.focus_type == "Pending Choice":
         return {
@@ -473,20 +705,55 @@ def get_plan_resources(
     query = query.filter(
         (LearningResource.dept == current_user.dept) | (LearningResource.dept == None)
     )
+    
+    # Filter by subject
+    if plan.focus_type != "Skill Development":
+        query = query.filter(
+            (LearningResource.subject_code == subject_code) | (LearningResource.subject_code == None)
+        )
 
     # Filter by language
     if effective_language and effective_language != "All":
-        query = query.filter(LearningResource.language == effective_language)
+        query = query.filter(
+            (LearningResource.language == effective_language) | 
+            (LearningResource.language == "English")
+        )
 
-    if plan.focus_type == "Skill Development" and plan.skill_category:
-        # Skill-based resources
-        query = query.filter(LearningResource.skill_category == plan.skill_category)
+    if plan.focus_type == "Skill Development":
+        # Return ALL skill resources — student can learn any skill freely
+        query = query.filter(LearningResource.skill_category != None)
     else:
-        # Academic resources — filter by resource level and units
+        # Academic resources — filter by resource level (cumulative: High=Basic, Medium=Basic+Inter, Low=all)
         if plan.resource_level:
-            query = query.filter(LearningResource.resource_level == plan.resource_level)
+            level_filter = {
+                "Basic": ["Basic"],
+                "Intermediate": ["Intermediate"],
+                "Advanced": ["Advanced"],
+            }
+            allowed_levels = level_filter.get(plan.resource_level, [plan.resource_level])
+            query = query.filter(
+                (LearningResource.resource_level.in_(allowed_levels)) |
+                (LearningResource.resource_level == None)
+            )
 
     resources = query.all()
+
+    # Dynamic YouTube Recommendations
+    subject = db.query(models.Subject).filter(
+        func.lower(models.Subject.subject_code) == subject_code.lower()
+    ).first()
+    subject_title = subject.subject_title if subject else subject_code
+    
+    plan_units = plan.units.split(",") if plan.units else ["1"]
+    dynamic_videos = fetch_youtube_recommendations(
+        db, 
+        student.reg_no, 
+        subject_code, 
+        subject_title,
+        plan_units, 
+        plan.risk_level, 
+        effective_language
+    )
 
     # In-memory filtering for unit matching and learning type preference
     filtered_resources = []
@@ -503,15 +770,19 @@ def get_plan_resources(
         if plan.focus_type == "Skill Development":
             should_include = True
         else:
-            # Academic plan — check unit overlap
+            # Academic plan
+            if getattr(res, 'subject_code', None) not in (subject_code, None):
+                continue
+                
+            # check unit overlap
             if plan.units and res.unit:
                 plan_units = set(plan.units.split(","))
                 res_units = set(res.unit.split(","))
                 if plan_units & res_units:
                     should_include = True
-            elif not res.unit:
+            else:
                 res_tags = (res.tags or "").lower()
-                if subject_code.lower() in res_tags or "general" in res_tags:
+                if getattr(res, 'subject_code', None) == subject_code or subject_code.lower() in res_tags or "general" in res_tags:
                     should_include = True
 
         if should_include:
@@ -526,6 +797,11 @@ def get_plan_resources(
 
     # Build response
     resource_list = []
+    
+    # Add dynamic videos first (since they are usually very relevant)
+    for dv in dynamic_videos:
+        resource_list.append(dv)
+
     for res in filtered_resources:
         resource_list.append({
             "resource_id": res.resource_id,
@@ -538,6 +814,7 @@ def get_plan_resources(
             "resource_level": res.resource_level,
             "skill_category": res.skill_category,
             "language": res.language,
+            "content": res.content,
             "is_completed": res.resource_id in completed_ids,
             "is_preferred_type": bool(preferred_res_types and res.type in preferred_res_types),
         })
@@ -582,6 +859,176 @@ def get_plan_resources(
             "total": all_plan_resources_count,
             "completed": completed_count,
             "percentage": round(percentage, 1)
+        }
+    }
+
+
+@router.get("/subject-resources/{subject_code}")
+def get_all_subject_resources(
+    subject_code: str,
+    language: str = "All",
+    risk_level: str = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all resources for a subject, optionally filtered by the student's risk level.
+    
+    Resource level mapping:
+    - Low risk   → Advanced resources (they're already performing well)
+    - Medium risk → Advanced + Intermediate + Beginner (broad access)
+    - High risk  → Beginner resources (foundational help first)
+    """
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Only students can access resources")
+
+    # Map risk level to allowed resource levels (cumulative access)
+    # High   → Basic only (foundational help)
+    # Medium → Basic + Intermediate
+    # Low    → Basic + Intermediate + Advanced (all content)
+    RISK_RESOURCE_MAP = {
+        "High":   ["Basic"],
+        "Medium": ["Basic", "Intermediate"],
+        "Low":    ["Basic", "Intermediate", "Advanced"],
+    }
+    allowed_levels = RISK_RESOURCE_MAP.get(risk_level, ["Basic", "Intermediate", "Advanced"])
+
+    # Build query for the subject (case-insensitive match)
+    query = db.query(LearningResource).filter(
+        (LearningResource.dept == current_user.dept) | (LearningResource.dept == None),
+        (func.lower(LearningResource.subject_code) == subject_code.lower()) | (LearningResource.subject_code == None)
+    )
+
+    if language and language != "All":
+        query = query.filter(
+            (LearningResource.language == language) | 
+            (LearningResource.language == "English")
+        )
+
+    resources = query.all()
+
+    # Get completed resource IDs for this student
+    student = _get_student(db, current_user)
+    completed_records = db.query(StudentLearningProgress).filter(
+        StudentLearningProgress.reg_no == student.reg_no,
+        StudentLearningProgress.completed == 1
+    ).all()
+    completed_ids = {r.resource_id for r in completed_records}
+
+    # Dynamic YouTube Recommendations
+    subject = db.query(models.Subject).filter(
+        func.lower(models.Subject.subject_code) == subject_code.lower()
+    ).first()
+    subject_title = subject.subject_title if subject else subject_code
+    
+    # Try to get or refresh the student's plan
+    plan = db.query(PersonalizedLearningPlan).filter(
+        PersonalizedLearningPlan.reg_no == student.reg_no,
+        PersonalizedLearningPlan.subject_code == subject_code,
+        PersonalizedLearningPlan.is_active == 1
+    ).first()
+    
+    current_risk_data = ml_service.calculate_subject_risk(db, student.reg_no, subject_code)
+    current_risk = current_risk_data.get('risk_level', 'Low')
+
+    if plan:
+        if plan.risk_level != current_risk:
+            print(f"DEBUG: Risk discrepancy detected for {subject_code} ({plan.risk_level} vs {current_risk}). Regenerating plan.")
+            plan = generate_plan_for_subject(db, student.reg_no, subject_code)
+    else:
+        # Auto-generate if no plan exists
+        plan = generate_plan_for_subject(db, student.reg_no, subject_code)
+    
+    plan_units = plan.units.split(",") if plan and plan.units else ["1"]
+    plan_units_set = set(plan_units)
+    
+    # 1. Dynamic YouTube Recommendations (First)
+    dynamic_videos = fetch_youtube_recommendations(
+        db, 
+        student.reg_no, 
+        subject_code, 
+        subject_title,
+        plan_units, 
+        current_risk, # Use live predicted risk
+        language if language != "All" else "English"
+    )
+
+    # Format the response
+    resource_list = []
+    
+    # Add dynamic videos first
+    for dv in dynamic_videos:
+        resource_list.append(dv)
+        
+    # 2. Add filtered static resources
+    for res in resources:
+        # If user has a plan with specific units, only show those units' resources
+        # If resource has no unit, include it by default
+        if not res.unit or not plan_units_set:
+            should_include = True
+        else:
+            res_units = set(res.unit.split(","))
+            should_include = bool(plan_units_set & res_units)
+
+        if not should_include:
+            continue
+        res_sc = (getattr(res, 'subject_code', None) or '').lower()
+        if res_sc and res_sc != subject_code.lower():
+            continue
+
+        # Filter by resource level based on risk (allow null resource_level through)
+        if allowed_levels and res.resource_level and res.resource_level not in allowed_levels:
+            continue
+            
+        resource_list.append({
+            "resource_id": res.resource_id,
+            "title": res.title,
+            "description": res.description,
+            "url": res.url,
+            "type": res.type,
+            "tags": res.tags,
+            "unit": res.unit,
+            "resource_level": res.resource_level,
+            "skill_category": res.skill_category,
+            "language": res.language,
+            "content": res.content,
+            "is_completed": res.resource_id in completed_ids,
+            "is_preferred_type": False, # Neutral outside plan context
+        })
+
+    # Parse practice schedule and weekly goals for the response
+    plan_data = None
+    if plan:
+        practice_data = None
+        goals_data = None
+        try:
+            if plan.practice_schedule:
+                practice_data = json.loads(plan.practice_schedule)
+            if plan.weekly_goals:
+                goals_data = json.loads(plan.weekly_goals)
+        except Exception:
+            pass
+            
+        plan_data = {
+            "id": plan.id,
+            "risk_level": plan.risk_level,
+            "focus_type": plan.focus_type,
+            "units": plan.units,
+            "skill_category": plan.skill_category,
+            "resource_level": plan.resource_level,
+            "latest_assessment": plan.latest_assessment,
+            "pending_choice": (plan.risk_level == "Low" and plan.focus_type == "Pending Choice"),
+            "available_skills": AVAILABLE_SKILLS if (plan.risk_level == "Low" and plan.focus_type == "Pending Choice") else None,
+            "practice_schedule": practice_data,
+            "weekly_goals": goals_data,
+        }
+
+    return {
+        "plan": plan_data,
+        "resources": resource_list,
+        "progress": {
+            "total": len(resource_list),
+            "completed": len([r for r in resource_list if r.get('is_completed', False)]),
+            "percentage": 0 # Not tracking plan progress here
         }
     }
 
@@ -648,7 +1095,8 @@ def get_overall_learning_view(
             ).count()
             total_resources = db.query(LearningResource).filter(
                 (LearningResource.dept == current_user.dept) | (LearningResource.dept == None),
-                LearningResource.resource_level == plan.resource_level
+                (LearningResource.subject_code == mark.subject_code) | (LearningResource.subject_code == None),
+                (LearningResource.subject_code != None) | (LearningResource.resource_level == plan.resource_level)
             ).count()
             progress = (completed_count / total_resources * 100) if total_resources > 0 else 0
 
@@ -677,55 +1125,39 @@ def get_overall_learning_view(
     else:
         overall_risk = "Low"
 
-    # Rule-based: Generate study strategy
-    total_subjects = len(subject_statuses)
-    high_subjects = [s for s in subject_statuses if s["risk_level"] == "High"]
-    medium_subjects = [s for s in subject_statuses if s["risk_level"] == "Medium"]
-    low_subjects = [s for s in subject_statuses if s["risk_level"] == "Low"]
-
-    study_strategy = {
-        "overall_risk": overall_risk,
-        "total_subjects": total_subjects,
-        "high_risk_count": len(high_subjects),
-        "medium_risk_count": len(medium_subjects),
-        "low_risk_count": len(low_subjects),
-        "time_allocation": {},
-        "recommendations": [],
-    }
-
-    # Time allocation ratios based on risk distribution
-    if len(high_subjects) > 0:
-        study_strategy["time_allocation"] = {
-            "high_risk_subjects": "50% of study time",
-            "medium_risk_subjects": "35% of study time",
-            "low_risk_subjects": "15% of study time",
-        }
-        study_strategy["recommendations"].append(
-            f"Focus primarily on {len(high_subjects)} high-risk subject(s): "
-            + ", ".join([s['subject_title'] for s in high_subjects])
-        )
-        study_strategy["recommendations"].append(
-            "Use daily practice plans for high-risk subjects"
-        )
-    elif len(medium_subjects) > 0:
-        study_strategy["time_allocation"] = {
-            "medium_risk_subjects": "60% of study time",
-            "low_risk_subjects": "40% of study time",
-        }
-        study_strategy["recommendations"].append(
-            f"Focus on improving {len(medium_subjects)} medium-risk subject(s): "
-            + ", ".join([s['subject_title'] for s in medium_subjects])
-        )
-        study_strategy["recommendations"].append(
-            "Follow weekly improvement plans for consistent progress"
-        )
+    # AI-powered: Fetch or generate study strategy
+    cached_strategy = getattr(student, 'overall_study_strategy', None)
+    if cached_strategy:
+        try:
+            study_strategy = json.loads(cached_strategy)
+            # Basic sanity check: ensure it has correct overall_risk
+            if study_strategy.get('overall_risk') != overall_risk:
+                # Risk changed, re-generate
+                study_strategy = gemini_service.generate_study_strategy(
+                    overall_risk, 
+                    subject_statuses,
+                    getattr(student, 'learning_path_preference', None)
+                )
+                student.overall_study_strategy = json.dumps(study_strategy)
+                db.commit()
+        except Exception:
+            # Parse error, re-generate
+            study_strategy = gemini_service.generate_study_strategy(
+                overall_risk, 
+                subject_statuses,
+                getattr(student, 'learning_path_preference', None)
+            )
+            student.overall_study_strategy = json.dumps(study_strategy)
+            db.commit()
     else:
-        study_strategy["time_allocation"] = {
-            "all_subjects": "Equal time across subjects",
-        }
-        study_strategy["recommendations"].append(
-            "Great performance! Focus on advanced topics and skill development"
+        # No cache, generate for first time
+        study_strategy = gemini_service.generate_study_strategy(
+            overall_risk, 
+            subject_statuses,
+            getattr(student, 'learning_path_preference', None)
         )
+        student.overall_study_strategy = json.dumps(study_strategy)
+        db.commit()
 
     study_strategy["recommendations"].append(
         f"Preferred learning style: {preferred_type.replace('_', ' ').title()}"
@@ -739,7 +1171,9 @@ def get_overall_learning_view(
         "priority_subjects": subject_statuses,
         "study_strategy": study_strategy,
         "total_progress": round(total_progress, 1),
-        "preferred_learning_type": preferred_type
+        "preferred_learning_type": preferred_type,
+        "learning_path_preference": getattr(student, 'learning_path_preference', None),
+        "learning_sub_preference": getattr(student, 'learning_sub_preference', None)
     }
 
 
@@ -1090,3 +1524,155 @@ def update_progress(
 
     db.commit()
     return {"status": "success"}
+
+
+# ─── YouTube Data API Integration ──────────────────────────────────────
+
+def fetch_youtube_videos(query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+    """Fetch videos from YouTube Data API v3 based on a search query with filtering."""
+    # Add negative filters to the query if not present
+    if " -" not in query:
+        query += " -experience -warning -shorts -vlog -update -notice -news"
+
+    params = {
+        "part": "snippet",
+        "q": query,
+        "type": "video",
+        "maxResults": max_results + 5, # Fetch extra for filtering
+        "key": YOUTUBE_API_KEY
+    }
+    
+    try:
+        response = requests.get(YOUTUBE_SEARCH_URL, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        videos = []
+        irrelevant_keywords = ["don't watch", "warning", "notice", "update", "experience", "vlog", "shorts", "news", "wrong"]
+        
+        for item in data.get("items", []):
+            if len(videos) >= max_results: break
+            
+            video_id = item["id"]["videoId"]
+            snippet = item["snippet"]
+            title = snippet["title"]
+            
+            # Post-fetch filtering
+            if any(kw in title.lower() for kw in irrelevant_keywords):
+                continue
+
+            videos.append({
+                "video_id": video_id,
+                "title": title,
+                "description": snippet["description"],
+                "thumbnail": snippet["thumbnails"]["high"]["url"],
+                "video_url": f"{WATCH_URL_BASE}{video_id}",
+                "embed_url": f"{EMBED_URL_BASE}{video_id}"
+            })
+        return videos
+    except Exception as e:
+        print(f"Error fetching YouTube videos: {e}")
+        return []
+
+@router.get("/learning-resources", response_model=schemas.LearningResourcesResponse)
+def get_youtube_learning_resources(
+    subject: str,
+    unit: str,
+    risk_level: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get personalized YouTube learning resources based on subject, unit, and risk level.
+    Follows EduPulse rule-based personalized learning logic.
+    """
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Only students can access personalized resources")
+
+    # 1. Generate search query based on risk level and functional requirements
+    # Requirement: subject + "Unit" + unit_number + "Tamil"
+    
+    # Determine Focus Type and Resource Level based on risk
+    focus_type = ""
+    resource_level = ""
+    
+    risk_level_upper = risk_level.upper()
+    
+    if risk_level_upper == "HIGH":
+        focus_type = "Academic Recovery"
+        resource_level = "Basic"
+    elif risk_level_upper == "MEDIUM":
+        focus_type = "Academic Improvement"
+        resource_level = "Intermediate"
+    else: # LOW RISK
+        focus_type = "Academic Enhancement"
+        resource_level = "Advanced"
+    
+    search_query = f'"{subject}" Unit {unit} engineering lecture university syllabus'
+    
+    # 2. Check if we already have recommendations for this student, subject, and unit
+    existing_recs = db.query(YouTubeRecommendation).filter(
+        YouTubeRecommendation.reg_no == current_user.reg_no,
+        YouTubeRecommendation.subject_code == subject,
+        YouTubeRecommendation.unit == unit
+    ).all()
+    
+    if existing_recs:
+        # Return existing recommendations
+        return {
+            "subject": subject,
+            "risk_level": risk_level,
+            "focus_type": focus_type,
+            "weak_unit": f"Unit {unit}",
+            "recommended_videos": [
+                {
+                    "video_id": rec.video_id,
+                    "title": rec.title,
+                    "thumbnail": rec.thumbnail,
+                    "video_url": rec.video_url
+                } for rec in existing_recs
+            ]
+        }
+    
+    # 3. Call YouTube API
+    videos = fetch_youtube_videos(search_query)
+    
+    # 4. Save results to database for history
+    saved_videos = []
+    for v in videos:
+        # Check if this video was already recommended for this student/subject to avoid duplicates in history
+        exists = db.query(YouTubeRecommendation).filter(
+            YouTubeRecommendation.reg_no == current_user.reg_no,
+            YouTubeRecommendation.subject_code == subject,
+            YouTubeRecommendation.video_id == v["video_id"]
+        ).first()
+        
+        if not exists:
+            db_rec = YouTubeRecommendation(
+                reg_no=current_user.reg_no,
+                subject_code=subject,
+                unit=unit,
+                video_id=v["video_id"],
+                title=v["title"],
+                thumbnail=v["thumbnail"],
+                video_url=v["video_url"],
+                risk_level=risk_level
+            )
+            db.add(db_rec)
+            
+        saved_videos.append({
+            "video_id": v["video_id"],
+            "title": v["title"],
+            "thumbnail": v["thumbnail"],
+            "video_url": v["video_url"]
+        })
+    
+    db.commit()
+    
+    return {
+        "subject": subject,
+        "risk_level": risk_level,
+        "focus_type": focus_type,
+        "weak_unit": f"Unit {unit}",
+        "recommended_videos": saved_videos
+    }
