@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Body, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Body, BackgroundTasks, Query
 from sqlalchemy.orm import Session
+from datetime import datetime
 from sqlalchemy import func
 from database import get_db, SessionLocal
 import models
@@ -249,7 +250,23 @@ def generate_plan_for_subject(db: Session, reg_no: str, subject_code: str) -> Op
         resource_level = "Intermediate"
     else:
         # LOW risk subject: check overall risk to see if they get a choice
-        overall_risk_data = ml_service.predict_risk(db, reg_no)
+        # Check db first
+        today = datetime.utcnow().date()
+        recent_prediction = db.query(models.RiskPrediction).filter(
+            models.RiskPrediction.reg_no == reg_no,
+        ).order_by(models.RiskPrediction.prediction_date.desc()).first()
+        
+        if recent_prediction and recent_prediction.prediction_date.date() == today:
+            print(f"DEBUG: Using cached risk prediction for {reg_no} in global path")
+            overall_risk_data = {
+                'risk_level': recent_prediction.risk_level,
+                'risk_score': recent_prediction.risk_score,
+                'reasons': recent_prediction.reasons
+            }
+        else:
+            print(f"DEBUG: Triggering live risk prediction for {reg_no} in global path")
+            overall_risk_data = ml_service.predict_risk(db, reg_no)
+            ml_service.save_prediction(db, reg_no, overall_risk_data)
         overall_risk = overall_risk_data.get('risk_level', 'Low')
         
         if overall_risk != "Low":
@@ -280,14 +297,16 @@ def generate_plan_for_subject(db: Session, reg_no: str, subject_code: str) -> Op
     practice_schedule = _generate_practice_schedule(risk_level, subject_code, units_str)
     weekly_goals = _generate_weekly_goals(risk_level, subject_code)
 
-    # Use Gemini if focus_type is set (not pending)
-    if focus_type != "Pending Choice":
+    # Use Gemini only for Academic paths (not Skill Development)
+    academic_paths = ["Academic Recovery", "Academic Improvement", "Academic Enhancement"]
+    if focus_type in academic_paths:
         ai_schedule, ai_goals = gemini_service.generate_subject_plan(
             subject_code, risk_level, focus_type
         )
         if ai_schedule and ai_goals:
             practice_schedule = json.dumps(ai_schedule)
             weekly_goals = json.dumps(ai_goals)
+    # Skill Development uses rule-based fallbacks (already set above)
 
     # Deactivate old plans for this student+subject
     db.query(PersonalizedLearningPlan).filter(
@@ -603,7 +622,23 @@ def set_global_path_preference(
         raise HTTPException(status_code=403, detail="Only students can set preferences")
 
     # 1. Verify Overall Risk is LOW
-    risk_data = ml_service.predict_risk(db, current_user.reg_no)
+    # Get Risk Level from DB instead of live calculation
+    from datetime import datetime
+    today = datetime.utcnow().date()
+    recent_prediction = db.query(models.RiskPrediction).filter(
+        models.RiskPrediction.reg_no == current_user.reg_no,
+    ).order_by(models.RiskPrediction.prediction_date.desc()).first()
+    
+    if recent_prediction and recent_prediction.prediction_date.date() == today:
+        print(f"DEBUG: Using cached risk prediction for {current_user.reg_no} in overall view")
+        risk_data = {
+            'risk_level': recent_prediction.risk_level,
+            'risk_score': recent_prediction.risk_score
+        }
+    else:
+        print(f"DEBUG: Triggering live risk prediction for {current_user.reg_no} in overall view")
+        risk_data = ml_service.predict_risk(db, current_user.reg_no)
+        ml_service.save_prediction(db, current_user.reg_no, risk_data)
     if risk_data.get('risk_level') != 'Low':
         raise HTTPException(status_code=400, detail="Only Overall Low-risk students can set a global preference.")
     
@@ -1125,39 +1160,59 @@ def get_overall_learning_view(
     else:
         overall_risk = "Low"
 
-    # AI-powered: Fetch or generate study strategy
-    cached_strategy = getattr(student, 'overall_study_strategy', None)
-    if cached_strategy:
-        try:
-            study_strategy = json.loads(cached_strategy)
-            # Basic sanity check: ensure it has correct overall_risk
-            if study_strategy.get('overall_risk') != overall_risk:
-                # Risk changed, re-generate
+    # Determine learning path preference
+    learning_path_pref = getattr(student, 'learning_path_preference', None)
+
+    # For Skill Development, use a static strategy (no Gemini needed)
+    if learning_path_pref == "Skill Development":
+        study_strategy = {
+            "overall_risk": overall_risk,
+            "recommendations": [
+                "Focus on your selected skill area to build industry-ready capabilities.",
+                "Complete all skill modules and related quizzes.",
+                "Practice consistently and track your weekly progress.",
+                "Apply skills in real-world mini-projects or tasks.",
+            ],
+            "time_allocation": {
+                "Skill Practice": "50%",
+                "Quizzes & Assessments": "30%",
+                "Review & Reflection": "20%"
+            }
+        }
+    else:
+        # Academic path — use AI-powered strategy (with caching)
+        cached_strategy = getattr(student, 'overall_study_strategy', None)
+        if cached_strategy:
+            try:
+                study_strategy = json.loads(cached_strategy)
+                # Basic sanity check: ensure it has correct overall_risk
+                if study_strategy.get('overall_risk') != overall_risk:
+                    # Risk changed, re-generate
+                    study_strategy = gemini_service.generate_study_strategy(
+                        overall_risk,
+                        subject_statuses,
+                        learning_path_pref
+                    )
+                    student.overall_study_strategy = json.dumps(study_strategy)
+                    db.commit()
+            except Exception:
+                # Parse error, re-generate
                 study_strategy = gemini_service.generate_study_strategy(
-                    overall_risk, 
+                    overall_risk,
                     subject_statuses,
-                    getattr(student, 'learning_path_preference', None)
+                    learning_path_pref
                 )
                 student.overall_study_strategy = json.dumps(study_strategy)
                 db.commit()
-        except Exception:
-            # Parse error, re-generate
+        else:
+            # No cache, generate for first time
             study_strategy = gemini_service.generate_study_strategy(
-                overall_risk, 
+                overall_risk,
                 subject_statuses,
-                getattr(student, 'learning_path_preference', None)
+                learning_path_pref
             )
             student.overall_study_strategy = json.dumps(study_strategy)
             db.commit()
-    else:
-        # No cache, generate for first time
-        study_strategy = gemini_service.generate_study_strategy(
-            overall_risk, 
-            subject_statuses,
-            getattr(student, 'learning_path_preference', None)
-        )
-        student.overall_study_strategy = json.dumps(study_strategy)
-        db.commit()
 
     study_strategy["recommendations"].append(
         f"Preferred learning style: {preferred_type.replace('_', ' ').title()}"
@@ -1408,9 +1463,21 @@ def get_learning_recommendations(
         risk_score = subject_risk['score']
         risk_basis = f"Subject Risk: {risk_level} ({subject_risk['basis']})"
     else:
-        risk_data = ml_service.predict_risk(db, student.reg_no)
-        risk_level = risk_data.get('risk_level', 'Low')
-        risk_basis = f"Overall Risk: {risk_level}"
+        # Check db first
+        today = datetime.utcnow().date()
+        recent_prediction = db.query(models.RiskPrediction).filter(
+            models.RiskPrediction.reg_no == student.reg_no,
+        ).order_by(models.RiskPrediction.prediction_date.desc()).first()
+        
+        if recent_prediction and recent_prediction.prediction_date.date() == today:
+            risk_level = recent_prediction.risk_level
+            risk_score = recent_prediction.risk_score
+            risk_basis = f"Overall Risk: {risk_level} (Cached)"
+        else:
+            risk_data = ml_service.predict_risk(db, student.reg_no)
+            ml_service.save_prediction(db, student.reg_no, risk_data)
+            risk_level = risk_data.get('risk_level', 'Low')
+            risk_basis = f"Overall Risk: {risk_level}"
 
         # Feature 3: Auto-map resources by current semester subjects
         semester_num = getattr(student, 'semester', None)
@@ -1676,3 +1743,209 @@ def get_youtube_learning_resources(
         "weak_unit": f"Unit {unit}",
         "recommended_videos": saved_videos
     }
+
+
+# ─── Skill Development — Gemini Content + YouTube + Quiz ─────────────────────
+
+SKILL_YOUTUBE_QUERIES = {
+    "Communication": "communication skills engineering students placement interview",
+    "Programming": "programming problem solving coding interview engineering",
+    "Aptitude": "aptitude quantitative reasoning placement preparation engineering",
+    "Critical Thinking": "critical thinking problem solving engineering students",
+    "Leadership": "leadership skills team management engineering college students",
+}
+
+
+def fetch_skill_youtube_videos(db: Session, skill_category: str, language: str = "English") -> list:
+    """
+    Fetch YouTube videos for a skill category — cached in YouTubeRecommendation with subject_code='SKILL'.
+    Returns list of {video_id, title, thumbnail, video_url}.
+    """
+    SKILL_SUBJECT_CODE = "SKILL"
+
+    # Check cache
+    cached = db.query(YouTubeRecommendation).filter(
+        YouTubeRecommendation.subject_code == SKILL_SUBJECT_CODE,
+        YouTubeRecommendation.unit == skill_category,
+        YouTubeRecommendation.language == language
+    ).all()
+
+    if cached:
+        return [
+            {
+                "video_id": c.video_id,
+                "title": c.title,
+                "thumbnail": c.thumbnail,
+                "video_url": c.video_url,
+            }
+            for c in cached
+        ]
+
+    if not YOUTUBE_API_KEY:
+        return []
+
+    base_query = SKILL_YOUTUBE_QUERIES.get(skill_category, f"{skill_category} skills engineering")
+    if language == "Tamil":
+        base_query += " in Tamil"
+
+    try:
+        params = {
+            "part": "snippet",
+            "q": base_query,
+            "key": YOUTUBE_API_KEY,
+            "maxResults": 8,
+            "type": "video",
+            "videoEmbeddable": "true",
+            "relevanceLanguage": "ta" if language == "Tamil" else "en",
+        }
+        resp = requests.get(YOUTUBE_SEARCH_URL, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+
+        results = []
+        irrelevant_kw = ["don't watch", "warning", "notice", "experience", "vlog", "shorts", "news", "wrong"]
+        for item in data.get("items", []):
+            if len(results) >= 5:
+                break
+            video_id = item["id"]["videoId"]
+            title = item["snippet"]["title"]
+            thumb_data = item["snippet"]["thumbnails"]
+            thumb = thumb_data.get("medium", thumb_data.get("default", {})).get("url", "")
+            video_url = f"https://www.youtube.com/watch?v={video_id}"
+
+            if any(kw in title.lower() for kw in irrelevant_kw):
+                continue
+
+            rec = YouTubeRecommendation(
+                reg_no="SKILL",
+                subject_code=SKILL_SUBJECT_CODE,
+                unit=skill_category,
+                video_id=video_id,
+                title=title,
+                thumbnail=thumb,
+                video_url=video_url,
+                risk_level="Low",
+                language=language,
+            )
+            db.add(rec)
+            results.append({
+                "video_id": video_id,
+                "title": title,
+                "thumbnail": thumb,
+                "video_url": video_url,
+            })
+
+        db.commit()
+        return results
+
+    except Exception as e:
+        print(f"ERROR fetching skill YouTube videos for {skill_category}: {e}")
+        return []
+
+
+@router.get("/skill-content")
+def get_skill_content(
+    skill: str,
+    language: str = "English",
+    sub_category: str = Query(None),
+    level: str = Query("Beginner"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns Gemini-generated learning content + YouTube videos + AI quiz for a given skill.
+    Supports sub-categories (e.g. Python) and levels (Basic/Medium/Advanced) for Programming.
+    """
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Only students can access skill content")
+
+    VALID_SKILLS = ["Communication", "Programming", "Aptitude", "Critical Thinking", "Leadership"]
+    if skill not in VALID_SKILLS:
+        raise HTTPException(status_code=400, detail=f"Invalid skill. Choose from: {VALID_SKILLS}")
+
+    # ── 0. Find or Create Persistent Resource for Progress Tracking ──
+    # Include level and sub_category in the URL to separate different courses
+    resource_url = f"ai_skill://{skill}/{level}"
+    if sub_category:
+        resource_url += f"/{sub_category}"
+        
+    resource = db.query(LearningResource).filter(
+        LearningResource.url == resource_url,
+        LearningResource.language == language
+    ).first()
+
+    if not resource:
+        resource = LearningResource(
+            title=f"{skill} {sub_category or ''} ({level}) Master Guide".strip(),
+            description=f"AI-generated technical roadmap for {skill}.",
+            url=resource_url,
+            type="course",
+            skill_category=skill,
+            language=language,
+            tags=f"skill,ai,{skill.lower()},{level.lower()}"
+        )
+        db.add(resource)
+        db.commit()
+        db.refresh(resource)
+
+    # ── 1. Check Cache ────────────────────────────────────────────────────────
+    if resource.content:
+        try:
+            cached_data = json.loads(resource.content)
+            # Fetch YouTube videos dynamically even if content is cached
+            video_query = skill
+            if sub_category: video_query = f"{sub_category} {level}"
+            youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
+            
+            cached_data["youtube_videos"] = youtube_videos
+            cached_data["resource_id"] = resource.resource_id # Inject real ID
+            
+            # Backwards compatibility for old cached data missing project details
+            if "project" in cached_data:
+                topic = sub_category or skill
+                if "objective" not in cached_data["project"]:
+                    cached_data["project"]["objective"] = f"Apply {level} {topic} principles to build a functional prototype."
+                if "tech_stack" not in cached_data["project"]:
+                    cached_data["project"]["tech_stack"] = [topic, "Standard Library"]
+                    
+            return cached_data
+        except Exception as e:
+            print(f"DEBUG: Cache corrupted for {resource_url}, regenerating... Error: {e}")
+            pass
+
+    # ── 2. Generate Gemini Content ────────────────────────────────────────────
+    content_data = gemini_service.generate_skill_content(skill, sub_category=sub_category, level=level)
+    summary = content_data.get("summary", "")
+    sections = content_data.get("sections", [])
+    project = content_data.get("project", {})
+
+    # ── 3. YouTube Videos ─────────────
+    video_query = skill
+    if sub_category: video_query = f"{sub_category} {level}"
+    youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
+
+    # ── 4. Generate Quiz ──────────────────────────────────────────────────────
+    quiz_questions = gemini_service.generate_skill_quiz(skill, difficulty=level, sub_category=sub_category)
+
+    # ── 5. Save to Cache ──────────────────────────────────────────────────────
+    final_response = {
+        "resource_id": resource.resource_id,
+        "skill": skill,
+        "sub_category": sub_category,
+        "level": level,
+        "summary": summary,
+        "sections": sections,
+        "project": project,
+        "youtube_videos": youtube_videos,
+        "quiz": quiz_questions,
+    }
+
+    # Save everything EXCEPT youtube videos to the cache (since YT has its own cache logic)
+    cache_payload = final_response.copy()
+    cache_payload.pop("youtube_videos", None)
+    
+    resource.content = json.dumps(cache_payload)
+    db.commit()
+
+    return final_response
+

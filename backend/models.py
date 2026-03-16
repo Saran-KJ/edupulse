@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, DateTime, Enum, Text
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, DateTime, Enum, Text, BigInteger
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 import enum
@@ -173,7 +173,7 @@ class Attendance(Base):
     __tablename__ = "attendance"
     
     id = Column(Integer, primary_key=True, index=True)
-    reg_no = Column(String(20), nullable=False)
+    reg_no = Column(String(20), nullable=False, index=True)
     student_name = Column(String(100), nullable=False)
     date = Column(Date, nullable=False)
     status = Column(String(10), nullable=False) # 'Present', 'Absent'
@@ -205,7 +205,7 @@ class ActivityParticipation(Base):
     
     participation_id = Column(Integer, primary_key=True, index=True)
     activity_id = Column(Integer, ForeignKey("activities.activity_id"))
-    reg_no = Column(String(50), nullable=False) # Changed from student_id
+    reg_no = Column(String(50), nullable=False, index=True) # Changed from student_id
     role = Column(String(100))  # Participant, Winner, Organizer, etc.
     achievement = Column(String(200))  # 1st Place, 2nd Place, etc.
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -217,7 +217,7 @@ class RiskPrediction(Base):
     __tablename__ = "risk_predictions"
     
     prediction_id = Column(Integer, primary_key=True, index=True)
-    reg_no = Column(String(50), nullable=False) # Changed from student_id
+    reg_no = Column(String(50), nullable=False, index=True) # Changed from student_id
     risk_level = Column(Enum(RiskLevelEnum), nullable=False)
     risk_score = Column(Float, nullable=False)
     attendance_percentage = Column(Float)
@@ -283,7 +283,7 @@ class FacultyAllocation(Base):
 class LearningResource(Base):
     __tablename__ = "learning_resources"
     
-    resource_id = Column(Integer, primary_key=True, index=True)
+    resource_id = Column(BigInteger, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     url = Column(String(500), nullable=False)
@@ -302,9 +302,9 @@ class LearningResource(Base):
 class StudentLearningProgress(Base):
     __tablename__ = "student_learning_progress"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     reg_no = Column(String(50), nullable=False)
-    resource_id = Column(Integer, ForeignKey("learning_resources.resource_id"), nullable=False)
+    resource_id = Column(BigInteger, ForeignKey("learning_resources.resource_id"), nullable=False)
     completed = Column(Integer, default=0) # 0 = false, 1 = true
     completed_at = Column(DateTime, default=datetime.utcnow)
     
@@ -352,10 +352,10 @@ class PasswordReset(Base):
 class YouTubeRecommendation(Base):
     __tablename__ = "youtube_recommendations"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     reg_no = Column(String(50), nullable=False, index=True)
     subject_code = Column(String(20), nullable=False)
-    unit = Column(String(10), nullable=True)
+    unit = Column(String(50), nullable=True)
     video_id = Column(String(100), nullable=False)
     title = Column(String(255), nullable=False)
     thumbnail = Column(String(500), nullable=True)
@@ -367,7 +367,7 @@ class YouTubeRecommendation(Base):
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     subject = Column(String(100), nullable=False)
     unit = Column(Integer, nullable=False)
     question = Column(Text, nullable=False)
@@ -382,7 +382,7 @@ class QuizQuestion(Base):
 class StudentQuizAttempt(Base):
     __tablename__ = "student_quiz_attempts"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     reg_no = Column(String(50), nullable=False, index=True)
     subject = Column(String(100), nullable=False)
     unit = Column(Integer, nullable=False)

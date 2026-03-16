@@ -21,30 +21,27 @@ async def predict_student_risk(
         # Get prediction
         prediction_result = ml_service.predict_risk(db, request.reg_no)
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"Student not found or error predicting: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Error predicting risk for {request.reg_no}: {str(e)}")
     
     # Save prediction to database
-    db_prediction = models.RiskPrediction(
-        reg_no=request.reg_no,
-        risk_level=prediction_result['risk_level'],
-        risk_score=prediction_result['risk_score'],
-        attendance_percentage=prediction_result['attendance_percentage'],
-        internal_avg=prediction_result['internal_avg'],
-        external_gpa=prediction_result['external_gpa'],
-        activity_count=prediction_result['activity_count'],
-        backlog_count=prediction_result['backlog_count'],
-        reasons=prediction_result['reasons']
-    )
-    db.add(db_prediction)
-    db.commit()
-    db.refresh(db_prediction)
+    db_prediction = ml_service.save_prediction(db, request.reg_no, prediction_result)
+    if not db_prediction:
+         raise HTTPException(status_code=500, detail="Failed to save risk prediction")
     
     # Clear overall study strategy cache for the student
-    from routes.learning_routes import _get_student, generate_plans_for_student_task
-    student = _get_student(db, current_user)
-    if student:
-        student.overall_study_strategy = None
-        db.commit()
+    from routes.learning_routes import _get_student_by_reg, generate_plans_for_student_task, STUDENT_MODEL_MAP
+    
+    # Find student across all depts to clear cache
+    student = None
+    for dept in STUDENT_MODEL_MAP.keys():
+        try:
+            student = _get_student_by_reg(db, request.reg_no, dept)
+            if student:
+                student.overall_study_strategy = None
+                db.commit()
+                break # Found and cleared
+        except:
+            continue
 
     # Trigger personalized learning plan regeneration in background
     background_tasks.add_task(generate_plans_for_student_task, request.reg_no)
@@ -65,30 +62,27 @@ async def predict_student_risk_get(
         # Get prediction
         prediction_result = ml_service.predict_risk(db, reg_no)
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"Student not found or error predicting: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Error predicting risk for {reg_no}: {str(e)}")
     
     # Save prediction to database
-    db_prediction = models.RiskPrediction(
-        reg_no=reg_no,
-        risk_level=prediction_result['risk_level'],
-        risk_score=prediction_result['risk_score'],
-        attendance_percentage=prediction_result['attendance_percentage'],
-        internal_avg=prediction_result['internal_avg'],
-        external_gpa=prediction_result['external_gpa'],
-        activity_count=prediction_result['activity_count'],
-        backlog_count=prediction_result['backlog_count'],
-        reasons=prediction_result['reasons']
-    )
-    db.add(db_prediction)
-    db.commit()
-    db.refresh(db_prediction)
+    db_prediction = ml_service.save_prediction(db, reg_no, prediction_result)
+    if not db_prediction:
+         raise HTTPException(status_code=500, detail="Failed to save risk prediction")
     
     # Clear overall study strategy cache for the student
-    from routes.learning_routes import _get_student, generate_plans_for_student_task
-    student = _get_student(db, current_user)
-    if student:
-        student.overall_study_strategy = None
-        db.commit()
+    from routes.learning_routes import _get_student_by_reg, generate_plans_for_student_task, STUDENT_MODEL_MAP
+    
+    # Find student across all depts to clear cache
+    student = None
+    for dept in STUDENT_MODEL_MAP.keys():
+        try:
+            student = _get_student_by_reg(db, reg_no, dept)
+            if student:
+                student.overall_study_strategy = None
+                db.commit()
+                break
+        except:
+            continue
 
     # Trigger personalized learning plan regeneration in background
     background_tasks.add_task(generate_plans_for_student_task, reg_no)

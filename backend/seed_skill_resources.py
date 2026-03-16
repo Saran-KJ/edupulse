@@ -10,12 +10,16 @@ from models import LearningResource, StudentLearningProgress, Base
 
 # ─── Helper to build a resource content blob ─────────────────────────────────
 
-def make_content(sections: list, quiz: list) -> str:
+def make_content(sections: list, quiz: list, project: dict = None) -> str:
     """
     sections: [{"title": str, "body": str}, ...]
     quiz: [{"question": str, "options": [str,str,str,str], "answer": int (0-indexed)}, ...]
+    project: {"title": str, "objective": str, "description": str, "tech_stack": [str, ...]}
     """
-    return json.dumps({"sections": sections, "quiz": quiz}, ensure_ascii=False)
+    out = {"sections": sections, "quiz": quiz}
+    if project:
+        out["project"] = project
+    return json.dumps(out, ensure_ascii=False)
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  COMMUNICATION  (3 topics, each with quiz)
@@ -302,6 +306,94 @@ apt_advanced = make_content(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
+# APTITUDE — Data Interpretation 
+# ═════════════════════════════════════════════════════════════════════════════
+
+apt_di_tables = make_content(
+    sections=[
+        {"title": "Introduction to Table Charts",
+         "body": "Table charts present data in a tabular format with rows and columns. They are the most common type of Data Interpretation questions.\n\n📊 Key skills required:\n• Reading the intersection of a row and column accurately.\n• Understanding the units (e.g., thousands, millions, %).\n• Quick calculation of averages, ratios, and percentages.\n\n✅ Pro Tip: Don't calculate exact decimal values unless the options are very close. Use approximations to save time."},
+        {"title": "How to Approach Table DI Questions",
+         "body": "1. Skim the title and units FIRST.\n2. Look at the column for the required condition (e.g., Year 2020).\n3. Look at the row for the required category (e.g., Company A).\n4. Extract the value at the intersection.\n5. Re-read the question carefully to see if it asks for a ratio, average, or percentage increase.\n\n📝 Formula Reminder:\n• % Increase = [(Final - Initial) / Initial] × 100\n• Average = Sum of elements / Number of elements"},
+        {"title": "Example Scenario",
+         "body": "Table shows sales of Company XYZ (in ₹ Lakhs) over 4 years:\nYear  | Product A | Product B\n2018  | 45       | 60\n2019  | 55       | 75\n2020  | 80       | 90\n2021  | 100      | 120\n\nQ: What is the % increase in sales of Product A from 2018 to 2021?\nInitial (2018) = 45\nFinal (2021) = 100\nIncrease = 100 - 45 = 55\n% Increase = (55 / 45) × 100 ≈ 122.2%"},
+    ],
+    quiz=[
+        {"question": "In the example, what is the average sales of Product B for all 4 years?",
+         "options": ["86.25", "80.5", "75", "90"],
+         "answer": 0}, 
+        {"question": "In 2020, what is the ratio of sales of Product A to Product B?",
+         "options": ["8:9", "9:8", "4:5", "3:4"],
+         "answer": 0},
+        {"question": "Which product had the highest percentage jump in a single year?",
+         "options": ["Product A in 2020", "Product A in 2021", "Product B in 2019", "Product B in 2021"],
+         "answer": 0},
+        {"question": "To save time in Data Interpretation, one should:",
+         "options": ["Read the table backwards", "Use approx values when options allow", "Guess randomly", "Calculate up to 4 decimal places"],
+         "answer": 1},
+        {"question": "What does a % decrease formula look like?",
+         "options": ["[(Initial - Final)/Initial] × 100", "Final/Initial", "Initial/Final", "[(Final - Initial)/Final] × 100"],
+         "answer": 0},
+    ]
+)
+
+apt_di_bar_charts = make_content(
+    sections=[
+        {"title": "Introduction to Bar Charts",
+         "body": "Bar charts use rectangular bars to show comparisons among different categories. The length or height of the bar is proportional to the value it represents.\n\n📊 Types of Bar Charts:\n• Simple Bar Chart: Single bar for each category.\n• Multiple Bar Chart: Two or more bars side by side for a given category (e.g., Imports and Exports for a year).\n• Stacked Bar Chart: Bars are divided into sub-parts indicating different components."},
+        {"title": "Analyzing Multiple Bar Charts",
+         "body": "Multiple bar charts are very common. \n\n✅ Focus points:\n• Differentiate the bars clearly (legend). E.g., Blue = Income, Green = Expenditure.\n• Look at the Y-axis scale carefully. Is the gap between lines 10 units or 20 units?\n• Profit = Income - Expenditure\n• Profit % = (Profit / Expenditure) × 100"},
+        {"title": "Example Scenario",
+         "body": "Bar graph shows Income and Expenditure (in ₹ Crores).\nYear | Income | Expend\n2015 |   50   |   40\n2016 |   60   |   50\n2017 |   80   |   60\n\nQ: In which year was the profit maximum?\nProfit = Income - Expend\n2015: 50 - 40 = 10\n2016: 60 - 50 = 10\n2017: 80 - 60 = 20\n\n✅ Answer: 2017 had maximum profit of 20 Cr."},
+    ],
+    quiz=[
+        {"question": "Using the example scenario, what is the Profit % for the year 2015?",
+         "options": ["20%", "25%", "30%", "10%"],
+         "answer": 1},
+        {"question": "In a Bar Chart, what does the length or height of the bar represent?",
+         "options": ["The category name", "A fixed constant", "Proportional value", "The time period only"],
+         "answer": 2},
+        {"question": "What is the average income over all 3 years in the example?",
+         "options": ["60", "63.33", "65", "80"],
+         "answer": 1},
+        {"question": "How do you calculate Profit?",
+         "options": ["Income + Expenditure", "Expenditure - Income", "Income - Expenditure", "Income / Expenditure"],
+         "answer": 2},
+        {"question": "When reading the Y-axis scale, what is the most important step?",
+         "options": ["Ignoring the numbers", "Finding the largest bar", "Checking the unit interval/gap", "Looking for colors"],
+         "answer": 2},
+    ]
+)
+
+apt_di_pie_charts = make_content(
+    sections=[
+        {"title": "Introduction to Pie Charts",
+         "body": "A Pie Chart is a circular statistical graphic divided into slices to illustrate numerical proportion.\n\n📊 Angles vs Percentages:\n• A full circle is 360°.\n• A full circle is 100%.\n• Conversion: 1% = 3.6°\n\n✅ If a slice represents 20% of the total, the angle of that slice is 20 × 3.6° = 72°."},
+        {"title": "Handling Degree-based Pie Charts",
+         "body": "Sometimes data is only given in degrees.\n\n📝 Example: Total expenses = ₹90,000.\nFood = 120°, Rent = 90°, Clothing = 60°, Savings = 90°.\n\nQ: How much is spent on Food?\nSolution:\nAmount = (Central Angle / 360°) × Total\nFood = (120/360) × 90000 = (1/3) × 90000 = ₹30,000.\n\n✅ To find the ratio of Food to Rent, just take the ratio of their angles: 120° : 90° = 4 : 3."},
+        {"title": "Multi-Pie Charts",
+         "body": "Often, you will be given TWO pie charts.\nE.g., Pie Chart 1 = Total Students in different courses.\nPie Chart 2 = Female Students in those courses.\n\n✅ Trick: To find Male Students in a course, do not just subtract percentages!\nYou must first find the absolute number: \n(Total students in course) - (Female students in course)."},
+    ],
+    quiz=[
+        {"question": "In a pie chart, 100% is equivalent to how many degrees?",
+         "options": ["100°", "180°", "270°", "360°"],
+         "answer": 3},
+        {"question": "If a sector represents 25%, what is its central angle?",
+         "options": ["90°", "75°", "120°", "100°"],
+         "answer": 0},
+        {"question": "If Total Expenses = ₹36,000 and Rent is 80°, what is the amount spent on rent?",
+         "options": ["₹8,000", "₹10,000", "₹12,000", "₹7,200"],
+         "answer": 0},
+        {"question": "To find the ratio of two categories in the same pie chart, what is the fastest way?",
+         "options": ["Find absolute values first", "Ratio of their percentages or degrees", "Can't be determined", "Guessing"],
+         "answer": 1},
+        {"question": "If you have two pie charts (Total vs Female students), how do you find Males in a course?",
+         "options": ["Subtract Female % from Total %", "Find absolute Total, subtract absolute Female", "Add them", "Divide by 2"],
+         "answer": 1},
+    ]
+)
+
+# ═════════════════════════════════════════════════════════════════════════════
 # CRITICAL THINKING (single level, full course)
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -490,6 +582,44 @@ SKILL_RESOURCES = [
         resource_level="Advanced",
         language="English",
         content=apt_advanced,
+    ),
+
+    # ── APTITUDE — DATA INTERPRETATION ──────────────────────────────────────
+    LearningResource(
+        title="Data Interpretation — Table Charts",
+        description="Master tabular data interpretation, fast calculation techniques, and ratios.",
+        url="internal",
+        type="course",
+        tags="skill,aptitude,di,tables",
+        dept=None,
+        skill_category="Aptitude",
+        resource_level="Intermediate",
+        language="English",
+        content=apt_di_tables,
+    ),
+    LearningResource(
+        title="Data Interpretation — Bar Charts",
+        description="Analyze simple, multiple, and stacked bar charts for competitive exams.",
+        url="internal",
+        type="course",
+        tags="skill,aptitude,di,bar-charts",
+        dept=None,
+        skill_category="Aptitude",
+        resource_level="Intermediate",
+        language="English",
+        content=apt_di_bar_charts,
+    ),
+    LearningResource(
+        title="Data Interpretation — Pie Charts",
+        description="Learn pie chart tricks, degree to percentage conversions, and multi-pie charts.",
+        url="internal",
+        type="course",
+        tags="skill,aptitude,di,pie-charts",
+        dept=None,
+        skill_category="Aptitude",
+        resource_level="Advanced",
+        language="English",
+        content=apt_di_pie_charts,
     ),
 
     # ── CRITICAL THINKING ───────────────────────────────────────────────────

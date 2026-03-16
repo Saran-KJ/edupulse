@@ -275,12 +275,27 @@ async def get_my_dashboard_stats(
     
     # Get LIVE risk prediction (calculate based on current data)
     from ml_service import ml_service
+    from datetime import datetime, timedelta
     try:
-        print(f"DEBUG: Triggering live risk prediction for {reg_no}")
-        live_prediction = ml_service.predict_risk(db, reg_no)
-        print(f"DEBUG: Prediction result: {live_prediction}")
-        risk_level = live_prediction['risk_level']
-        risk_score = live_prediction['risk_score']
+        # Check cache first: Is there a risk prediction from today?
+        today = datetime.utcnow().date()
+        recent_prediction = db.query(models.RiskPrediction).filter(
+            models.RiskPrediction.reg_no == reg_no,
+        ).order_by(models.RiskPrediction.prediction_date.desc()).first()
+
+        if recent_prediction and recent_prediction.prediction_date.date() == today:
+            print(f"DEBUG: Using cached risk prediction for {reg_no}")
+            risk_level = recent_prediction.risk_level
+            risk_score = recent_prediction.risk_score / 100.0  # It was stored as 0-100, we need it as 0-1 below
+        else:
+            print(f"DEBUG: Triggering live risk prediction for {reg_no}")
+            live_prediction = ml_service.predict_risk(db, reg_no)
+            print(f"DEBUG: Prediction result: {live_prediction}")
+            risk_level = live_prediction['risk_level']
+            risk_score = live_prediction['risk_score'] / 100.0
+            
+            # Save it so we don't calculate it again today
+            ml_service.save_prediction(db, reg_no, live_prediction)
     except Exception as e:
         print(f"Error calculating risk: {e}")
         import traceback
