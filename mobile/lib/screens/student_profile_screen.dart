@@ -12,17 +12,26 @@ class StudentProfileScreen extends StatefulWidget {
 class _StudentProfileScreenState extends State<StudentProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController(); // Readonly mostly
   final _addressController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _parentNameController = TextEditingController();
-  final _parentPhoneController = TextEditingController();
-  final _emergencyPhoneController = TextEditingController();
-
-  String? _selectedBloodGroup;
-  final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+  // New Personal Details
+  final _dobController = TextEditingController();
+  final _bloodGroupController = TextEditingController();
+  final _religionController = TextEditingController();
+  final _casteController = TextEditingController();
+  final _abcIdController = TextEditingController();
+  final _aadharNoController = TextEditingController();
+  // Family Details
+  final _fatherNameController = TextEditingController();
+  final _fatherOccController = TextEditingController();
+  final _fatherPhoneController = TextEditingController();
+  final _motherNameController = TextEditingController();
+  final _motherOccController = TextEditingController();
+  final _motherPhoneController = TextEditingController();
+  final _guardianNameController = TextEditingController();
+  final _guardianOccController = TextEditingController();
+  final _guardianPhoneController = TextEditingController();
 
   Map<String, dynamic>? _studentData;
   Map<String, dynamic>? _dashboardStats; // For summary cards
@@ -122,9 +131,23 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   void _populateControllers() {
     _phoneController.text = _studentData?['phone'] ?? '';
-    _emailController.text = _studentData?['email'] ?? ''; // Added email to student model?
+    _emailController.text = _studentData?['email'] ?? ''; 
     _addressController.text = _studentData?['address'] ?? '';
-    // Add other fields if available in backend model
+    _dobController.text = _studentData?['dob'] ?? '';
+    _bloodGroupController.text = _studentData?['blood_group'] ?? '';
+    _religionController.text = _studentData?['religion'] ?? '';
+    _casteController.text = _studentData?['caste'] ?? '';
+    _abcIdController.text = _studentData?['abc_id'] ?? '';
+    _aadharNoController.text = _studentData?['aadhar_no'] ?? '';
+    _fatherNameController.text = _studentData?['father_name'] ?? '';
+    _fatherOccController.text = _studentData?['father_occupation'] ?? '';
+    _fatherPhoneController.text = _studentData?['father_phone'] ?? '';
+    _motherNameController.text = _studentData?['mother_name'] ?? '';
+    _motherOccController.text = _studentData?['mother_occupation'] ?? '';
+    _motherPhoneController.text = _studentData?['mother_phone'] ?? '';
+    _guardianNameController.text = _studentData?['guardian_name'] ?? '';
+    _guardianOccController.text = _studentData?['guardian_occupation'] ?? '';
+    _guardianPhoneController.text = _studentData?['guardian_phone'] ?? '';
   }
 
   @override
@@ -132,10 +155,21 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _addressController.dispose();
-    _cityController.dispose();
-    _parentNameController.dispose();
-    _parentPhoneController.dispose();
-    _emergencyPhoneController.dispose();
+    _dobController.dispose();
+    _bloodGroupController.dispose();
+    _religionController.dispose();
+    _casteController.dispose();
+    _abcIdController.dispose();
+    _aadharNoController.dispose();
+    _fatherNameController.dispose();
+    _fatherOccController.dispose();
+    _fatherPhoneController.dispose();
+    _motherNameController.dispose();
+    _motherOccController.dispose();
+    _motherPhoneController.dispose();
+    _guardianNameController.dispose();
+    _guardianOccController.dispose();
+    _guardianPhoneController.dispose();
     super.dispose();
   }
 
@@ -145,7 +179,23 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       try {
         final profileData = {
           'phone': _phoneController.text,
+          'email': _emailController.text,
           'address': _addressController.text,
+          'dob': _dobController.text,
+          'blood_group': _bloodGroupController.text,
+          'religion': _religionController.text,
+          'caste': _casteController.text,
+          'abc_id': _abcIdController.text,
+          'aadhar_no': _aadharNoController.text,
+          'father_name': _fatherNameController.text,
+          'father_occupation': _fatherOccController.text,
+          'father_phone': _fatherPhoneController.text,
+          'mother_name': _motherNameController.text,
+          'mother_occupation': _motherOccController.text,
+          'mother_phone': _motherPhoneController.text,
+          'guardian_name': _guardianNameController.text,
+          'guardian_occupation': _guardianOccController.text,
+          'guardian_phone': _guardianPhoneController.text,
         };
 
         if (widget.regNo != null) {
@@ -201,25 +251,67 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 24),
-                    _buildSectionTitle('Contact Details'),
-                    _buildTextField('Phone Number', _phoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
-                    _buildTextField('Email', _emailController, enabled: false), // Email usually immutable
-                    _buildTextField('Address', _addressController, enabled: _canEdit, maxLines: 3),
-                    const SizedBox(height: 24),
-                    _buildAcademicSummary(),
-                     const SizedBox(height: 32),
-                    if (_canEdit) _buildActionButtons(),
-                    const SizedBox(height: 20),
-                  ],
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(),
+                            const SizedBox(height: 32),
+                            
+                            _buildSectionTitle('Academic Details (Read-Only)'),
+                            _buildReadOnlyField('Semester', _studentData?['semester']?.toString() ?? ''),
+                            _buildReadOnlyField('Year', _studentData?['year']?.toString() ?? ''),
+                            _buildReadOnlyField('Section', _studentData?['section'] ?? ''),
+                            const SizedBox(height: 32),
+                            
+                            _buildSectionTitle('Personal Details'),
+                            _buildTextField('Date of Birth (YYYY-MM-DD)', _dobController, enabled: _canEdit),
+                            _buildTextField('Blood Group', _bloodGroupController, enabled: _canEdit),
+                            _buildTextField('Religion', _religionController, enabled: _canEdit),
+                            _buildTextField('Caste', _casteController, enabled: _canEdit),
+                            _buildTextField('ABC ID', _abcIdController, enabled: _canEdit, keyboardType: TextInputType.number),
+                            _buildTextField('Aadhar Number', _aadharNoController, enabled: _canEdit, keyboardType: TextInputType.number),
+                            const SizedBox(height: 32),
+                            
+                            _buildSectionTitle('Contact Details'),
+                            _buildTextField('Phone Number', _phoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
+                            _buildTextField('Email', _emailController, enabled: _canEdit, keyboardType: TextInputType.emailAddress),
+                            _buildTextField('Address', _addressController, enabled: _canEdit, maxLines: 3),
+                            const SizedBox(height: 32),
+                            
+                            _buildSectionTitle('Family Details'),
+                            _buildTextField('Father Name', _fatherNameController, enabled: _canEdit),
+                            _buildTextField('Father Occupation', _fatherOccController, enabled: _canEdit),
+                            _buildTextField('Father Phone', _fatherPhoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
+                            const SizedBox(height: 16),
+                            _buildTextField('Mother Name', _motherNameController, enabled: _canEdit),
+                            _buildTextField('Mother Occupation', _motherOccController, enabled: _canEdit),
+                            _buildTextField('Mother Phone', _motherPhoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
+                            const SizedBox(height: 16),
+                            _buildTextField('Guardian Name (Optional)', _guardianNameController, enabled: _canEdit, optional: true),
+                            _buildTextField('Guardian Occupation (Optional)', _guardianOccController, enabled: _canEdit, optional: true),
+                            _buildTextField('Guardian Phone (Optional)', _guardianPhoneController, enabled: _canEdit, keyboardType: TextInputType.phone, optional: true),
+                            const SizedBox(height: 32),
+                            
+                            _buildAcademicSummary(),
+                            const SizedBox(height: 40),
+                            if (_canEdit) _buildActionButtons(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -272,7 +364,24 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool enabled = true, TextInputType? keyboardType, int maxLines = 1}) {
+  Widget _buildReadOnlyField(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextFormField(
+        initialValue: value,
+        enabled: false,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          filled: true,
+          fillColor: Colors.grey.shade200,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, {bool enabled = true, TextInputType? keyboardType, int maxLines = 1, bool optional = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
@@ -287,7 +396,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           filled: !enabled,
           fillColor: !enabled ? Colors.grey.shade100 : null,
         ),
-        validator: (v) => enabled && v?.isEmpty == true ? 'Required' : null,
+        validator: (v) => enabled && !optional && v?.isEmpty == true ? 'Required' : null,
       ),
     );
   }

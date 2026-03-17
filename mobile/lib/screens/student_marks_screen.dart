@@ -206,65 +206,75 @@ class _StudentMarksScreenState extends State<StudentMarksScreen> {
                                         ),
                                         const Divider(height: 24),
                                         
-                                        // Assignments
-                                        _buildSectionHeader('Assignments'),
-                                        const SizedBox(height: 8),
-                                        _buildMarkRow('Assignment 1', mark.assignment1),
-                                        _buildMarkRow('Assignment 2', mark.assignment2),
-                                        _buildMarkRow('Assignment 3', mark.assignment3),
-                                        _buildMarkRow('Assignment 4', mark.assignment4),
-                                        _buildMarkRow('Assignment 5', mark.assignment5),
-                                        
-                                        const SizedBox(height: 12),
-                                        
-                                        // Slip Tests
-                                        _buildSectionHeader('Slip Tests'),
-                                        const SizedBox(height: 8),
-                                        _buildMarkRow('Slip Test 1', mark.slipTest1),
-                                        _buildMarkRow('Slip Test 2', mark.slipTest2),
-                                        _buildMarkRow('Slip Test 3', mark.slipTest3),
-                                        _buildMarkRow('Slip Test 4', mark.slipTest4),
-                                        
-                                        const SizedBox(height: 12),
-                                        
-                                        // CIA & Model
-                                        _buildSectionHeader('Continuous Internal Assessment'),
-                                        const SizedBox(height: 8),
-                                        _buildMarkRow('CIA 1', mark.cia1),
-                                        _buildMarkRow('CIA 2', mark.cia2),
-                                        _buildMarkRow('Model Exam', mark.model),
+                                        // Internal Marks logic
+                                        if (mark.assignment1 != null || mark.slipTest1 != null || mark.cia1 != null) ...[
+                                          // Assignments
+                                          _buildSectionHeader('Assignments'),
+                                          const SizedBox(height: 8),
+                                          _buildMarkRow('Assignment 1', mark.assignment1),
+                                          _buildMarkRow('Assignment 2', mark.assignment2),
+                                          _buildMarkRow('Assignment 3', mark.assignment3),
+                                          _buildMarkRow('Assignment 4', mark.assignment4),
+                                          _buildMarkRow('Assignment 5', mark.assignment5),
+                                          
+                                          const SizedBox(height: 12),
+                                          
+                                          // Slip Tests
+                                          _buildSectionHeader('Slip Tests'),
+                                          const SizedBox(height: 8),
+                                          _buildMarkRow('Slip Test 1', mark.slipTest1),
+                                          _buildMarkRow('Slip Test 2', mark.slipTest2),
+                                          _buildMarkRow('Slip Test 3', mark.slipTest3),
+                                          _buildMarkRow('Slip Test 4', mark.slipTest4),
+                                          
+                                          const SizedBox(height: 12),
+                                          
+                                          // CIA & Model
+                                          _buildSectionHeader('Continuous Internal Assessment'),
+                                          const SizedBox(height: 8),
+                                          _buildMarkRow('CIA 1', mark.cia1),
+                                          _buildMarkRow('CIA 2', mark.cia2),
+                                          _buildMarkRow('Model Exam', mark.model),
+                                        ],
                                         
                                         const Divider(height: 24),
-                                        if (mark.universityResultGrade != null) ...[
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              const Text(
-                                                'University Grade',
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            const Text(
+                                              'University Grade',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: (mark.universityResultGrade != null && mark.universityResultGrade!.trim().isNotEmpty)
+                                                    ? (mark.universityResultGrade == 'AREAR' || mark.universityResultGrade == 'U' 
+                                                        ? Colors.red.shade100 
+                                                        : Colors.green.shade100)
+                                                    : Colors.grey.shade200,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                (mark.universityResultGrade != null && mark.universityResultGrade!.trim().isNotEmpty)
+                                                    ? mark.universityResultGrade!
+                                                    : 'Awaiting',
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
+                                                  color: (mark.universityResultGrade != null && mark.universityResultGrade!.trim().isNotEmpty)
+                                                      ? (mark.universityResultGrade == 'AREAR' || mark.universityResultGrade == 'U'
+                                                          ? Colors.red.shade800
+                                                          : Colors.green.shade800)
+                                                      : Colors.grey.shade700,
                                                 ),
                                               ),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green.shade100,
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  mark.universityResultGrade!,
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.green.shade800,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
+                                            ),
+                                          ],
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -288,7 +298,7 @@ class _StudentMarksScreenState extends State<StudentMarksScreen> {
     );
   }
 
-  Widget _buildMarkRow(String label, double value) {
+  Widget _buildMarkRow(String label, int? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -299,7 +309,7 @@ class _StudentMarksScreenState extends State<StudentMarksScreen> {
             style: const TextStyle(fontSize: 14),
           ),
           Text(
-            value.toStringAsFixed(1),
+            value != null ? value.toString() : '-',
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,

@@ -174,6 +174,13 @@ class _ViewMarksScreenState extends State<ViewMarksScreen> {
   }
 
   Widget _buildMarkDetail(Mark mark) {
+    bool hasInternalMarks = !(
+      (mark.assignment1 ?? 0) == 0 && (mark.assignment2 ?? 0) == 0 && (mark.assignment3 ?? 0) == 0 && 
+      (mark.assignment4 ?? 0) == 0 && (mark.assignment5 ?? 0) == 0 &&
+      (mark.slipTest1 ?? 0) == 0 && (mark.slipTest2 ?? 0) == 0 && (mark.slipTest3 ?? 0) == 0 && (mark.slipTest4 ?? 0) == 0 &&
+      (mark.cia1 ?? 0) == 0 && (mark.cia2 ?? 0) == 0 && (mark.model ?? 0) == 0
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -192,25 +199,26 @@ class _ViewMarksScreenState extends State<ViewMarksScreen> {
               color: Colors.blue,
             ),
           ),
-          const SizedBox(height: 12),
-          const SizedBox(height: 12),
-          _buildScoreRow('Assignments', [
-            mark.assignment1, mark.assignment2, mark.assignment3, 
-            mark.assignment4, mark.assignment5
-          ], 'A'),
-          const SizedBox(height: 8),
-          _buildScoreRow('Slip Tests', [
-            mark.slipTest1, mark.slipTest2, mark.slipTest3, mark.slipTest4
-          ], 'ST'),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _buildSingleScore('CIA 1', mark.cia1)),
-              Expanded(child: _buildSingleScore('CIA 2', mark.cia2)),
-              Expanded(child: _buildSingleScore('Model', mark.model)),
-            ],
-          ),
-          const SizedBox(height: 8),
+          if (hasInternalMarks) ...[
+            const SizedBox(height: 12),
+            _buildScoreRow('Assignments', [
+              mark.assignment1 ?? 0, mark.assignment2 ?? 0, mark.assignment3 ?? 0, 
+              mark.assignment4 ?? 0, mark.assignment5 ?? 0
+            ], 'A'),
+            const SizedBox(height: 8),
+            _buildScoreRow('Slip Tests', [
+              mark.slipTest1 ?? 0, mark.slipTest2 ?? 0, mark.slipTest3 ?? 0, mark.slipTest4 ?? 0
+            ], 'ST'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: _buildSingleScore('CIA 1', mark.cia1 ?? 0)),
+                Expanded(child: _buildSingleScore('CIA 2', mark.cia2 ?? 0)),
+                Expanded(child: _buildSingleScore('Model', mark.model ?? 0)),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           if (mark.universityResultGrade != null)
             Container(
               padding: const EdgeInsets.all(8),
@@ -244,7 +252,7 @@ class _ViewMarksScreenState extends State<ViewMarksScreen> {
     );
   }
 
-  Widget _buildScoreRow(String label, List<double> scores, String prefix) {
+  Widget _buildScoreRow(String label, List<int> scores, String prefix) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -256,8 +264,8 @@ class _ViewMarksScreenState extends State<ViewMarksScreen> {
           children: scores.asMap().entries.map((entry) {
             final index = entry.key + 1;
             final score = entry.value;
-            // Format: remove trailing .0 if integer
-            final formattedScore = score % 1 == 0 ? score.toInt().toString() : score.toString();
+            // Format to string
+            final formattedScore = score.toString();
             
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -283,8 +291,8 @@ class _ViewMarksScreenState extends State<ViewMarksScreen> {
     );
   }
 
-  Widget _buildSingleScore(String label, double score) {
-    final formattedScore = score % 1 == 0 ? score.toInt().toString() : score.toString();
+  Widget _buildSingleScore(String label, int score) {
+    final formattedScore = score.toString();
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

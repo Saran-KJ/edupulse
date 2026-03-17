@@ -10,6 +10,8 @@ import 'class_advisor_dashboard_screen.dart';
 import 'parent_dashboard_screen.dart';
 import 'faculty_dashboard_screen.dart';
 import 'hod_dashboard_screen.dart';
+import 'principal_dashboard_screen.dart';
+import 'vice_principal_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? selectedRole;
@@ -51,17 +53,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         Widget targetScreen;
-        if (user.role == 'student') {
+        final role = user.role.toLowerCase();
+        if (role == 'student') {
           targetScreen = const StudentDashboardScreen();
-        } else if (user.role == 'admin') {
+        } else if (role == 'admin') {
           targetScreen = const AdminDashboardScreen();
-        } else if (user.role == 'parent') {
+        } else if (role == 'parent') {
           targetScreen = const ParentDashboardScreen();
-        } else if (user.role == 'faculty') {
-          // Faculty get their own dedicated dashboard
+        } else if (role == 'faculty') {
           targetScreen = const FacultyDashboardScreen();
-        } else if (user.role == 'hod') {
+        } else if (role == 'hod') {
           targetScreen = const HODDashboardScreen();
+        } else if (role == 'principal') {
+          targetScreen = const PrincipalDashboardScreen();
+        } else if (role == 'vice_principal') {
+          targetScreen = const VicePrincipalDashboardScreen();
         } else {
           // Other roles (Class Advisor, etc.) go to Class Advisor Dashboard
           targetScreen = const ClassAdvisorDashboardScreen();
@@ -146,10 +152,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ],
                           ),
-                          child: Icon(
-                            Icons.school,
-                            size: 50,
-                            color: Colors.blue.shade800,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(50),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 20),

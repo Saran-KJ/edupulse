@@ -5,8 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../models/models.dart';
 import '../models/mark_models.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import '../models/attendance_models.dart';
 
 class ApiService {
@@ -69,8 +67,7 @@ class ApiService {
     String name,
     String email,
     String password,
-    String role,
-    String secretPin, {
+    String role, {
     String? regNo,
     String? phone,
     String? dept,
@@ -90,7 +87,6 @@ class ApiService {
         'email': email,
         'password': password,
         'role': role,
-        'secret_pin': secretPin,
         'reg_no': regNo,
         'phone': phone,
         'dept': dept,
@@ -110,19 +106,49 @@ class ApiService {
     }
   }
 
-  Future<void> forgotPassword(String email, String secretPin, String newPassword) async {
+  Future<void> requestPasswordResetOtp(String email) async {
     final response = await http.post(
-      Uri.parse('${AppConfig.baseUrl}${AppConfig.apiVersion}/auth/forgot-password'),
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.apiVersion}/auth/forgot-password/request-otp'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'email': email}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = json.decode(response.body)['detail'] ?? 'Failed to request OTP';
+      throw Exception(error);
+    }
+  }
+
+  Future<void> verifyPasswordResetOtp(String email, String otp) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.apiVersion}/auth/forgot-password/verify-otp'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'email': email,
-        'secret_pin': secretPin,
+        'otp': otp,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final error = json.decode(response.body)['detail'] ?? 'Invalid or expired OTP';
+      throw Exception(error);
+    }
+  }
+
+  Future<void> confirmPasswordReset(String email, String otp, String newPassword) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.apiVersion}/auth/forgot-password/confirm'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'email': email,
+        'otp': otp,
         'new_password': newPassword,
       }),
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Password reset failed: ${response.body}');
+      final error = json.decode(response.body)['detail'] ?? 'Password reset failed';
+      throw Exception(error);
     }
   }
 
@@ -195,12 +221,22 @@ class ApiService {
     }
   }
 
+
+
   // Marks
-  Future<List<Mark>> getStudentMarks(String regNo, {int? semester}) async {
+  Future<List<Mark>> getStudentMarks(String regNo, {int? semester, bool? excludeLabs}) async {
     var uri = Uri.parse('${AppConfig.baseUrl}${AppConfig.marksEndpoint}/student/$regNo');
     
+    final queryParams = <String, String>{};
     if (semester != null) {
-      uri = uri.replace(queryParameters: {'semester': semester.toString()});
+      queryParams['semester'] = semester.toString();
+    }
+    if (excludeLabs == true) {
+      queryParams['exclude_labs'] = 'true';
+    }
+
+    if (queryParams.isNotEmpty) {
+      uri = uri.replace(queryParameters: queryParams);
     }
 
     final response = await http.get(uri, headers: _getHeaders());
@@ -210,6 +246,18 @@ class ApiService {
       return data.map((json) => Mark.fromJson(json)).toList();
     } else {
       throw Exception('Failed to load marks');
+    }
+  }
+
+  Future<Map<String, dynamic>> getCgpa(String regNo) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.marksEndpoint}/cgpa/$regNo'),
+      headers: _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load CGPA: ${response.body}');
     }
   }
 
@@ -441,6 +489,31 @@ class ApiService {
     }
   }
 
+  // Academic Alerts
+  Future<List<dynamic>> getStudentAlerts() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.studentsEndpoint}/me/alerts'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load student alerts: ${response.body}');
+    }
+  }
+
+  Future<void> markAlertRead(int alertId) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.studentsEndpoint}/me/alerts/$alertId/read'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to mark alert as read: ${response.body}');
+    }
+  }
+
   Future<Map<String, dynamic>> getParentDashboardStats() async {
     final response = await http.get(
       Uri.parse('${AppConfig.baseUrl}${AppConfig.studentsEndpoint}/parent/dashboard-stats'),
@@ -462,7 +535,15 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final responseData = json.decode(response.body);
+      
+      // If the email was changed, the backend issues a new token. Save it!
+      if (responseData.containsKey('access_token')) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', responseData['access_token']);
+      }
+      
+      return responseData;
     } else {
       throw Exception('Failed to update profile: ${response.body}');
     }
@@ -841,6 +922,169 @@ class ApiService {
     }
   }
 
+  // Personalized Learning Plan APIs
+  Future<Map<String, dynamic>> getPersonalizedPlan(String subjectCode) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/learning/plan/$subjectCode'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load personalized plan');
+    }
+  }
+
+  Future<Map<String, dynamic>> submitLowRiskChoice(String subjectCode, String choice) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/learning/low-risk-choice'),
+      headers: _getHeaders(),
+      body: json.encode({
+        'subject_code': subjectCode,
+        'choice': choice,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to submit choice: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> submitSkillSelection(String subjectCode, String skill) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/learning/skill-selection'),
+      headers: _getHeaders(),
+      body: json.encode({
+        'subject_code': subjectCode,
+        'skill': skill,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to submit skill: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> submitGlobalPathPreference(String choice, {String? subChoice}) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/learning/global-path'),
+      headers: _getHeaders(),
+      body: json.encode({
+        'choice': choice,
+        'sub_choice': subChoice,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to submit global path: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getPlanResources(String subjectCode, {String language = "English"}) async {
+    Uri uri = Uri.parse('${AppConfig.baseUrl}/api/learning/plan/resources/$subjectCode');
+    if (language != "English") {
+      uri = uri.replace(queryParameters: {'language': language});
+    }
+
+    final response = await http.get(uri, headers: _getHeaders());
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load plan resources');
+    }
+  }
+
+  Future<Map<String, dynamic>> getAllSubjectResources(String subjectCode, {String language = "All", String? riskLevel}) async {
+    Uri uri = Uri.parse('${AppConfig.baseUrl}/api/learning/subject-resources/$subjectCode');
+    final queryParams = <String, String>{};
+    if (language != "All") queryParams['language'] = language;
+    if (riskLevel != null) queryParams['risk_level'] = riskLevel;
+    if (queryParams.isNotEmpty) {
+      uri = uri.replace(queryParameters: queryParams);
+    }
+
+    final response = await http.get(uri, headers: _getHeaders());
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load subject resources');
+    }
+  }
+
+  // Overall Learning View
+  Future<Map<String, dynamic>> getOverallLearningView() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/learning/overall-view'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load overall learning view');
+    }
+  }
+
+  // Set Preferred Learning Type
+  Future<Map<String, dynamic>> setPreferredLearningType(String learningType) async {
+    final response = await http.patch(
+      Uri.parse('${AppConfig.baseUrl}/api/learning/preferred-type'),
+      headers: _getHeaders(),
+      body: json.encode({'learning_type': learningType}),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to set learning type: ${response.body}');
+    }
+  }
+
+  // Advisor Student Progress Monitoring
+  Future<Map<String, dynamic>> getAdvisorStudentProgress(String dept, int year, String section) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/learning/advisor/students/$dept/$year/$section'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load advisor student progress');
+    }
+  }
+
+  // High Risk Alerts
+  Future<Map<String, dynamic>> getHighRiskAlerts({String? dept, int? year, String? section}) async {
+    Uri uri = Uri.parse('${AppConfig.baseUrl}/api/learning/alerts');
+    Map<String, String> queryParams = {};
+    if (dept != null) queryParams['dept'] = dept;
+    if (year != null) queryParams['year'] = year.toString();
+    if (section != null) queryParams['section'] = section;
+    if (queryParams.isNotEmpty) {
+      uri = uri.replace(queryParameters: queryParams);
+    }
+
+    final response = await http.get(uri, headers: _getHeaders());
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load high risk alerts');
+    }
+  }
+
+
+
   Future<StudentActivitySubmission> reviewSubmission(int submissionId, String status, {String? comment}) async {
     final response = await http.put(
       Uri.parse('${AppConfig.baseUrl}${AppConfig.activitiesEndpoint}/submissions/$submissionId/review'),
@@ -909,9 +1153,15 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getDepartmentSubjects(String dept, int semester) async {
+  Future<List<Map<String, dynamic>>> getSubjects({String? semester, String? category}) async {
+    final params = <String, String>{};
+    if (semester != null) params['semester'] = semester;
+    if (category != null) params['category'] = category;
+
+    final uri = Uri.parse('${AppConfig.baseUrl}/api/subjects').replace(queryParameters: params.isNotEmpty ? params : null);
+
     final response = await http.get(
-      Uri.parse('${AppConfig.baseUrl}/api/hod/subjects/$dept/$semester'),
+      uri,
       headers: _getHeaders(),
     );
 
@@ -938,4 +1188,123 @@ class ApiService {
       throw Exception('Failed to load faculty allocations: ${response.body}');
     }
   }
+
+  // Quiz Methods
+  Future<Map<String, dynamic>> getQuiz({
+    required String subjectName,
+    required int unitNumber,
+    required String riskLevel,
+  }) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/quiz/generate')
+          .replace(queryParameters: {
+        'subject_name': subjectName,
+        'unit_number': unitNumber.toString(),
+        'risk_level': riskLevel,
+      }),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load quiz: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> submitQuiz(QuizAttemptSubmission submission) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/quiz/submit'),
+      headers: _getHeaders(),
+      body: json.encode(submission.toJson()),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to submit quiz: ${response.body}');
+    }
+  }
+
+  /// Fetch Gemini-generated content + YouTube videos + AI quiz for a skill category.
+  Future<Map<String, dynamic>> getSkillContent(
+    String skillCategory, {
+    String language = 'English',
+    String? subCategory,
+    String? level,
+  }) async {
+    final queryParams = {
+      'skill': skillCategory,
+      'language': language,
+    };
+    if (subCategory != null) queryParams['sub_category'] = subCategory;
+    if (level != null) queryParams['level'] = level;
+
+    final uri = Uri.parse('${AppConfig.baseUrl}/api/learning/skill-content')
+        .replace(queryParameters: queryParams);
+
+    final response = await http.get(uri, headers: _getHeaders());
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load skill content: ${response.body}');
+    }
+  }
+
+  // --- Faculty Quiz Scheduling ---
+
+  Future<Map<String, dynamic>> scheduleQuiz(Map<String, dynamic> data) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/faculty/schedule-quiz'),
+      headers: _getHeaders(),
+      body: json.encode(data),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to schedule quiz: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getScheduledQuizzes() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/faculty/scheduled-quizzes'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load scheduled quizzes: ${response.body}');
+    }
+  }
+
+  Future<void> closeScheduledQuiz(int quizId) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.baseUrl}/api/faculty/scheduled-quizzes/$quizId/close'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to close quiz: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getPendingQuizzes() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/students/me/pending-quizzes'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load pending quizzes: ${response.body}');
+    }
+  }
 }
+// 

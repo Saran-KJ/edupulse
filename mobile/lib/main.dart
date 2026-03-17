@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'config/app_config.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/vice_principal_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,7 @@ class EduPulseApp extends StatelessWidget {
         '/splash': (context) => const SplashScreen(),
         '/role-selection': (context) => const RoleSelectionScreen(),
         '/login': (context) => const LoginScreen(),
+        '/vice-principal': (context) => const VicePrincipalDashboardScreen(),
       },
     );
   }
@@ -102,14 +104,6 @@ class _SplashScreenState extends State<SplashScreen> {
                   fontSize: 42,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'AI-Powered Student Management',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white70,
                 ),
               ),
               const SizedBox(height: 50),

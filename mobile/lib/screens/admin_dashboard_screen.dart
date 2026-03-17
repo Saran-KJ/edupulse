@@ -578,7 +578,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
-    final pinController = TextEditingController();
     
     final formKey = GlobalKey<FormState>(); // Added form key
     
@@ -647,10 +646,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       ),
                       obscureText: obscurePassword,
                     ),
-                  TextField(
-                    controller: pinController,
-                    decoration: const InputDecoration(labelText: 'Secret PIN'),
-                  ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     value: selectedRole,
@@ -736,7 +731,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       'email': emailController.text,
                       'password': passwordController.text,
                       'role': _mapRoleToBackend(selectedRole),
-                      'secret_pin': pinController.text,
                       'dept': selectedDept,
                       'section': selectedSection,
                       'year': selectedYear,

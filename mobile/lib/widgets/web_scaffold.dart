@@ -168,10 +168,10 @@ class _WebScaffoldState extends State<WebScaffold> {
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    Icons.school,
-                    size: _isExpanded ? 28 : 24,
-                    color: Colors.blue.shade800,
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: _isExpanded ? 28 : 24,
+                    height: _isExpanded ? 28 : 24,
                   ),
                 ),
                 if (_isExpanded) ...[
@@ -263,6 +263,7 @@ class _WebScaffoldState extends State<WebScaffold> {
                   Expanded(
                     child: Text(
                       item.label,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.white70,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -304,10 +305,10 @@ class _WebScaffoldState extends State<WebScaffold> {
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        Icons.school,
-                        size: 28,
-                        color: Colors.blue.shade800,
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 28,
+                        height: 28,
                       ),
                     ),
                     const SizedBox(width: 16),

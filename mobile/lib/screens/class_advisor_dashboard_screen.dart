@@ -10,6 +10,7 @@ import 'attendance_entry_screen.dart';
 import 'analytics_screen.dart';
 import 'activity_management_screen.dart';
 import 'activity_approval_screen.dart';
+import 'advisor_student_learning_screen.dart';
 
 void _handleLogout(BuildContext context) async {
   final prefs = await SharedPreferences.getInstance();
@@ -531,6 +532,17 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
       Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityApprovalScreen(dept: user!.dept!, year: int.tryParse(user.year ?? '') ?? 1, section: user.section ?? 'A')));
     }},
     {'label': 'View Reports & Analytics', 'icon': Icons.analytics, 'color': Colors.indigo, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()))},
+    {'label': 'Learning Progress', 'icon': Icons.auto_stories, 'color': Colors.deepPurple, 'onTap': () {
+      if (user?.dept == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid department')));
+        return;
+      }
+      Navigator.push(context, MaterialPageRoute(builder: (_) => AdvisorStudentLearningScreen(
+        dept: user!.dept!,
+        year: int.tryParse(user.year ?? '') ?? 1,
+        section: user.section ?? 'A',
+      )));
+    }},
     ];
 
     final crossAxisCount = ResponsiveBreakpoints.getCrossAxisCount(

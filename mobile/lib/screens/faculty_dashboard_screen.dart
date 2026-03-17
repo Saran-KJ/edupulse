@@ -585,9 +585,220 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 );
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.quiz),
+              title: const Text('Schedule AI Quiz'),
+              subtitle: const Text('For Early Risk Prediction'),
+              onTap: () {
+                Navigator.pop(context);
+                _showScheduleQuizDialog(context, dept, year, section, subjectCode, subjectTitle);
+              },
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showScheduleQuizDialog(BuildContext context, String dept, int year, String section, String subjectCode, String subjectTitle) {
+    int selectedUnit = 1;
+    String selectedAssessment = 'CIA';
+    DateTime selectedStartDate = DateTime.now();
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 7));
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Schedule Early Risk Quiz'),
+              content: isLoading 
+                ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()))
+                : SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('$subjectTitle', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text('$dept - Year $year $section', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                        const SizedBox(height: 20),
+                        
+                        const Text('Target Assessment:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: selectedAssessment,
+                          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                          items: ['Slip Test', 'CIA', 'Model Exam'].map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) => setState(() => selectedAssessment = newValue!),
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        const Text('Syllabus Unit:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<int>(
+                          value: selectedUnit,
+                          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                          items: [1, 2, 3, 4, 5].map((int value) {
+                            return DropdownMenuItem<int>(
+                              value: value,
+                              child: Text('Unit $value'),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) => setState(() => selectedUnit = newValue!),
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        const Text('Start Time:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () async {
+                            final DateTime? pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: selectedStartDate,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime.now().add(const Duration(days: 90)),
+                            );
+                            if (pickedDate != null) {
+                              if (!context.mounted) return;
+                              final TimeOfDay? pickedTime = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay.fromDateTime(selectedStartDate),
+                              );
+                              if (pickedTime != null) {
+                                setState(() {
+                                  selectedStartDate = DateTime(
+                                    pickedDate.year,
+                                    pickedDate.month,
+                                    pickedDate.day,
+                                    pickedTime.hour,
+                                    pickedTime.minute,
+                                  );
+                                  // Ensure deadline is after start date
+                                  if (selectedDate.isBefore(selectedStartDate)) {
+                                    selectedDate = selectedStartDate.add(const Duration(hours: 1));
+                                  }
+                                });
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${selectedStartDate.day}/${selectedStartDate.month}/${selectedStartDate.year} ${TimeOfDay.fromDateTime(selectedStartDate).format(context)}',
+                                ),
+                                const Icon(Icons.access_time, size: 18),
+                              ],
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        const Text('Deadline:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () async {
+                            final DateTime? pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate,
+                              firstDate: selectedStartDate, // Deadline cannot be before start date
+                              lastDate: DateTime.now().add(const Duration(days: 90)),
+                            );
+                            if (pickedDate != null) {
+                              if (!context.mounted) return;
+                              final TimeOfDay? pickedTime = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay.fromDateTime(selectedDate),
+                              );
+                              if (pickedTime != null) {
+                                setState(() {
+                                  selectedDate = DateTime(
+                                    pickedDate.year,
+                                    pickedDate.month,
+                                    pickedDate.day,
+                                    pickedTime.hour,
+                                    pickedTime.minute,
+                                  );
+                                });
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${selectedDate.day}/${selectedDate.month}/${selectedDate.year} ${TimeOfDay.fromDateTime(selectedDate).format(context)}',
+                                ),
+                                const Icon(Icons.calendar_today, size: 18),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : () async {
+                    setState(() => isLoading = true);
+                    try {
+                      await ApiService().scheduleQuiz({
+                        'dept': dept,
+                        'year': year,
+                        'section': section,
+                        'subject_code': subjectCode,
+                        'subject_title': subjectTitle,
+                        'unit_number': selectedUnit,
+                        'assessment_type': selectedAssessment,
+                        'start_time': selectedStartDate.toIso8601String(),
+                        'deadline': selectedDate.toIso8601String(),
+                      });
+                      
+                      if (context.mounted) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Quiz scheduled successfully!'), backgroundColor: Colors.green),
+                        );
+                      }
+                    } catch (e) {
+                      setState(() => isLoading = false);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Schedule'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

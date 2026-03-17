@@ -16,7 +16,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _secretPinController = TextEditingController();
   final _regNoController = TextEditingController();
   final _phoneController = TextEditingController();
   final _sectionController = TextEditingController();
@@ -31,7 +30,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _obscurePin = true;
 
   bool get _isStudent => widget.selectedRole == 'Student' || widget.selectedRole == null;
   bool get _isClassAdvisor => widget.selectedRole == 'Class Advisor';
@@ -44,7 +42,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _secretPinController.dispose();
     _regNoController.dispose();
     _phoneController.dispose();
     _sectionController.dispose();
@@ -80,7 +77,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _emailController.text.trim(),
         _passwordController.text,
         backendRole,
-        _secretPinController.text,
         regNo: _regNoController.text.trim(),
         phone: _phoneController.text.trim(),
         dept: _selectedDept,
@@ -635,46 +631,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Please confirm your password';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          // Secret PIN Field
-                          TextFormField(
-                            controller: _secretPinController,
-                            decoration: InputDecoration(
-                              labelText: 'Secret PIN (for password recovery)',
-                              prefixIcon: const Icon(Icons.pin_outlined),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePin
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscurePin = !_obscurePin;
-                                  });
-                                },
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
-                              helperText: '4-6 digit PIN for password recovery',
-                            ),
-                            obscureText: _obscurePin,
-                            keyboardType: TextInputType.number,
-                            maxLength: 6,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a secret PIN';
-                              }
-                              if (value.length < 4) {
-                                return 'PIN must be at least 4 digits';
                               }
                               return null;
                             },

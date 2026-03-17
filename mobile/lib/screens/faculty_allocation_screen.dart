@@ -22,7 +22,10 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
   final _formKey = GlobalKey<FormState>();
   int _selectedYear = 1;
   String _selectedSection = 'A';
-  int _selectedSemester = 1;
+  String _selectedSemester = 'I';
+  
+  // Mapping for semester display
+  static const List<String> _semesters = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
   
   bool _isLoading = false;
   List<Map<String, dynamic>> _subjects = [];
@@ -44,7 +47,7 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
     setState(() => _isLoading = true);
     try {
       final faculty = await ApiService().getDepartmentFaculty(widget.dept);
-      final subjects = await ApiService().getDepartmentSubjects(widget.dept, _selectedSemester);
+      final subjects = await ApiService().getSubjects(semester: _selectedSemester);
       final allocations = await ApiService().getAllocations(widget.dept, _selectedYear, _selectedSection);
       
       setState(() {
@@ -141,12 +144,18 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
   }
 
   void _showManualAllocationDialog() {
-    final titleController = TextEditingController();
-    final codeController = TextEditingController();
+    String dialogSemester = 'I';
+    List<Map<String, dynamic>> dialogSubjects = [];
+    Map<String, dynamic>? selectedSubject;
     User? selectedFaculty;
     int dialogYear = _selectedYear;
     String dialogSection = _selectedSection;
     final formKey = GlobalKey<FormState>();
+
+    // Load subjects for default semester
+    ApiService().getSubjects(semester: dialogSemester).then((subs) {
+      dialogSubjects = subs;
+    });
 
     showDialog(
       context: context,
@@ -159,16 +168,32 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   TextFormField(
-                    controller: titleController,
-                    decoration: const InputDecoration(labelText: 'Subject Title', border: OutlineInputBorder()),
-                    validator: (v) => v?.isNotEmpty == true ? null : 'Required',
+                  DropdownButtonFormField<String>(
+                    value: dialogSemester,
+                    decoration: const InputDecoration(labelText: 'Semester', border: OutlineInputBorder()),
+                    items: _semesters.map((s) => DropdownMenuItem(value: s, child: Text('Semester $s'))).toList(),
+                    onChanged: (val) async {
+                      if (val != null) {
+                        setState(() {
+                          dialogSemester = val;
+                          selectedSubject = null;
+                        });
+                        final subs = await ApiService().getSubjects(semester: val);
+                        setState(() => dialogSubjects = subs);
+                      }
+                    },
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: codeController,
-                    decoration: const InputDecoration(labelText: 'Subject Code', border: OutlineInputBorder()),
-                    validator: (v) => v?.isNotEmpty == true ? null : 'Required',
+                  DropdownButtonFormField<Map<String, dynamic>>(
+                    value: selectedSubject,
+                    decoration: const InputDecoration(labelText: 'Select Subject', border: OutlineInputBorder()),
+                    isExpanded: true,
+                    items: dialogSubjects.map((s) => DropdownMenuItem(
+                      value: s,
+                      child: Text('${s['subject_code']} - ${s['subject_title']}', overflow: TextOverflow.ellipsis),
+                    )).toList(),
+                    onChanged: (val) => setState(() => selectedSubject = val),
+                    validator: (v) => v == null ? 'Required' : null,
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
@@ -200,11 +225,11 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () async {
-                if (formKey.currentState?.validate() == true) {
+                if (formKey.currentState?.validate() == true && selectedSubject != null) {
                    Navigator.pop(context);
                    await _allocateFacultyManual(
-                     codeController.text,
-                     titleController.text,
+                     selectedSubject!['subject_code'],
+                     selectedSubject!['subject_title'],
                      selectedFaculty!,
                      dialogYear,
                      dialogSection
@@ -251,8 +276,9 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
           Expanded(
             child: DropdownButtonFormField<int>(
               value: _selectedYear,
-              decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
-              items: [1, 2, 3, 4].map((y) => DropdownMenuItem(value: y, child: Text('Year $y'))).toList(),
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+              items: [1, 2, 3, 4].map((y) => DropdownMenuItem(value: y, child: Text('Year $y', overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)))).toList(),
               onChanged: (val) {
                 if (val != null) {
                   setState(() => _selectedYear = val);
@@ -261,12 +287,13 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
               },
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 8),
           Expanded(
             child: DropdownButtonFormField<String>(
               value: _selectedSection,
-              decoration: const InputDecoration(labelText: 'Section', border: OutlineInputBorder()),
-              items: ['A', 'B', 'C'].map((s) => DropdownMenuItem(value: s, child: Text('Section $s'))).toList(),
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Section', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+              items: ['A', 'B', 'C'].map((s) => DropdownMenuItem(value: s, child: Text('Sec $s', overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)))).toList(),
               onChanged: (val) {
                 if (val != null) {
                   setState(() => _selectedSection = val);
@@ -275,12 +302,13 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
               },
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 8),
           Expanded(
-            child: DropdownButtonFormField<int>(
+            child: DropdownButtonFormField<String>(
               value: _selectedSemester,
-              decoration: const InputDecoration(labelText: 'Semester', border: OutlineInputBorder()),
-              items: List.generate(8, (i) => i + 1).map((s) => DropdownMenuItem(value: s, child: Text('Sem $s'))).toList(),
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Sem', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+              items: _semesters.map((s) => DropdownMenuItem(value: s, child: Text('Sem $s', overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)))).toList(),
               onChanged: (val) {
                 if (val != null) {
                   setState(() => _selectedSemester = val);
@@ -305,7 +333,7 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
       itemBuilder: (context, index) {
         final subject = _subjects[index];
         final subjectCode = subject['subject_code'];
-        final subjectTitle = subject['subject_name']; // Note: API returns subject_name
+        final subjectTitle = subject['subject_title'];
 
         // Check if allocated
         final allocation = _allocations.firstWhere(
@@ -384,13 +412,14 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<User>(
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             isDense: true,
                             hintText: 'Select Faculty',
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           ),
-                          items: _facultyMembers.map((f) => DropdownMenuItem(value: f, child: Text(f.name))).toList(),
+                          items: _facultyMembers.map((f) => DropdownMenuItem(value: f, child: Text(f.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)))).toList(),
                           onChanged: (val) {
                             if (val != null) {
                               _allocateFaculty(subjectCode, subjectTitle, val);

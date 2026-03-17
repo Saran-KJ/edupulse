@@ -8,18 +8,18 @@ class Mark {
   final int semester;
   final String subjectCode;
   final String subjectTitle;
-  final double assignment1;
-  final double assignment2;
-  final double assignment3;
-  final double assignment4;
-  final double assignment5;
-  final double slipTest1;
-  final double slipTest2;
-  final double slipTest3;
-  final double slipTest4;
-  final double cia1;
-  final double cia2;
-  final double model;
+  final int? assignment1;
+  final int? assignment2;
+  final int? assignment3;
+  final int? assignment4;
+  final int? assignment5;
+  final int? slipTest1;
+  final int? slipTest2;
+  final int? slipTest3;
+  final int? slipTest4;
+  final int? cia1;
+  final int? cia2;
+  final int? model;
   final String? universityResultGrade;
 
   Mark({
@@ -31,18 +31,18 @@ class Mark {
     required this.semester,
     required this.subjectCode,
     required this.subjectTitle,
-    this.assignment1 = 0.0,
-    this.assignment2 = 0.0,
-    this.assignment3 = 0.0,
-    this.assignment4 = 0.0,
-    this.assignment5 = 0.0,
-    this.slipTest1 = 0.0,
-    this.slipTest2 = 0.0,
-    this.slipTest3 = 0.0,
-    this.slipTest4 = 0.0,
-    this.cia1 = 0.0,
-    this.cia2 = 0.0,
-    this.model = 0.0,
+    this.assignment1,
+    this.assignment2,
+    this.assignment3,
+    this.assignment4,
+    this.assignment5,
+    this.slipTest1,
+    this.slipTest2,
+    this.slipTest3,
+    this.slipTest4,
+    this.cia1,
+    this.cia2,
+    this.model,
     this.universityResultGrade,
   });
 
@@ -56,18 +56,18 @@ class Mark {
       semester: json['semester'],
       subjectCode: json['subject_code'],
       subjectTitle: json['subject_title'],
-      assignment1: (json['assignment_1'] as num?)?.toDouble() ?? 0.0,
-      assignment2: (json['assignment_2'] as num?)?.toDouble() ?? 0.0,
-      assignment3: (json['assignment_3'] as num?)?.toDouble() ?? 0.0,
-      assignment4: (json['assignment_4'] as num?)?.toDouble() ?? 0.0,
-      assignment5: (json['assignment_5'] as num?)?.toDouble() ?? 0.0,
-      slipTest1: (json['slip_test_1'] as num?)?.toDouble() ?? 0.0,
-      slipTest2: (json['slip_test_2'] as num?)?.toDouble() ?? 0.0,
-      slipTest3: (json['slip_test_3'] as num?)?.toDouble() ?? 0.0,
-      slipTest4: (json['slip_test_4'] as num?)?.toDouble() ?? 0.0,
-      cia1: (json['cia_1'] as num?)?.toDouble() ?? 0.0,
-      cia2: (json['cia_2'] as num?)?.toDouble() ?? 0.0,
-      model: (json['model'] as num?)?.toDouble() ?? 0.0,
+      assignment1: (json['assignment_1'] as num?)?.toInt(),
+      assignment2: (json['assignment_2'] as num?)?.toInt(),
+      assignment3: (json['assignment_3'] as num?)?.toInt(),
+      assignment4: (json['assignment_4'] as num?)?.toInt(),
+      assignment5: (json['assignment_5'] as num?)?.toInt(),
+      slipTest1: (json['slip_test_1'] as num?)?.toInt(),
+      slipTest2: (json['slip_test_2'] as num?)?.toInt(),
+      slipTest3: (json['slip_test_3'] as num?)?.toInt(),
+      slipTest4: (json['slip_test_4'] as num?)?.toInt(),
+      cia1: (json['cia_1'] as num?)?.toInt(),
+      cia2: (json['cia_2'] as num?)?.toInt(),
+      model: (json['model'] as num?)?.toInt(),
       universityResultGrade: json['university_result_grade'],
     );
   }
@@ -82,18 +82,18 @@ class MarkCreate {
   final int semester;
   final String subjectCode;
   final String subjectTitle;
-  final double assignment1;
-  final double assignment2;
-  final double assignment3;
-  final double assignment4;
-  final double assignment5;
-  final double slipTest1;
-  final double slipTest2;
-  final double slipTest3;
-  final double slipTest4;
-  final double cia1;
-  final double cia2;
-  final double model;
+  final int? assignment1;
+  final int? assignment2;
+  final int? assignment3;
+  final int? assignment4;
+  final int? assignment5;
+  final int? slipTest1;
+  final int? slipTest2;
+  final int? slipTest3;
+  final int? slipTest4;
+  final int? cia1;
+  final int? cia2;
+  final int? model;
   final String? universityResultGrade;
 
   MarkCreate({
@@ -105,18 +105,18 @@ class MarkCreate {
     required this.semester,
     required this.subjectCode,
     required this.subjectTitle,
-    this.assignment1 = 0.0,
-    this.assignment2 = 0.0,
-    this.assignment3 = 0.0,
-    this.assignment4 = 0.0,
-    this.assignment5 = 0.0,
-    this.slipTest1 = 0.0,
-    this.slipTest2 = 0.0,
-    this.slipTest3 = 0.0,
-    this.slipTest4 = 0.0,
-    this.cia1 = 0.0,
-    this.cia2 = 0.0,
-    this.model = 0.0,
+    this.assignment1,
+    this.assignment2,
+    this.assignment3,
+    this.assignment4,
+    this.assignment5,
+    this.slipTest1,
+    this.slipTest2,
+    this.slipTest3,
+    this.slipTest4,
+    this.cia1,
+    this.cia2,
+    this.model,
     this.universityResultGrade,
   });
 

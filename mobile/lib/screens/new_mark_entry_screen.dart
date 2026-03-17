@@ -35,6 +35,8 @@ class _NewMarkEntryScreenState extends State<NewMarkEntryScreen> {
   // Map to store controllers for each student's marks
   final Map<int, Map<String, TextEditingController>> _studentControllers = {};
   bool _isSubmitting = false;
+  bool _isLabSubject = false;       // auto-detected from subjects API
+  bool _isDetectingLab = false;     // true while fetching category
 
   @override
   void initState() {
@@ -43,6 +45,25 @@ class _NewMarkEntryScreenState extends State<NewMarkEntryScreen> {
     if (widget.subjectTitle != null) _subjectTitleController.text = widget.subjectTitle!;
     _initializeControllers();
     _loadExistingMarks();
+    if (widget.subjectCode != null) _detectLabSubject(widget.subjectCode!);
+  }
+
+  Future<void> _detectLabSubject(String subjectCode) async {
+    if (subjectCode.trim().isEmpty) return;
+    setState(() => _isDetectingLab = true);
+    try {
+      final subjects = await ApiService().getSubjects();
+      final match = subjects.firstWhere(
+        (s) => (s['subject_code'] ?? '').toString().toUpperCase() == subjectCode.trim().toUpperCase(),
+        orElse: () => {},
+      );
+      final category = (match['category'] ?? '').toString().toUpperCase();
+      if (mounted) setState(() => _isLabSubject = category == 'LAB');
+    } catch (_) {
+      // If lookup fails, keep default (false) — internal marks still shown
+    } finally {
+      if (mounted) setState(() => _isDetectingLab = false);
+    }
   }
 
   void _initializeControllers() {
@@ -145,18 +166,18 @@ class _NewMarkEntryScreenState extends State<NewMarkEntryScreen> {
           semester: widget.semester,
           subjectCode: _subjectCodeController.text.trim(),
           subjectTitle: _subjectTitleController.text.trim(),
-          assignment1: double.tryParse(controllers['a1']!.text) ?? 0.0,
-          assignment2: double.tryParse(controllers['a2']!.text) ?? 0.0,
-          assignment3: double.tryParse(controllers['a3']!.text) ?? 0.0,
-          assignment4: double.tryParse(controllers['a4']!.text) ?? 0.0,
-          assignment5: double.tryParse(controllers['a5']!.text) ?? 0.0,
-          slipTest1: double.tryParse(controllers['st1']!.text) ?? 0.0,
-          slipTest2: double.tryParse(controllers['st2']!.text) ?? 0.0,
-          slipTest3: double.tryParse(controllers['st3']!.text) ?? 0.0,
-          slipTest4: double.tryParse(controllers['st4']!.text) ?? 0.0,
-          cia1: double.tryParse(controllers['cia1']!.text) ?? 0.0,
-          cia2: double.tryParse(controllers['cia2']!.text) ?? 0.0,
-          model: double.tryParse(controllers['model']!.text) ?? 0.0,
+          assignment1: _isLabSubject ? null : (int.tryParse(controllers['a1']!.text) ?? 0),
+          assignment2: _isLabSubject ? null : (int.tryParse(controllers['a2']!.text) ?? 0),
+          assignment3: _isLabSubject ? null : (int.tryParse(controllers['a3']!.text) ?? 0),
+          assignment4: _isLabSubject ? null : (int.tryParse(controllers['a4']!.text) ?? 0),
+          assignment5: _isLabSubject ? null : (int.tryParse(controllers['a5']!.text) ?? 0),
+          slipTest1: _isLabSubject ? null : (int.tryParse(controllers['st1']!.text) ?? 0),
+          slipTest2: _isLabSubject ? null : (int.tryParse(controllers['st2']!.text) ?? 0),
+          slipTest3: _isLabSubject ? null : (int.tryParse(controllers['st3']!.text) ?? 0),
+          slipTest4: _isLabSubject ? null : (int.tryParse(controllers['st4']!.text) ?? 0),
+          cia1: _isLabSubject ? null : (int.tryParse(controllers['cia1']!.text) ?? 0),
+          cia2: _isLabSubject ? null : (int.tryParse(controllers['cia2']!.text) ?? 0),
+          model: _isLabSubject ? null : (int.tryParse(controllers['model']!.text) ?? 0),
           universityResultGrade: controllers['uni']!.text.trim().isEmpty 
               ? null 
               : controllers['uni']!.text.trim(),
@@ -245,6 +266,7 @@ class _NewMarkEntryScreenState extends State<NewMarkEntryScreen> {
       padding: const EdgeInsets.all(16),
       color: Colors.blue.shade50,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -278,6 +300,41 @@ class _NewMarkEntryScreenState extends State<NewMarkEntryScreen> {
               ),
             ],
           ),
+          // Auto-detected subject type badge
+          if (_isDetectingLab) ...
+            [
+              const SizedBox(height: 10),
+              const Row(
+                children: [
+                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                  SizedBox(width: 8),
+                  Text('Detecting subject type...', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                ],
+              ),
+            ]
+          else if (_isLabSubject) ...
+            [
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade300),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.science_rounded, size: 16, color: Colors.green.shade800),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Lab Subject — only University Result required',
+                      style: TextStyle(fontSize: 12, color: Colors.green.shade800, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
         ],
       ),
     );
@@ -311,53 +368,55 @@ class _NewMarkEntryScreenState extends State<NewMarkEntryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Assignments (10 marks each)', 
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _buildMarkInput(controllers['a1']!, 'A1', 10),
-                    const SizedBox(width: 8),
-                    _buildMarkInput(controllers['a2']!, 'A2', 10),
-                    const SizedBox(width: 8),
-                    _buildMarkInput(controllers['a3']!, 'A3', 10),
-                    const SizedBox(width: 8),
-                    _buildMarkInput(controllers['a4']!, 'A4', 10),
-                    const SizedBox(width: 8),
-                    _buildMarkInput(controllers['a5']!, 'A5', 10),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                
-                const Text('Slip Tests (20 marks each)', 
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _buildMarkInput(controllers['st1']!, 'ST1', 20),
-                    const SizedBox(width: 8),
-                    _buildMarkInput(controllers['st2']!, 'ST2', 20),
-                    const SizedBox(width: 8),
-                    _buildMarkInput(controllers['st3']!, 'ST3', 20),
-                    const SizedBox(width: 8),
-                    _buildMarkInput(controllers['st4']!, 'ST4', 20),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                
-                const Text('CIA (60 marks) & Model (100 marks)', 
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _buildMarkInput(controllers['cia1']!, 'CIA 1', 60),
-                    const SizedBox(width: 8),
-                    _buildMarkInput(controllers['cia2']!, 'CIA 2', 60),
-                    const SizedBox(width: 8),
-                    _buildMarkInput(controllers['model']!, 'Model', 100),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                if (!_isLabSubject) ...[
+                  const Text('Assignments (10 marks each)', 
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _buildMarkInput(controllers['a1']!, 'A1', 10),
+                      const SizedBox(width: 8),
+                      _buildMarkInput(controllers['a2']!, 'A2', 10),
+                      const SizedBox(width: 8),
+                      _buildMarkInput(controllers['a3']!, 'A3', 10),
+                      const SizedBox(width: 8),
+                      _buildMarkInput(controllers['a4']!, 'A4', 10),
+                      const SizedBox(width: 8),
+                      _buildMarkInput(controllers['a5']!, 'A5', 10),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  const Text('Slip Tests (20 marks each)', 
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _buildMarkInput(controllers['st1']!, 'ST1', 20),
+                      const SizedBox(width: 8),
+                      _buildMarkInput(controllers['st2']!, 'ST2', 20),
+                      const SizedBox(width: 8),
+                      _buildMarkInput(controllers['st3']!, 'ST3', 20),
+                      const SizedBox(width: 8),
+                      _buildMarkInput(controllers['st4']!, 'ST4', 20),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  const Text('CIA (60 marks) & Model (100 marks)', 
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _buildMarkInput(controllers['cia1']!, 'CIA 1', 60),
+                      const SizedBox(width: 8),
+                      _buildMarkInput(controllers['cia2']!, 'CIA 2', 60),
+                      const SizedBox(width: 8),
+                      _buildMarkInput(controllers['model']!, 'Model', 100),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 
                 const Text('University Result', 
                     style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
@@ -397,7 +456,7 @@ class _NewMarkEntryScreenState extends State<NewMarkEntryScreen> {
     );
   }
 
-  Widget _buildMarkInput(TextEditingController controller, String label, double max) {
+  Widget _buildMarkInput(TextEditingController controller, String label, int max) {
     return Expanded(
       child: TextFormField(
         controller: controller,
@@ -410,7 +469,7 @@ class _NewMarkEntryScreenState extends State<NewMarkEntryScreen> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return null;
-          final numValue = double.tryParse(value);
+          final numValue = int.tryParse(value);
           if (numValue == null) return 'Invalid';
           if (numValue < 0 || numValue > max) return 'Max $max';
           return null;

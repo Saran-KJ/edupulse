@@ -16,6 +16,8 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
   bool _isLoading = true;
   String? _error;
   String? _regNo;
+  
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
@@ -40,6 +42,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
 
       if (_regNo != null) {
         final records = await ApiService().getStudentAttendance(_regNo!);
+        
         setState(() {
           _attendanceRecords = records;
           _isLoading = false;
@@ -115,6 +118,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         title: Text(widget.regNo != null ? 'Student Attendance' : 'My Attendance'),
         backgroundColor: Colors.blue.shade800,
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -129,6 +133,10 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadAttendance,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade800,
+                          foregroundColor: Colors.white,
+                        ),
                         child: const Text('Retry'),
                       ),
                     ],
@@ -150,16 +158,23 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                     )
                   : RefreshIndicator(
                       onRefresh: _loadAttendance,
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSummarySection(),
-                            const SizedBox(height: 24),
-                            _buildAttendanceList(),
-                          ],
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 900),
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDateSelector(context),
+                                const SizedBox(height: 16),
+                                _buildSummarySection(),
+                                const SizedBox(height: 16),
+                                _buildAttendanceList(),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -169,6 +184,9 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
   Widget _buildSummarySection() {
     final stats = _calculateStats();
     final percentage = _calculatePercentage();
+    final screenWidth = MediaQuery.of(context).size.width;
+    int crossAxisCount = screenWidth > 600 ? 4 : 2;
+    double childAspectRatio = screenWidth > 600 ? 1.8 : 1.3;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,7 +194,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         const Text(
           'Attendance Summary',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -184,10 +202,10 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.5,
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: childAspectRatio,
           children: [
             _buildStatCard(
               'Present',
@@ -220,99 +238,150 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
   }
 
   Widget _buildStatCard(String label, String value, Color color, IconData icon) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
+        padding: const EdgeInsets.all(8.0),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 32),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
+  Widget _buildDateSelector(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue.shade100),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            DateFormat('MMMM yyyy').format(_selectedDate),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade900,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => _selectDate(context),
+            icon: const Icon(Icons.calendar_today),
+            label: const Text('Change Month'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade800,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+      // The _buildAttendanceList method already groups and filters dynamically based on month viewing logic
+    }
+  }
+
   Widget _buildAttendanceList() {
-    // Group records by month
-    final groupedRecords = <String, List<Attendance>>{};
-    
-    for (var record in _attendanceRecords) {
+    // Group records by month and filter by selected Month and Year
+    final filteredRecords = _attendanceRecords.where((record) {
       final parsedDate = DateTime.parse(record.date);
-      final monthYear = DateFormat('MMMM yyyy').format(parsedDate);
-      if (!groupedRecords.containsKey(monthYear)) {
-        groupedRecords[monthYear] = [];
-      }
-      groupedRecords[monthYear]!.add(record);
+      return parsedDate.month == _selectedDate.month && parsedDate.year == _selectedDate.year;
+    }).toList();
+
+    if(filteredRecords.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            'No attendance records found for ${DateFormat('MMMM yyyy').format(_selectedDate)}',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+          ),
+        ),
+      );
     }
 
-    // Sort months in descending order
-    final sortedMonths = groupedRecords.keys.toList()
-      ..sort((a, b) {
-        final dateA = DateFormat('MMMM yyyy').parse(a);
-        final dateB = DateFormat('MMMM yyyy').parse(b);
-        return dateB.compareTo(dateA);
-      });
+    // Sort records within month by date (descending)
+    filteredRecords.sort((a, b) {
+      final dateA = DateTime.parse(a.date);
+      final dateB = DateTime.parse(b.date);
+      return dateB.compareTo(dateA);
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Attendance Records',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...sortedMonths.map((month) {
-          final records = groupedRecords[month]!;
-          // Sort records within month by date (descending)
-          records.sort((a, b) {
-            final dateA = DateTime.parse(a.date);
-            final dateB = DateTime.parse(b.date);
-            return dateB.compareTo(dateA);
-          });
-          
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          child: Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  month,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blue.shade800,
-                  ),
+              Icon(Icons.calendar_month, color: Colors.blue.shade800, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                DateFormat('MMMM yyyy').format(_selectedDate),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue.shade800,
                 ),
               ),
-              ...records.map((record) => _buildAttendanceCard(record)),
-              const SizedBox(height: 8),
             ],
-          );
-        }),
+          ),
+        ),
+        ...filteredRecords.map((record) => _buildAttendanceCard(record)),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -320,17 +389,28 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
   Widget _buildAttendanceCard(Attendance record) {
     final statusColor = _getStatusColor(record.status);
     
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         leading: Container(
-          width: 48,
-          height: 48,
+          width: 50,
+          height: 50,
           decoration: BoxDecoration(
             color: statusColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(
             record.status.toUpperCase() == 'PRESENT'
@@ -339,35 +419,48 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                     ? Icons.cancel
                     : Icons.work,
             color: statusColor,
+            size: 28,
           ),
         ),
         title: Text(
           DateFormat('EEEE, MMM dd, yyyy').format(DateTime.parse(record.date)),
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         subtitle: record.reason != null && record.reason!.isNotEmpty
-            ? Text(
-                'Reason: ${record.reason}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                  fontStyle: FontStyle.italic,
+            ? Padding(
+                padding: const EdgeInsets.only(top: 6.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        record.reason!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               )
             : null,
         trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: statusColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: statusColor, width: 1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: statusColor.withValues(alpha: 0.5)),
           ),
           child: Text(
             record.status.toUpperCase(),
             style: TextStyle(
               color: statusColor,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w800,
               fontSize: 12,
+              letterSpacing: 0.5,
             ),
           ),
         ),

@@ -44,10 +44,14 @@ class RoleSelectionScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: Icon(
-                        Icons.school,
-                        size: isWideScreen ? 60 : 50,
-                        color: Colors.blue.shade800,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(50),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: isWideScreen ? 60 : 50,
+                          height: isWideScreen ? 60 : 50,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                     SizedBox(height: isWideScreen ? 24 : 20),
