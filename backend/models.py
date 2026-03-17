@@ -392,3 +392,33 @@ class StudentQuizAttempt(Base):
     score = Column(Float, nullable=False) # (Correct / Total) * 100
     risk_level = Column(String(20), nullable=False)
     attempted_at = Column(DateTime, default=datetime.utcnow)
+
+class AcademicAlert(Base):
+    __tablename__ = "academic_alerts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    reg_no = Column(String(50), nullable=False, index=True)
+    subject = Column(String(100), nullable=True)
+    message = Column(Text, nullable=False)
+    risk_level = Column(String(20), nullable=True) # Low, Medium, High
+    probability = Column(Float, nullable=True)    # The Logistic Regression output
+    is_read = Column(Integer, default=0)         # 0 = unread, 1 = read
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class ScheduledQuiz(Base):
+    """Faculty-scheduled quiz before a formal assessment."""
+    __tablename__ = "scheduled_quizzes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    faculty_id = Column(Integer, nullable=False)
+    dept = Column(String(50), nullable=False)
+    year = Column(Integer, nullable=False)
+    section = Column(String(10), nullable=False)
+    subject_code = Column(String(20), nullable=False)
+    subject_title = Column(String(200), nullable=False)
+    unit_number = Column(Integer, nullable=False)
+    assessment_type = Column(String(50), nullable=False)  # Slip Test, CIA, Model Exam
+    start_time = Column(DateTime, nullable=True) # Nullable for older records
+    deadline = Column(DateTime, nullable=False)
+    is_active = Column(Integer, default=1)  # 1=active, 0=closed
+    created_at = Column(DateTime, default=datetime.utcnow)

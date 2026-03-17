@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../config/app_theme.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/web_scaffold.dart';
 import 'attendance_entry_screen.dart';
@@ -59,9 +61,10 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
 
   Widget _buildErrorScreen(String message) {
     return Scaffold(
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Faculty Dashboard'),
-        backgroundColor: Colors.blue.shade800,
+        title: Text('Faculty Dashboard', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: Center(
@@ -70,13 +73,9 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.orange.shade700),
+              Icon(Icons.error_outline, size: 64, color: AppColors.warning),
               const SizedBox(height: 16),
-              Text(
-                message,
-                style: const TextStyle(fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
+              Text(message, style: AppTextStyles.body, textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -130,32 +129,26 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
 
   Widget _buildMobileLayout(User user) {
     return Scaffold(
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Faculty Dashboard'),
-          ],
-        ),
-        backgroundColor: Colors.blue.shade800,
+        title: Text('Faculty Dashboard', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           PopupMenuButton<String>(
             icon: CircleAvatar(
+              radius: 16,
               backgroundColor: Colors.white,
               child: Text(
                 user.name[0].toUpperCase(),
-                style: TextStyle(
-                  color: Colors.blue.shade800,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: GoogleFonts.poppins(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 14),
               ),
             ),
             tooltip: 'Profile',
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             onSelected: (value) {
-              if (value == 'logout') {
-                _handleLogout(context);
-              }
+              if (value == 'logout') _handleLogout(context);
             },
             itemBuilder: (BuildContext context) => [
               PopupMenuItem<String>(
@@ -163,23 +156,18 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      user.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
+                    Text(user.name, style: AppTextStyles.headingSmall.copyWith(fontSize: 15)),
                     const SizedBox(height: 4),
-                    Text(user.email, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                    Text(user.email, style: AppTextStyles.bodySmall),
                     const SizedBox(height: 4),
-                    Text('Role: ${user.role}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                    Text('Role: ${user.role}', style: AppTextStyles.bodySmall),
                     const Divider(),
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'logout',
-                child: Row(
-                  children: [Icon(Icons.logout, size: 20), SizedBox(width: 12), Text('Logout')],
-                ),
+                child: Row(children: [const Icon(Icons.logout_rounded, size: 18), const SizedBox(width: 12), Text('Logout', style: AppTextStyles.body)]),
               ),
             ],
           ),
@@ -194,10 +182,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
             const SizedBox(height: 24),
             _buildSummaryCards(),
             const SizedBox(height: 24),
-            const Text(
-              'My Classes',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            SectionHeader(title: 'My Classes', icon: Icons.class_rounded, color: AppColors.info),
             const SizedBox(height: 16),
             _buildClassesList(),
           ],
@@ -210,13 +195,11 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
     return Row(
       children: [
         CircleAvatar(
+          radius: 18,
           backgroundColor: Colors.white,
           child: Text(
             user.name[0].toUpperCase(),
-            style: TextStyle(
-              color: Colors.blue.shade800,
-              fontWeight: FontWeight.bold,
-            ),
+            style: GoogleFonts.poppins(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 14),
           ),
         ),
         const SizedBox(width: 12),
@@ -224,22 +207,8 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                user.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                user.role,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
+              Text(user.name, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13), overflow: TextOverflow.ellipsis),
+              Text(user.role, style: GoogleFonts.inter(color: Colors.white60, fontSize: 11)),
             ],
           ),
         ),
@@ -248,38 +217,50 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
   }
 
   Widget _buildWelcomeHeader(User user) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundColor: Colors.blue.shade100,
-          child: Text(
-            user.name[0].toUpperCase(),
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue.shade800,
+    return GradientBanner(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
+              ),
+              child: CircleAvatar(
+                radius: 28,
+                backgroundColor: Colors.white,
+                child: Text(
+                  user.name[0].toUpperCase(),
+                  style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.primary),
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Welcome, ${user.name}',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Welcome Back,', style: GoogleFonts.inter(fontSize: 13, color: Colors.white70)),
+                  const SizedBox(height: 2),
+                  Text(user.name, style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: -0.3)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                    child: Text(
+                      user.dept != null ? '${user.dept} • Faculty' : 'Faculty Member',
+                      style: GoogleFonts.inter(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Faculty Member',
-                style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -322,41 +303,11 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           itemCount: summaryData.length,
           itemBuilder: (context, index) {
             final data = summaryData[index];
-            return Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: data['color'].withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(data['icon'], color: data['color'], size: 28),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(data['value'], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text(
-                            data['title'],
-                            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return StatCard(
+              title: data['title'],
+              value: data['value'],
+              icon: data['icon'],
+              color: data['color'],
             );
           },
         );
@@ -436,15 +387,16 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
   }
 
   Widget _buildClassCard(FacultyAllocation cls) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppShadows.card,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.06)),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          // Show options dialog
-          _showClassOptions(context, cls.dept, cls.year, cls.section, cls.subjectCode, cls.subjectTitle);
-        },
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => _showClassOptions(context, cls.dept, cls.year, cls.section, cls.subjectCode, cls.subjectTitle),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -453,33 +405,22 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
-                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        colors: [AppColors.info.withValues(alpha: 0.15), AppColors.info.withValues(alpha: 0.05)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.book, color: Colors.blue.shade800, size: 20),
+                    child: Icon(Icons.menu_book_rounded, color: AppColors.info, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${cls.dept} - Year ${cls.year} ${cls.section}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        Text(
-                          cls.subjectCode,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
+                        Text('${cls.dept} • Year ${cls.year} ${cls.section}', style: AppTextStyles.label.copyWith(fontSize: 12)),
+                        Text(cls.subjectCode, style: AppTextStyles.bodySmall.copyWith(fontSize: 11)),
                       ],
                     ),
                   ),
@@ -488,29 +429,24 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
               const SizedBox(height: 12),
               Text(
                 cls.subjectTitle.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: AppTextStyles.headingSmall.copyWith(fontSize: 14),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               const Spacer(),
-              const Divider(),
+              Divider(color: Colors.grey.shade200),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Expanded(
                     child: TextButton.icon(
                       onPressed: () => _navigateToMarks(cls.dept, cls.year, cls.section, cls.subjectCode, cls.subjectTitle),
-                      icon: const Icon(Icons.grade, size: 18),
-                      label: const Text('Marks', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
+                      icon: Icon(Icons.grade_rounded, size: 16, color: AppColors.success),
+                      label: Text('Marks', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.success)),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 8)),
                     ),
                   ),
-                  Container(width: 1, height: 24, color: Colors.grey.shade300),
+                  Container(width: 1, height: 24, color: Colors.grey.shade200),
                   Expanded(
                     child: TextButton.icon(
                       onPressed: () => Navigator.push(
@@ -525,11 +461,9 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                           ),
                         ),
                       ),
-                      icon: const Icon(Icons.calendar_today, size: 18),
-                      label: const Text('Attendance', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
+                      icon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.info),
+                      label: Text('Attendance', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.info)),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 8)),
                     ),
                   ),
                 ],

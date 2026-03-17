@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../config/app_theme.dart';
 import 'login_screen.dart';
 import 'student_attendance_screen.dart';
 import 'student_marks_screen.dart';
@@ -35,20 +37,17 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Parent Dashboard'),
-        backgroundColor: Colors.teal.shade700,
+        title: Text('Parent Dashboard', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        backgroundColor: const Color(0xFF00796B),
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _dashboardFuture = ApiService().getParentDashboardStats();
-              });
-            },
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () => setState(() { _dashboardFuture = ApiService().getParentDashboardStats(); }),
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded),
             onPressed: () => _handleLogout(context),
           ),
         ],
@@ -177,19 +176,13 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     final parentInfo = data['parent_info'] ?? {};
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.teal.shade800, Colors.teal.shade500],
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+          colors: [Color(0xFF00695C), Color(0xFF00897B), Color(0xFF26A69A)],
         ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: AppShadows.colored(const Color(0xFF00897B)),
       ),
       child: Stack(
         children: [
@@ -286,13 +279,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         children: [
@@ -475,14 +462,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+            boxShadow: AppShadows.card,
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.08)),
           ),
             child: Row(
               children: [
@@ -649,14 +630,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.08)),
+          boxShadow: AppShadows.card,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -389,6 +389,55 @@ async def update_my_profile(
     
     return response_data
 
+@router.get("/me/alerts")
+async def get_my_alerts(
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """Get all academic alerts for the currently logged-in student."""
+    if current_user.role != models.RoleEnum.STUDENT or not current_user.reg_no:
+        raise HTTPException(status_code=403, detail="Only students can access this endpoint")
+    
+    alerts = db.query(models.AcademicAlert).filter(
+        models.AcademicAlert.reg_no == current_user.reg_no
+    ).order_by(models.AcademicAlert.created_at.desc()).all()
+    
+    return [
+        {
+            "id": alert.id,
+            "subject": alert.subject,
+            "message": alert.message,
+            "risk_level": alert.risk_level,
+            "probability": alert.probability,
+            "is_read": alert.is_read,
+            "created_at": alert.created_at.isoformat() if alert.created_at else None
+        }
+        for alert in alerts
+    ]
+
+@router.put("/me/alerts/{alert_id}/read")
+async def mark_alert_read(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """Mark an academic alert as read."""
+    if current_user.role != models.RoleEnum.STUDENT or not current_user.reg_no:
+        raise HTTPException(status_code=403, detail="Only students can access this endpoint")
+        
+    alert = db.query(models.AcademicAlert).filter(
+        models.AcademicAlert.id == alert_id,
+        models.AcademicAlert.reg_no == current_user.reg_no
+    ).first()
+    
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+        
+    alert.is_read = 1
+    db.commit()
+    
+    return {"status": "success", "message": "Alert marked as read"}
+
 @router.get("/parent/dashboard-stats")
 async def get_parent_dashboard_stats(
     db: Session = Depends(get_db),
@@ -485,4 +534,65 @@ async def get_parent_dashboard_stats(
         "risk_level": risk_level,
         "risk_score": round(risk_score * 100, 1) if risk_score else 0.0
     }
+
+@router.get("/me/pending-quizzes")
+async def get_pending_quizzes(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    """Get active scheduled quizzes for the student that they haven't completed."""
+    if current_user.role != models.RoleEnum.STUDENT:
+        raise HTTPException(status_code=403, detail="Only students can access this endpoint")
+        
+    student = None
+    if current_user.dept:
+        model = get_student_model(current_user.dept)
+        if model:
+            student = db.query(model).filter(model.reg_no == current_user.reg_no).first()
+            
+    if not student:
+        raise HTTPException(status_code=404, detail="Student profile not found")
+
+    # Get active scheduled quizzes for this student's class
+    # NOTE: DB timestamps are stored in local time (not UTC), so we use datetime.now()
+    from datetime import datetime
+    from sqlalchemy import or_
+    now = datetime.now()
+    
+    scheduled_quizzes = db.query(models.ScheduledQuiz).filter(
+        models.ScheduledQuiz.dept == student.dept,
+        models.ScheduledQuiz.year == (int(student.year) if isinstance(student.year, (int, str)) and str(student.year).isdigit() else 0),
+        models.ScheduledQuiz.section == student.section,
+        models.ScheduledQuiz.is_active == 1,
+        models.ScheduledQuiz.deadline > now,
+        or_(
+            models.ScheduledQuiz.start_time <= now,
+            models.ScheduledQuiz.start_time.is_(None)
+        )
+    ).all()
+    
+    pending = []
+    for quiz in scheduled_quizzes:
+        # Check if the student has already taken this quiz (matching subject code/title and unit)
+        # We check both subject_code and subject_title since StudentQuizAttempt might store either depending on frontend
+        has_attempted = db.query(models.StudentQuizAttempt).filter(
+            models.StudentQuizAttempt.reg_no == student.reg_no,
+            models.StudentQuizAttempt.unit == quiz.unit_number,
+            (models.StudentQuizAttempt.subject == quiz.subject_code) | 
+            (models.StudentQuizAttempt.subject == quiz.subject_title)
+        ).first()
+        
+        if not has_attempted:
+            pending.append({
+                "id": quiz.id,
+                "subject_code": quiz.subject_code,
+                "subject_title": quiz.subject_title,
+                "unit_number": quiz.unit_number,
+                "assessment_type": quiz.assessment_type,
+                "start_time": quiz.start_time.isoformat() if quiz.start_time else None,
+                "deadline": quiz.deadline.isoformat(),
+                "faculty_id": quiz.faculty_id
+            })
+            
+    return pending
 

@@ -260,6 +260,16 @@ class MLService:
 
         credit_weighted_internal_avg = (total_weighted_score / total_credits) if total_credits > 0 else internal_avg
 
+        # Calculate average quiz score from unit-level early quizzes
+        quiz_attempts = db.query(models.StudentQuizAttempt).filter(
+            models.StudentQuizAttempt.reg_no == reg_no
+        ).all()
+        
+        quiz_score_avg = 0
+        if quiz_attempts:
+            total_quiz_score = sum([attempt.score for attempt in quiz_attempts])
+            quiz_score_avg = total_quiz_score / len(quiz_attempts)
+
         return {
             'attendance_percentage': avg_attendance,
             'internal_avg': internal_avg,
@@ -267,7 +277,8 @@ class MLService:
             'activity_count': activity_count,
             'backlog_count': backlog_count,
             'credit_weighted_internal_avg': credit_weighted_internal_avg,
-            'high_credit_low_score_count': high_credit_low_score_count
+            'high_credit_low_score_count': high_credit_low_score_count,
+            'quiz_score_avg': quiz_score_avg
         }
     
     def predict_risk(self, db: Session, reg_no: str) -> Dict[str, Any]:
@@ -368,6 +379,16 @@ class MLService:
             risk_score += hc_low * 8
             reasons.append(f"{int(hc_low)} high-credit subject(s) at risk")
 
+        # Early unit-level quiz check
+        quiz_avg = features.get('quiz_score_avg', 0)
+        # Only penalize if they actually took quizzes and did poorly
+        if 'quiz_score_avg' in features and features['quiz_score_avg'] > 0:
+            if quiz_avg < 50:
+                risk_score += 15
+                reasons.append(f"Poor early quiz performance: {quiz_avg:.1f}%")
+            elif quiz_avg < 70:
+                risk_score += 5
+
         # Determine risk level
         if risk_score >= 60:
             risk_level = "High"
@@ -403,6 +424,10 @@ class MLService:
         hc_low = features.get('high_credit_low_score_count', 0)
         if hc_low > 0:
             reasons.append(f"{int(hc_low)} high-credit subject(s) struggling")
+            
+        quiz_avg = features.get('quiz_score_avg', 0)
+        if quiz_avg > 0 and quiz_avg < 60:
+            reasons.append(f"Low quiz scores ({quiz_avg:.1f}%)")
         
         if not reasons:
             reasons.append("Good overall performance")
@@ -471,6 +496,17 @@ class MLService:
         present_days = db.query(models.Attendance).filter(models.Attendance.reg_no == reg_no, models.Attendance.status.in_(['Present', 'P', 'OD'])).count()
         attendance = (present_days / total_days * 100) if total_days > 0 else 0
             
+        # Get specific subject quiz score
+        quiz_attempts = db.query(models.StudentQuizAttempt).filter(
+            models.StudentQuizAttempt.reg_no == reg_no,
+            func.lower(models.StudentQuizAttempt.subject) == subject_code.lower()
+        ).all()
+        quiz_score_avg = 0
+        has_quiz = False
+        if quiz_attempts:
+            has_quiz = True
+            quiz_score_avg = sum([attempt.score for attempt in quiz_attempts]) / len(quiz_attempts)
+
         feature_array = np.array([[
             round(st1, 2), round(st2, 2), round(a1, 2), round(a2, 2), round(cia1, 2),
             round(st3, 2), round(st4, 2), round(a3, 2), round(a4, 2), round(a5, 2), round(cia2, 2), round(model, 2),
@@ -520,6 +556,15 @@ class MLService:
         else:
             rule_risk = "Low"
 
+        # Apply quiz penalty if internals are low or missing
+        if has_quiz and quiz_score_avg < 50:
+            if rule_risk == "Low":
+                rule_risk = "Medium"
+                basis_rule += " (Downgraded due to poor early quizzes)"
+            elif rule_risk == "Medium":
+                rule_risk = "High"
+                basis_rule += " (Downgraded due to poor early quizzes)"
+
         # ML Model Path
         if self.subject_model and self.subject_scaler and has_int1 and has_int2:
             # Only use ML if both internals have data, otherwise it's too biased by zeros
@@ -550,6 +595,73 @@ class MLService:
                 'score': final_rule_score,
                 'basis': basis_rule
             }
+
+    def predict_early_risk(self, db: Session, reg_no: str, subject_code: str) -> Dict[str, Any]:
+        """
+        Early Academic Risk Prediction Module
+        Evaluates risk based on early quizzes and engagement using an explicit Logistic Regression equation.
+        """
+        # Feature Collection
+        features = self.extract_features(db, reg_no)
+        
+        # We need subject-specific quiz_score if available
+        quiz_attempts = db.query(models.StudentQuizAttempt).filter(
+            models.StudentQuizAttempt.reg_no == reg_no,
+            func.lower(models.StudentQuizAttempt.subject) == subject_code.lower()
+        ).all()
+        
+        if quiz_attempts:
+            x1_quiz_score = sum([attempt.score for attempt in quiz_attempts]) / len(quiz_attempts)
+        else:
+            x1_quiz_score = features['quiz_score_avg'] if features['quiz_score_avg'] > 0 else 50.0 # Default if no quiz
+            
+        x2_attendance = features['attendance_percentage']
+        x3_internal_marks = features['credit_weighted_internal_avg']
+        x4_backlog = features['backlog_count']
+        
+        # x5_learning_engagement (derived from completed learning progress)
+        engagement_count = db.query(models.StudentLearningProgress).filter(
+            models.StudentLearningProgress.reg_no == reg_no,
+            models.StudentLearningProgress.completed == 1
+        ).count()
+        # Normalize engagement (e.g., max 10 for full engagement)
+        x5_engagement = min(engagement_count, 10) * 10 # Scale to 0-100 logic
+
+        # Logistic Regression Equation Weights (Beta values)
+        # We want high scores/attendance to decrease risk, and backlogs to increase risk.
+        B0 = 2.0     # Intercept
+        B1 = -0.05   # quiz_score (Higher score -> lower risk)
+        B2 = -0.04   # attendance (Higher attendance -> lower risk)
+        B3 = -0.03   # internal marks (Higher marks -> lower risk)
+        B4 = 1.2     # backlog_count (More backlogs -> higher risk)
+        B5 = -0.1    # engagement (Higher engagement -> lower risk)
+        
+        # Z = B0 + B1*x1 + B2*x2 + B3*x3 + B4*x4 + B5*x5
+        z = B0 + (B1 * x1_quiz_score) + (B2 * x2_attendance) + (B3 * x3_internal_marks) + (B4 * x4_backlog) + (B5 * x5_engagement)
+        
+        import math
+        # P(Y=1) = 1 / (1 + e^-Z)
+        probability = 1.0 / (1.0 + math.exp(-z))
+        
+        # Risk Classification
+        if probability < 0.4:
+            risk_level = "Low"
+        elif probability < 0.7:
+            risk_level = "Medium"
+        else:
+            risk_level = "High"
+            
+        return {
+            "probability": probability,
+            "risk_level": risk_level,
+            "features_used": {
+                "quiz_score": x1_quiz_score,
+                "attendance_percentage": x2_attendance,
+                "previous_internal_marks": x3_internal_marks,
+                "backlog_count": x4_backlog,
+                "learning_engagement": x5_engagement
+            }
+        }
 
 # Singleton instance
 ml_service = MLService()

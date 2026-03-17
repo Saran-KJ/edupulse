@@ -145,9 +145,28 @@ def submit_quiz(
         risk_level=submission.risk_level
     )
     db.add(attempt)
+    db.flush() # Flush to let the ML service query it immediately
+
+    # Run the Early Risk Prediction using ML Logistic Regression
+    from ml_service import ml_service
+    prediction_result = ml_service.predict_early_risk(db, student.reg_no, submission.subject)
+    
+    # Alert System
+    if prediction_result['risk_level'] == "High":
+        from models import AcademicAlert
+        alert_msg = f"Your academic performance indicates a high risk in {submission.subject}. Please follow the recommended learning plan."
+        alert = AcademicAlert(
+            reg_no=student.reg_no,
+            subject=submission.subject,
+            message=alert_msg,
+            risk_level="High",
+            probability=prediction_result['probability']
+        )
+        db.add(alert)
+        
     db.commit()
 
-    # Rule-based: Update risk level if performance is high (>80%)
+    # Old Rule-based update logic for learning plan fallback
     if score_percentage >= 80:
         plan = db.query(PersonalizedLearningPlan).filter(
             PersonalizedLearningPlan.reg_no == student.reg_no,
@@ -160,7 +179,7 @@ def submit_quiz(
                 db.commit()
             elif plan.risk_level == "Medium":
                 plan.risk_level = "Low"
-                plan.pending_choice = True # Need to choose new focus for Low risk
+                plan.pending_choice = True
                 db.commit()
 
     return {
@@ -168,5 +187,6 @@ def submit_quiz(
         "correct_answers": correct_count,
         "wrong_answers": wrong_count,
         "score": score_percentage,
-        "status": "success"
+        "status": "success",
+        "risk_probability": prediction_result.get('probability', 0)
     }

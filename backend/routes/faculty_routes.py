@@ -127,3 +127,116 @@ async def get_faculty_allocations(
     ).all()
     
     return allocations
+
+@router.post("/schedule-quiz")
+async def schedule_quiz(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """Faculty schedules an early-risk quiz for a class before an assessment."""
+    if current_user.role != models.RoleEnum.FACULTY:
+        raise HTTPException(status_code=403, detail="Only faculty can schedule quizzes")
+    
+    # Verify faculty is allocated to this class
+    alloc = db.query(models.FacultyAllocation).filter(
+        models.FacultyAllocation.faculty_id == current_user.user_id,
+        models.FacultyAllocation.dept == data.get("dept"),
+        models.FacultyAllocation.year == data.get("year"),
+        models.FacultyAllocation.section == data.get("section"),
+        models.FacultyAllocation.subject_code == data.get("subject_code"),
+    ).first()
+    
+    if not alloc:
+        raise HTTPException(status_code=403, detail="You are not allocated to this class/subject")
+    
+    from datetime import datetime
+    deadline_str = data.get("deadline")
+    try:
+        deadline = datetime.fromisoformat(deadline_str)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid deadline format. Use ISO format: YYYY-MM-DDTHH:MM:SS")
+        
+    start_time_str = data.get("start_time")
+    start_time = None
+    if start_time_str:
+        try:
+            start_time = datetime.fromisoformat(start_time_str)
+        except (TypeError, ValueError):
+            pass # Ignore invalid start times and let it be null
+
+    scheduled = models.ScheduledQuiz(
+        faculty_id=current_user.user_id,
+        dept=data["dept"],
+        year=data["year"],
+        section=data["section"],
+        subject_code=data["subject_code"],
+        subject_title=data.get("subject_title", alloc.subject_title),
+        unit_number=data.get("unit_number", 1),
+        assessment_type=data.get("assessment_type", "CIA"),
+        start_time=start_time,
+        deadline=deadline,
+    )
+    db.add(scheduled)
+    db.commit()
+    db.refresh(scheduled)
+    
+    return {
+        "id": scheduled.id,
+        "message": f"Quiz scheduled for {scheduled.dept} Year {scheduled.year} {scheduled.section} - Unit {scheduled.unit_number} before {scheduled.assessment_type}",
+        "start_time": scheduled.start_time.isoformat() if scheduled.start_time else None,
+        "deadline": scheduled.deadline.isoformat()
+    }
+
+@router.get("/scheduled-quizzes")
+async def get_scheduled_quizzes(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """Get all quizzes scheduled by this faculty."""
+    if current_user.role != models.RoleEnum.FACULTY:
+        raise HTTPException(status_code=403, detail="Only faculty can access this endpoint")
+    
+    quizzes = db.query(models.ScheduledQuiz).filter(
+        models.ScheduledQuiz.faculty_id == current_user.user_id
+    ).order_by(models.ScheduledQuiz.deadline.desc()).all()
+    
+    return [
+        {
+            "id": q.id,
+            "dept": q.dept,
+            "year": q.year,
+            "section": q.section,
+            "subject_code": q.subject_code,
+            "subject_title": q.subject_title,
+            "unit_number": q.unit_number,
+            "assessment_type": q.assessment_type,
+            "deadline": q.deadline.isoformat() if q.deadline else None,
+            "is_active": q.is_active,
+            "created_at": q.created_at.isoformat() if q.created_at else None,
+        }
+        for q in quizzes
+    ]
+
+@router.put("/scheduled-quizzes/{quiz_id}/close")
+async def close_scheduled_quiz(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """Deactivate/close a scheduled quiz."""
+    if current_user.role != models.RoleEnum.FACULTY:
+        raise HTTPException(status_code=403, detail="Only faculty can access this endpoint")
+    
+    quiz = db.query(models.ScheduledQuiz).filter(
+        models.ScheduledQuiz.id == quiz_id,
+        models.ScheduledQuiz.faculty_id == current_user.user_id
+    ).first()
+    
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Scheduled quiz not found")
+    
+    quiz.is_active = 0
+    db.commit()
+    
+    return {"status": "success", "message": "Quiz closed"}

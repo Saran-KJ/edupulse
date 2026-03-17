@@ -134,12 +134,6 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showManualAllocationDialog,
-        label: const Text('Add Allocation'),
-        icon: const Icon(Icons.add),
-        backgroundColor: Colors.blue.shade800,
-      ),
     );
   }
 

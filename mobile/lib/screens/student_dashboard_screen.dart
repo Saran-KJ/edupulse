@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../models/models.dart';
+import '../config/app_theme.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/web_scaffold.dart';
 import 'student_attendance_screen.dart';
@@ -14,7 +16,6 @@ import 'subject_listing_screen.dart';
 import 'cgpa_screen.dart';
 import 'learning_hub_screen.dart';
 import 'quiz_screen.dart';
-// import 'overall_learning_screen.dart';
 
 
 
@@ -42,29 +43,31 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       future: ApiService().getCurrentUser(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            backgroundColor: AppColors.surface,
+            body: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
           );
         }
 
         final user = snapshot.data;
         final isWideScreen = MediaQuery.of(context).size.width >= ResponsiveBreakpoints.tablet;
-        
+
         return PopScope(
           canPop: false,
           onPopInvoked: (didPop) async {
             if (didPop) return;
-            final shouldLogout = await showDialog<bool>(
+            await showDialog<bool>(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Logout'),
-                content: const Text('Are you sure you want to logout?'),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Text('Logout', style: AppTextStyles.heading),
+                content: Text('Are you sure you want to logout?', style: AppTextStyles.body),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(false),
                     child: const Text('Cancel'),
                   ),
-                  TextButton(
+                  ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop(true);
                       _handleLogout(context);
@@ -99,11 +102,13 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                       context,
                       MaterialPageRoute(builder: (_) => const LearningHubScreen()),
                     ),
-                    icon: const Icon(Icons.school, color: Colors.white),
+                    icon: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
                     label: const Text('Learning Plan'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
+                      backgroundColor: AppColors.accent,
                       foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 );
@@ -114,12 +119,12 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       ],
       navigationItems: [
         NavigationItem(
-          icon: Icons.dashboard,
+          icon: Icons.dashboard_rounded,
           label: 'Dashboard',
           onTap: () => setState(() => _selectedIndex = 0),
         ),
         NavigationItem(
-          icon: Icons.person_outline,
+          icon: Icons.person_outline_rounded,
           label: 'Profile',
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentProfileScreen())),
         ),
@@ -145,18 +150,19 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildWelcomeHeader(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
               _buildPendingQuizzes(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
               _buildSummaryCards(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
               _buildAcademicAlerts(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
               _buildPersonalizedLearning(),
-              const SizedBox(height: 32),
-              const Text(
-                'Quick Actions',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              const SizedBox(height: 28),
+              SectionHeader(
+                title: 'Quick Actions',
+                icon: Icons.bolt_rounded,
+                color: AppColors.accentWarm,
               ),
               const SizedBox(height: 16),
               _buildActionButtons(context, user),
@@ -169,10 +175,12 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
 
   Widget _buildMobileLayout(User? user) {
     return Scaffold(
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Student Dashboard'),
-        backgroundColor: Colors.blue.shade800,
+        title: Text('Student Dashboard', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           if (user?.role == 'student' && user?.regNo != null)
             FutureBuilder<RiskPrediction>(
@@ -180,7 +188,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
               builder: (context, snapshot) {
                 if (snapshot.hasData && snapshot.data!.riskLevel == 'Low') {
                   return IconButton(
-                    icon: const Icon(Icons.school, color: Colors.greenAccent),
+                    icon: const Icon(Icons.auto_awesome_rounded, color: Colors.greenAccent),
                     tooltip: 'Learning Plan',
                     onPressed: () => Navigator.push(
                       context,
@@ -198,16 +206,19 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
               final user = snapshot.data!;
               return PopupMenuButton<String>(
                 icon: CircleAvatar(
+                  radius: 16,
                   backgroundColor: Colors.white,
                   child: Text(
                     user.name[0].toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.blue.shade800,
-                      fontWeight: FontWeight.bold,
+                    style: GoogleFonts.poppins(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
                     ),
                   ),
                 ),
                 tooltip: 'Profile',
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 onSelected: (value) {
                   if (value == 'logout') _handleLogout(context);
                 },
@@ -217,18 +228,22 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text(user.name, style: AppTextStyles.headingSmall.copyWith(fontSize: 15)),
                         const SizedBox(height: 4),
-                        Text(user.email, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                        Text(user.email, style: AppTextStyles.bodySmall),
                         const SizedBox(height: 4),
-                        Text('Role: ${user.role}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                        Text('Role: ${user.role}', style: AppTextStyles.bodySmall),
                         const Divider(),
                       ],
                     ),
                   ),
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'logout',
-                    child: Row(children: [Icon(Icons.logout, size: 20), SizedBox(width: 12), Text('Logout')]),
+                    child: Row(children: [
+                      const Icon(Icons.logout_rounded, size: 18),
+                      const SizedBox(width: 12),
+                      Text('Logout', style: AppTextStyles.body),
+                    ]),
                   ),
                 ],
               );
@@ -242,15 +257,15 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildWelcomeHeader(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _buildPendingQuizzes(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _buildSummaryCards(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _buildAcademicAlerts(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _buildPersonalizedLearning(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _buildActionButtons(context, user),
           ],
         ),
@@ -263,14 +278,13 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       future: ApiService().getStudentAlerts(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
         }
-        
+
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox.shrink(); // Hide if no alerts
+          return const SizedBox.shrink();
         }
-        
-        // Filter out read alerts
+
         final activeAlerts = snapshot.data!.where((a) => a['is_read'] == 0).toList();
         if (activeAlerts.isEmpty) {
           return const SizedBox.shrink();
@@ -279,71 +293,77 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Important Academic Alerts',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
+            SectionHeader(
+              title: 'Academic Alerts',
+              icon: Icons.warning_amber_rounded,
+              color: AppColors.error,
             ),
             const SizedBox(height: 12),
             ...activeAlerts.map((alert) {
-              return Card(
-                color: Colors.red.shade50,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.red.shade200, width: 1),
-                ),
+              return Container(
                 margin: const EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              alert['subject'] ?? 'Academic Alert',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              alert['message'] ?? 'High risk detected. Please review your learning plan.',
-                              style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
-                            ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton.icon(
-                                onPressed: () async {
-                                  try {
-                                    await ApiService().markAlertRead(alert['id']);
-                                    setState(() {}); // Refresh to hide the alert
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Error: $e')),
-                                      );
-                                    }
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.15)),
+                  boxShadow: AppShadows.subtle,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            alert['subject'] ?? 'Academic Alert',
+                            style: AppTextStyles.headingSmall.copyWith(fontSize: 15),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            alert['message'] ?? 'High risk detected. Please review your learning plan.',
+                            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await ApiService().markAlertRead(alert['id']);
+                                  setState(() {});
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error: $e')),
+                                    );
                                   }
-                                },
-                                icon: const Icon(Icons.check_circle_outline, size: 18),
-                                label: const Text('Acknowledge'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red.shade700,
-                                ),
+                                }
+                              },
+                              icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+                              label: Text('Acknowledge', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.error,
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         );
       },
@@ -354,12 +374,14 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     return Row(
       children: [
         CircleAvatar(
+          radius: 18,
           backgroundColor: Colors.white,
           child: Text(
             user?.name[0].toUpperCase() ?? 'S',
-            style: TextStyle(
-              color: Colors.blue.shade800,
-              fontWeight: FontWeight.bold,
+            style: GoogleFonts.poppins(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
             ),
           ),
         ),
@@ -370,17 +392,17 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
             children: [
               Text(
                 user?.name ?? 'Student',
-                style: const TextStyle(
+                style: GoogleFonts.inter(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontSize: 13,
                 ),
               ),
               Text(
                 user?.email ?? '',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
+                style: GoogleFonts.inter(
+                  color: Colors.white60,
+                  fontSize: 11,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -396,99 +418,128 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       future: ApiService().getStudentDashboardStats(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
         }
-        
+
         if (snapshot.hasError) {
-          return Text('Error: ${snapshot.error}');
+          return Text('Error: ${snapshot.error}', style: AppTextStyles.body);
         }
-        
+
         final stats = snapshot.data;
         final studentInfo = stats?['student_info'];
-        
-        return Row(
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.blue.shade100,
-              child: Text(
-                studentInfo?['name']?[0]?.toUpperCase() ?? 'S',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade800,
+
+        return GradientBanner(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Colors.white,
+                    child: Text(
+                      studentInfo?['name']?[0]?.toUpperCase() ?? 'S',
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome Back,',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        studentInfo?['name'] ?? 'Student',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${studentInfo?['dept'] ?? ''} • Year ${studentInfo?['year'] ?? ''} ${studentInfo?['section'] != null ? "• Sec ${studentInfo!['section']}" : ""}',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    studentInfo?['name'] ?? 'Student',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    studentInfo?['reg_no'] ?? '',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    '${studentInfo?['dept'] ?? ''} - Year ${studentInfo?['year'] ?? ''} ${studentInfo?['section'] != null ? "Sec ${studentInfo!['section']}" : ""}',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
   }
-
-
 
   Widget _buildSummaryCards() {
     return FutureBuilder<Map<String, dynamic>>(
       future: ApiService().getStudentDashboardStats(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
         }
-        
+
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(child: Text('Error: ${snapshot.error}', style: AppTextStyles.body));
         }
-        
+
         final stats = snapshot.data;
-        
+
         final List<Map<String, dynamic>> summaryData = [
           {
             'title': 'Attendance',
             'value': '${stats?['attendance_percentage']?.toStringAsFixed(1) ?? '0'}%',
-            'icon': Icons.calendar_today,
-            'color': Colors.blue,
+            'icon': Icons.calendar_month_rounded,
+            'color': AppColors.info,
           },
           {
             'title': 'GPA',
             'value': '${stats?['gpa']?.toStringAsFixed(1) ?? '0.0'}',
-            'icon': Icons.school,
-            'color': Colors.green,
+            'icon': Icons.school_rounded,
+            'color': AppColors.success,
           },
           {
             'title': 'Activities',
             'value': '${stats?['activities_count'] ?? '0'}',
-            'icon': Icons.local_activity,
-            'color': Colors.orange,
+            'icon': Icons.emoji_events_rounded,
+            'color': AppColors.accentWarm,
           },
         ];
 
@@ -504,65 +555,18 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: crossAxisCount >= 4 ? 1.8 : 1.9, 
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+            childAspectRatio: crossAxisCount >= 4 ? 2.0 : 2.0,
           ),
           itemCount: summaryData.length,
           itemBuilder: (context, index) {
             final data = summaryData[index];
-            return Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: (data['color'] as Color).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(data['icon'], color: data['color'], size: 28),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              data['value'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Flexible(
-                            child: Text(
-                              data['title'],
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey.shade600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return StatCard(
+              title: data['title'],
+              value: data['value'],
+              icon: data['icon'],
+              color: data['color'],
             );
           },
         );
@@ -574,96 +578,48 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     final List<Map<String, dynamic>> actions = [
       {
         'label': 'Risk Checker',
-        'icon': Icons.health_and_safety_outlined,
-        'color': Colors.redAccent,
-        'onTap': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentRiskScreen(),
-            ),
-          );
-        },
+        'icon': Icons.shield_rounded,
+        'color': AppColors.error,
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentRiskScreen())),
       },
       {
         'label': 'View Profile',
-        'icon': Icons.person_outline,
-        'color': Colors.blue,
-        'onTap': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentProfileScreen(),
-            ),
-          );
-        },
+        'icon': Icons.person_rounded,
+        'color': AppColors.info,
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentProfileScreen())),
       },
       {
         'label': 'View Marks',
-        'icon': Icons.assignment_outlined,
-        'color': Colors.green,
-        'onTap': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentMarksScreen(),
-            ),
-          );
-        },
+        'icon': Icons.assignment_rounded,
+        'color': AppColors.success,
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentMarksScreen())),
       },
       {
         'label': 'Attendance',
-        'icon': Icons.calendar_today_outlined,
-        'color': Colors.orange,
-        'onTap': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentAttendanceScreen(),
-            ),
-          );
-        },
+        'icon': Icons.calendar_month_rounded,
+        'color': AppColors.accentWarm,
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentAttendanceScreen())),
       },
       {
         'label': 'Activities',
-        'icon': Icons.local_activity_outlined,
-        'color': Colors.purple,
-        'onTap': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentActivityScreen(),
-            ),
-          );
-        },
+        'icon': Icons.emoji_events_rounded,
+        'color': const Color(0xFFAB47BC),
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentActivityScreen())),
       },
       {
         'label': 'Subjects',
-        'icon': Icons.menu_book_outlined,
-        'color': Colors.teal,
-        'onTap': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const SubjectListingScreen(),
-            ),
-          );
-        },
+        'icon': Icons.menu_book_rounded,
+        'color': AppColors.accent,
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubjectListingScreen())),
       },
       {
         'label': 'CGPA',
-        'icon': Icons.calculate_outlined,
-        'color': Colors.deepPurple,
+        'icon': Icons.calculate_rounded,
+        'color': const Color(0xFF5C6BC0),
         'onTap': () {
-          // reg_no is available from the student profile loaded in dashboard
           final regNo = user?.regNo ?? '';
           if (regNo.isEmpty) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CgpaScreen(regNo: regNo),
-            ),
-          );
+          Navigator.push(context, MaterialPageRoute(builder: (_) => CgpaScreen(regNo: regNo)));
         },
       },
     ];
@@ -680,8 +636,8 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
         childAspectRatio: 1.0,
       ),
       itemCount: actions.length,
@@ -689,42 +645,46 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         final action = actions[index];
         return HoverScaleEffect(
           onTap: action['onTap'],
-          child: Material(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            elevation: 2,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade100),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: (action['color'] as Color).withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: AppShadows.card,
+              border: Border.all(color: (action['color'] as Color).withValues(alpha: 0.08)),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        (action['color'] as Color).withValues(alpha: 0.15),
+                        (action['color'] as Color).withValues(alpha: 0.05),
+                      ],
                     ),
-                    child: Icon(
-                      action['icon'],
-                      color: action['color'],
-                      size: 28,
-                    ),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    action['label'],
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Icon(
+                    action['icon'],
+                    color: action['color'],
+                    size: 26,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  action['label'],
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -736,33 +696,48 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Personalized Learning',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        SectionHeader(
+          title: 'Personalized Learning',
+          icon: Icons.auto_awesome_rounded,
+          color: AppColors.primaryLight,
         ),
         const SizedBox(height: 16),
         FutureBuilder<Map<String, dynamic>>(
           future: ApiService().getLearningRecommendations(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
             }
-            
+
             if (snapshot.hasError) {
-              return Text('Error loading resources: ${snapshot.error}');
+              return Text('Error loading resources: ${snapshot.error}', style: AppTextStyles.body);
             }
-            
+
             final data = snapshot.data ?? {};
             final resourcesList = data['resources'] is List ? data['resources'] as List<dynamic> : [];
             final resources = resourcesList.map((json) => LearningResource.fromJson(json)).toList();
             final progress = data['progress'] is Map<String, dynamic> ? data['progress'] : {};
             final progressPercentage = (progress['percentage'] as num?)?.toDouble() ?? 0.0;
-            
+
             if (resources.isEmpty) {
-              return const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('No recommended resources found at this time.'),
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: AppShadows.subtle,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_stories_rounded, size: 32, color: AppColors.textHint),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        'No recommended resources found at this time.',
+                        style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  ],
                 ),
               );
             }
@@ -770,51 +745,42 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Progress Bar
+                // Progress
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade100),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: AppShadows.subtle,
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.08)),
                   ),
                   child: Column(
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Your Progress',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                            ),
-                          ),
-                          Text(
-                            '${progressPercentage.toInt()}% Completed',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                            ),
-                          ),
+                          Text('Your Progress', style: AppTextStyles.label.copyWith(color: AppColors.primary)),
+                          Text('${progressPercentage.toInt()}% Completed', style: AppTextStyles.label.copyWith(color: AppColors.primary)),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: progressPercentage / 100,
-                        backgroundColor: Colors.blue.shade100,
-                        color: Colors.blue.shade700,
-                        minHeight: 8,
-                        borderRadius: BorderRadius.circular(4),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: progressPercentage / 100,
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                          color: AppColors.primary,
+                          minHeight: 8,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Resources List
                 SizedBox(
-                  height: 240, // Increased height to prevent overflow
+                  height: 240,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: resources.length,
@@ -822,29 +788,23 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                       final resource = resources[index];
                       return Container(
                         width: 280,
-                        margin: const EdgeInsets.only(right: 16),
+                        margin: const EdgeInsets.only(right: 14),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: AppShadows.card,
+                          border: Border.all(color: Colors.grey.shade100),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               decoration: BoxDecoration(
-                                color: _getResourceColor(resource.type).withValues(alpha: 0.1),
+                                gradient: AppGradients.card(_getResourceColor(resource.type)),
                                 borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(12),
-                                  topRight: Radius.circular(12),
+                                  topLeft: Radius.circular(16),
+                                  topRight: Radius.circular(16),
                                 ),
                               ),
                               child: Row(
@@ -853,10 +813,9 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                   const SizedBox(width: 8),
                                   Text(
                                     resource.type.toUpperCase(),
-                                    style: TextStyle(
+                                    style: AppTextStyles.label.copyWith(
                                       color: _getResourceColor(resource.type),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+                                      fontSize: 10,
                                     ),
                                   ),
                                   const Spacer(),
@@ -864,39 +823,30 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: Colors.grey.shade200,
-                                        borderRadius: BorderRadius.circular(4),
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: Text(
-                                        resource.dept!,
-                                        style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
-                                      ),
+                                      child: Text(resource.dept!, style: AppTextStyles.bodySmall.copyWith(fontSize: 9)),
                                     ),
                                 ],
                               ),
                             ),
                             Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.all(12),
+                                padding: const EdgeInsets.all(14),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       resource.title,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
+                                      style: AppTextStyles.headingSmall.copyWith(fontSize: 14),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       resource.description ?? 'No description',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 12,
-                                      ),
+                                      style: AppTextStyles.bodySmall,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -908,13 +858,10 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                           return Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: Colors.grey.shade100,
-                                              borderRadius: BorderRadius.circular(4),
+                                              color: AppColors.surface,
+                                              borderRadius: BorderRadius.circular(6),
                                             ),
-                                            child: Text(
-                                              tag.trim(),
-                                              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-                                            ),
+                                            child: Text(tag.trim(), style: AppTextStyles.bodySmall.copyWith(fontSize: 10)),
                                           );
                                         }).toList(),
                                       ),
@@ -933,7 +880,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                       await launchUrl(uri);
                                     }
                                   },
-                                  child: const Text('View'),
+                                  child: Text('View', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
                                 ),
                               ),
                             ),
@@ -945,93 +892,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                 ),
               ],
             );
-            
-            return SizedBox(
-              height: 220,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: resources.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 16),
-                itemBuilder: (context, index) {
-                  final resource = resources[index];
-                  return SizedBox(
-                    width: 280,
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: InkWell(
-                        onTap: () async {
-                          final uri = Uri.parse(resource.url);
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri);
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: _getResourceColor(resource.type).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  resource.type.toUpperCase(),
-                                  style: TextStyle(
-                                    color: _getResourceColor(resource.type),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                resource.title,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-                              Expanded(
-                                child: Text(
-                                  resource.description ?? '',
-                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (resource.tags != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Wrap(
-                                    spacing: 4,
-                                    children: resource.tags!.split(',').take(2).map((tag) {
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade100,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          tag.trim(),
-                                          style: TextStyle(color: Colors.grey.shade700, fontSize: 10),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
           },
         ),
       ],
@@ -1040,27 +900,19 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
 
   Color _getResourceColor(String type) {
     switch (type.toLowerCase()) {
-      case 'video':
-        return Colors.red;
-      case 'article':
-        return Colors.green;
-      case 'course':
-        return Colors.blue;
-      default:
-        return Colors.orange;
+      case 'video': return AppColors.error;
+      case 'article': return AppColors.success;
+      case 'course': return AppColors.info;
+      default: return AppColors.accentWarm;
     }
   }
 
   IconData _getResourceIcon(String type) {
     switch (type.toLowerCase()) {
-      case 'video':
-        return Icons.play_circle_fill;
-      case 'article':
-        return Icons.article;
-      case 'course':
-        return Icons.school;
-      default:
-        return Icons.link;
+      case 'video': return Icons.play_circle_rounded;
+      case 'article': return Icons.article_rounded;
+      case 'course': return Icons.school_rounded;
+      default: return Icons.link_rounded;
     }
   }
 
@@ -1074,50 +926,36 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.quiz, color: Colors.purple.shade700, size: 20),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'Early Risk Quiz',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
+            SectionHeader(
+              title: 'Early Risk Quiz',
+              icon: Icons.quiz_rounded,
+              color: const Color(0xFF7B2FF7),
             ),
             const SizedBox(height: 12),
 
             if (isLoading)
-              const Center(child: CircularProgressIndicator())
+              const Center(child: CircularProgressIndicator(color: AppColors.primary))
             else if (quizzes.isEmpty)
-              // Placeholder card when no quiz is scheduled
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.purple.shade50, Colors.indigo.shade50],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.purple.shade100, width: 1.5),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: AppShadows.subtle,
+                  border: Border.all(color: const Color(0xFF7B2FF7).withValues(alpha: 0.1)),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.purple.withValues(alpha: 0.1),
+                        gradient: LinearGradient(
+                          colors: [const Color(0xFF7B2FF7).withValues(alpha: 0.15), const Color(0xFF7B2FF7).withValues(alpha: 0.05)],
+                        ),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.quiz_outlined, color: Colors.purple.shade400, size: 32),
+                      child: Icon(Icons.quiz_outlined, color: const Color(0xFF7B2FF7).withValues(alpha: 0.6), size: 28),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -1126,32 +964,28 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                         children: [
                           Text(
                             'No Quiz Scheduled Yet',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.purple.shade800,
-                            ),
+                            style: AppTextStyles.headingSmall.copyWith(fontSize: 15, color: const Color(0xFF7B2FF7)),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
                           Text(
-                            'Your faculty will schedule a quiz before each assessment (Slip Test, CIA, Model Exam). Completing it helps predict and reduce your academic risk early.',
-                            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                            'Your faculty will schedule a quiz before each assessment. Completing it helps predict and reduce your academic risk early.',
+                            style: AppTextStyles.bodySmall.copyWith(height: 1.4),
                           ),
                           const SizedBox(height: 10),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.purple.shade100,
+                              color: const Color(0xFF7B2FF7).withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.notifications_active_outlined, size: 13, color: Colors.purple.shade700),
+                                Icon(Icons.notifications_active_outlined, size: 12, color: const Color(0xFF7B2FF7)),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Quiz available before every assessment',
-                                  style: TextStyle(fontSize: 11, color: Colors.purple.shade700, fontWeight: FontWeight.w600),
+                                  'Available before every assessment',
+                                  style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF7B2FF7), fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
@@ -1163,7 +997,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                 ),
               )
             else
-              // Active quiz cards
               ...quizzes.map((quiz) {
                 final deadline = DateTime.parse(quiz['deadline']).toLocal();
                 final isOverdue = DateTime.now().isAfter(deadline);
@@ -1171,24 +1004,18 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.purple.shade700, Colors.purple.shade900],
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7B2FF7), Color(0xFF3F37C9)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.purple.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: AppShadows.colored(const Color(0xFF7B2FF7)),
                   ),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(18),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -1203,16 +1030,16 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                         ).then((_) => setState(() {}));
                       },
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(18),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
+                                color: Colors.white.withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.quiz, color: Colors.white, size: 28),
+                              child: const Icon(Icons.quiz_rounded, color: Colors.white, size: 24),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -1222,29 +1049,29 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                   Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(4),
+                                          color: Colors.white.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
-                                          'Unit ${quiz['unit_number']} - ${quiz['assessment_type']}',
-                                          style: const TextStyle(
+                                          'Unit ${quiz['unit_number']} • ${quiz['assessment_type']}',
+                                          style: GoogleFonts.inter(
                                             color: Colors.white,
                                             fontSize: 10,
-                                            fontWeight: FontWeight.bold,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ),
                                       if (isOverdue) ...[
                                         const SizedBox(width: 8),
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                           decoration: BoxDecoration(
-                                            color: Colors.redAccent.shade400,
-                                            borderRadius: BorderRadius.circular(4),
+                                            color: AppColors.error,
+                                            borderRadius: BorderRadius.circular(6),
                                           ),
-                                          child: const Text('OVERDUE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                          child: Text('OVERDUE', style: GoogleFonts.inter(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                                         ),
                                       ],
                                     ],
@@ -1252,32 +1079,32 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                   const SizedBox(height: 8),
                                   Text(
                                     quiz['subject_title'] ?? quiz['subject_code'],
-                                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 6),
                                   Row(
                                     children: [
                                       if (quiz['start_time'] != null) ...[
-                                        const Icon(Icons.play_circle_outline, color: Colors.white70, size: 14),
+                                        Icon(Icons.play_circle_outline_rounded, color: Colors.white60, size: 13),
                                         const SizedBox(width: 4),
                                         Text(
                                           'Starts: ${DateTime.parse(quiz['start_time']).toLocal().day}/${DateTime.parse(quiz['start_time']).toLocal().month}/${DateTime.parse(quiz['start_time']).toLocal().year}',
-                                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                          style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
                                         ),
                                         const SizedBox(width: 12),
                                       ],
-                                      const Icon(Icons.schedule, color: Colors.white70, size: 14),
+                                      Icon(Icons.schedule_rounded, color: Colors.white60, size: 13),
                                       const SizedBox(width: 4),
                                       Text(
                                         'Due: ${deadline.day}/${deadline.month}/${deadline.year} ${deadline.hour.toString().padLeft(2, '0')}:${deadline.minute.toString().padLeft(2, '0')}',
-                                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                        style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
                                       ),
                                     ],
                                   ),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+                            Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withValues(alpha: 0.5), size: 14),
                           ],
                         ),
                       ),
@@ -1291,5 +1118,3 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     );
   }
 }
-
-// test 

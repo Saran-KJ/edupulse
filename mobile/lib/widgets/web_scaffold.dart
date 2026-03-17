@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../config/app_theme.dart';
 import 'responsive_layout.dart';
 
 /// Web-optimized scaffold with sidebar navigation for large screens
@@ -48,12 +50,13 @@ class _WebScaffoldState extends State<WebScaffold> {
               if (widget.subtitle != null)
                 Text(
                   widget.subtitle!,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.white70),
                 ),
             ],
           ),
-          backgroundColor: Colors.blue.shade800,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
+          elevation: 0,
           actions: widget.actions,
         ),
         drawer: _buildDrawer(),
@@ -68,8 +71,9 @@ class _WebScaffoldState extends State<WebScaffold> {
         children: [
           // Sidebar
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: _isExpanded ? 280 : 72,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOutCubic,
+            width: _isExpanded ? 270 : 72,
             child: _buildSidebar(),
           ),
           // Main content
@@ -79,13 +83,13 @@ class _WebScaffoldState extends State<WebScaffold> {
                 // Top bar
                 Container(
                   height: 64,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 4,
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
                     ],
@@ -96,21 +100,9 @@ class _WebScaffoldState extends State<WebScaffold> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            widget.title,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          Text(widget.title, style: AppTextStyles.headingSmall),
                           if (widget.subtitle != null)
-                            Text(
-                              widget.subtitle!,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
+                            Text(widget.subtitle!, style: AppTextStyles.subtitle),
                         ],
                       ),
                       const Spacer(),
@@ -121,7 +113,7 @@ class _WebScaffoldState extends State<WebScaffold> {
                 // Body content
                 Expanded(
                   child: Container(
-                    color: Colors.grey.shade50,
+                    color: AppColors.surface,
                     child: widget.body,
                   ),
                 ),
@@ -137,18 +129,11 @@ class _WebScaffoldState extends State<WebScaffold> {
   Widget _buildSidebar() {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.blue.shade800,
-            Colors.blue.shade900,
-          ],
-        ),
+        gradient: AppGradients.sidebar,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 12,
             offset: const Offset(2, 0),
           ),
         ],
@@ -157,32 +142,39 @@ class _WebScaffoldState extends State<WebScaffold> {
         children: [
           // Header
           Container(
-            height: 120,
+            height: 110,
             padding: EdgeInsets.all(_isExpanded ? 16 : 8),
             child: Row(
               mainAxisAlignment: _isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: EdgeInsets.all(_isExpanded ? 10 : 8),
-                  decoration: const BoxDecoration(
+                  padding: EdgeInsets.all(_isExpanded ? 8 : 6),
+                  decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                   child: Image.asset(
                     'assets/images/logo.png',
-                    width: _isExpanded ? 28 : 24,
-                    height: _isExpanded ? 28 : 24,
+                    width: _isExpanded ? 26 : 22,
+                    height: _isExpanded ? 26 : 22,
                   ),
                 ),
                 if (_isExpanded) ...[
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'EduPulse',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ),
@@ -191,14 +183,29 @@ class _WebScaffoldState extends State<WebScaffold> {
             ),
           ),
           // Toggle button
-          IconButton(
-            icon: Icon(
-              _isExpanded ? Icons.chevron_left : Icons.chevron_right,
-              color: Colors.white70,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: InkWell(
+              onTap: () => setState(() => _isExpanded = !_isExpanded),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Icon(
+                    _isExpanded ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
+                ),
+              ),
             ),
-            onPressed: () => setState(() => _isExpanded = !_isExpanded),
           ),
-          const Divider(color: Colors.white24, height: 1),
+          const SizedBox(height: 8),
+          Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
           // Navigation items
           Expanded(
             child: ListView.builder(
@@ -213,7 +220,7 @@ class _WebScaffoldState extends State<WebScaffold> {
           ),
           // User section
           if (widget.userHeader != null && _isExpanded) ...[
-            const Divider(color: Colors.white24, height: 1),
+            Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
             Padding(
               padding: const EdgeInsets.all(12),
               child: ClipRect(child: widget.userHeader),
@@ -223,7 +230,7 @@ class _WebScaffoldState extends State<WebScaffold> {
           if (widget.onLogout != null)
             _buildNavItem(
               NavigationItem(
-                icon: Icons.logout,
+                icon: Icons.logout_rounded,
                 label: 'Logout',
                 onTap: widget.onLogout!,
               ),
@@ -237,26 +244,34 @@ class _WebScaffoldState extends State<WebScaffold> {
 
   Widget _buildNavItem(NavigationItem item, bool isSelected) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       child: Material(
-        color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: item.onTap,
           borderRadius: BorderRadius.circular(12),
-          hoverColor: Colors.white.withValues(alpha: 0.1),
-          child: Padding(
+          hoverColor: Colors.white.withValues(alpha: 0.08),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             padding: EdgeInsets.symmetric(
-              horizontal: _isExpanded ? 16 : 12,
-              vertical: 12,
+              horizontal: _isExpanded ? 14 : 12,
+              vertical: 11,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.white.withValues(alpha: 0.12) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: isSelected
+                  ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                  : null,
             ),
             child: Row(
               mainAxisAlignment: _isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
               children: [
                 Icon(
                   item.icon,
-                  color: isSelected ? Colors.white : Colors.white70,
-                  size: 22,
+                  color: isSelected ? Colors.white : Colors.white60,
+                  size: 20,
                 ),
                 if (_isExpanded) ...[
                   const SizedBox(width: 12),
@@ -264,9 +279,10 @@ class _WebScaffoldState extends State<WebScaffold> {
                     child: Text(
                       item.label,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.white70,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      style: GoogleFonts.inter(
+                        color: isSelected ? Colors.white : Colors.white60,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        fontSize: 13,
                       ),
                     ),
                   ),
@@ -283,14 +299,7 @@ class _WebScaffoldState extends State<WebScaffold> {
     return Drawer(
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.blue.shade800,
-              Colors.blue.shade900,
-            ],
-          ),
+          gradient: AppGradients.sidebar,
         ),
         child: SafeArea(
           child: Column(
@@ -300,30 +309,37 @@ class _WebScaffoldState extends State<WebScaffold> {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                          ),
+                        ],
                       ),
                       child: Image.asset(
                         'assets/images/logo.png',
-                        width: 28,
-                        height: 28,
+                        width: 24,
+                        height: 24,
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Text(
+                    const SizedBox(width: 14),
+                    Text(
                       'EduPulse',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Divider(color: Colors.white24),
+              Divider(color: Colors.white.withValues(alpha: 0.1)),
               Expanded(
                 child: ListView.builder(
                   itemCount: widget.navigationItems.length,
@@ -331,10 +347,17 @@ class _WebScaffoldState extends State<WebScaffold> {
                     final item = widget.navigationItems[index];
                     final isSelected = index == widget.selectedIndex;
                     return ListTile(
-                      leading: Icon(item.icon, color: Colors.white),
-                      title: Text(item.label, style: const TextStyle(color: Colors.white)),
+                      leading: Icon(item.icon, color: isSelected ? Colors.white : Colors.white60),
+                      title: Text(
+                        item.label,
+                        style: GoogleFonts.inter(
+                          color: isSelected ? Colors.white : Colors.white60,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
                       selected: isSelected,
-                      selectedTileColor: Colors.white.withValues(alpha: 0.15),
+                      selectedTileColor: Colors.white.withValues(alpha: 0.1),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       onTap: () {
                         Navigator.pop(context);
                         item.onTap();
@@ -345,8 +368,8 @@ class _WebScaffoldState extends State<WebScaffold> {
               ),
               if (widget.onLogout != null)
                 ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.white70),
-                  title: const Text('Logout', style: TextStyle(color: Colors.white70)),
+                  leading: const Icon(Icons.logout_rounded, color: Colors.white54),
+                  title: Text('Logout', style: GoogleFonts.inter(color: Colors.white54)),
                   onTap: widget.onLogout,
                 ),
             ],
