@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'project_roadmap_screen.dart';
 import '../services/api_service.dart';
 import '../models/models.dart';
 import '../config/app_theme.dart';
@@ -144,12 +145,14 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: ContentConstraints(
-          maxWidth: 1400,
+          maxWidth: 1200,
           padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildWelcomeHeader(),
+              const SizedBox(height: 28),
+              _buildProjectBatch(),
               const SizedBox(height: 28),
               _buildPendingQuizzes(),
               const SizedBox(height: 28),
@@ -257,6 +260,8 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildWelcomeHeader(),
+            const SizedBox(height: 20),
+            _buildProjectBatch(),
             const SizedBox(height: 20),
             _buildPendingQuizzes(),
             const SizedBox(height: 20),
@@ -1114,6 +1119,114 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
               }),
           ],
         );
+      },
+    );
+  }
+
+  Widget _buildProjectBatch() {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: ApiService().getMyProjectBatch(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        }
+
+        final batch = snapshot.data;
+        if (batch == null) {
+          return const SizedBox.shrink(); // Hide entirely if no batch assigned
+        }
+
+        final guideName = batch['guide_name'] ?? 'Unknown Guide';
+        final students = batch['students'] as List<dynamic>? ?? [];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'My Project Batch',
+              icon: Icons.group_work_rounded,
+              color: AppColors.info,
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProjectRoadmapScreen(batch: batch),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: AppShadows.subtle,
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.info.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.person, color: AppColors.info, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Guided by',
+                              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                            ),
+                            Text(
+                              guideName,
+                              style: AppTextStyles.headingSmall.copyWith(fontSize: 15, color: AppColors.info),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(),
+                  ),
+                  Text(
+                    'Team Members:',
+                    style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: students.map((s) {
+                      return Chip(
+                        label: Text(
+                          '${s['name']} ${s['reg_no'] != null ? '(${s['reg_no']})' : ''}',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                        backgroundColor: AppColors.surface,
+                        side: BorderSide(color: Colors.grey.shade300),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
       },
     );
   }

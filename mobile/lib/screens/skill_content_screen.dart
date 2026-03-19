@@ -49,7 +49,8 @@ class _SkillContentScreenState extends State<SkillContentScreen>
   bool _isMarkingComplete = false;
   bool _isCompleted = false;
   late int _actualResourceId;
-  String? _selectedLanguage;
+  String? _selectedLanguage;        // Programming sub-language (Python, Java…)
+  String _videoLanguage = 'English'; // Tamil or English for video content
   String _selectedLevel = 'Beginner'; // Beginner, Intermediate, Advanced
   Map<String, dynamic>? _project;
 
@@ -217,7 +218,8 @@ class _SkillContentScreenState extends State<SkillContentScreen>
     try {
       final skillCat = widget.resource.skillCategory ?? '';
       final data = await ApiService().getSkillContent(
-        skillCat, 
+        skillCat,
+        language: _videoLanguage,
         subCategory: _selectedLanguage,
         level: _selectedLevel,
       );
@@ -693,15 +695,59 @@ class _SkillContentScreenState extends State<SkillContentScreen>
       children: [
         _buildLevelSelector(),
         const SizedBox(height: 10),
+        _buildVideoLanguageToggle(),
+        const SizedBox(height: 10),
         _buildProfessionalProgressBar(),
         const SizedBox(height: 20),
 
         // YouTube Videos Section
         if (_youtubeVideos.isNotEmpty) ...[
-          _buildSectionLabel('📺 Recommended Videos', Colors.red.shade700),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '📺 Recommended Videos',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.red.shade700),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _videoLanguage == 'Tamil'
+                      ? Colors.orange.shade50
+                      : Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _videoLanguage == 'Tamil'
+                        ? Colors.orange.shade300
+                        : Colors.blue.shade300,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _videoLanguage == 'Tamil' ? '🇮🇳' : '🇬🇧',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _videoLanguage,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _videoLanguage == 'Tamil'
+                            ? Colors.orange.shade800
+                            : Colors.blue.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 160,
+            height: 170,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _youtubeVideos.length,
@@ -710,6 +756,40 @@ class _SkillContentScreenState extends State<SkillContentScreen>
             ),
           ),
           const SizedBox(height: 30),
+        ]
+        else if (!_isLoading) ...[
+          // No videos placeholder
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.play_circle_outline, color: Colors.grey.shade400, size: 32),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'No videos found for $_videoLanguage',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Try switching to English for more video options.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
         ],
 
         _buildSectionLabel('📖 Professional Learning Content', _skillColor),
@@ -722,8 +802,68 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         if (_completedSections.length == _sections.length && _roadmap.isNotEmpty)
           _buildProfessionalRoadmap(),
 
-        const SizedBox(height: 100), // Spacing for fab/bottom bar
+        const SizedBox(height: 100),
       ],
+    );
+  }
+
+  /// Tamil / English toggle for video content.
+  Widget _buildVideoLanguageToggle() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildLangToggleBtn('English', '🇬🇧'),
+          const SizedBox(width: 4),
+          _buildLangToggleBtn('Tamil', '🇮🇳'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLangToggleBtn(String lang, String flag) {
+    final selected = _videoLanguage == lang;
+    return GestureDetector(
+      onTap: () {
+        if (!selected) {
+          setState(() {
+            _videoLanguage = lang;
+            _youtubeVideos = []; // Clear old videos while reloading
+          });
+          _fetchFromApi();
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: selected
+              ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2))]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(flag, style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
+            Text(
+              lang,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                color: selected ? Colors.black87 : Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -743,6 +883,8 @@ class _SkillContentScreenState extends State<SkillContentScreen>
     final thumbnail = video['thumbnail'] as String? ?? '';
     final videoUrl = video['video_url'] as String? ?? '';
     final videoId = video['video_id'] as String? ?? _extractVideoId(videoUrl);
+    final lang = video['language'] as String? ?? _videoLanguage;
+    final isTamil = lang == 'Tamil';
 
     return GestureDetector(
       onTap: () {
@@ -768,30 +910,47 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thumbnail
+            // Thumbnail with play button + language badge
             Stack(
               children: [
                 if (thumbnail.isNotEmpty)
                   Image.network(
                     thumbnail,
-                    height: 110,
+                    height: 118,
                     width: 220,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      height: 110,
+                      height: 118,
                       color: Colors.grey.shade200,
                       child: Icon(Icons.play_circle_outline, color: Colors.grey.shade400, size: 40),
                     ),
                   )
                 else
                   Container(
-                    height: 110,
+                    height: 118,
                     color: Colors.grey.shade200,
                     child: Icon(Icons.play_circle_outline, color: Colors.grey.shade400, size: 40),
                   ),
+                // Language badge (top-left)
                 Positioned(
-                  bottom: 8,
-                  right: 8,
+                  top: 6,
+                  left: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isTamil ? Colors.orange.shade700 : Colors.blue.shade700,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      isTamil ? '🇮🇳 Tamil' : '🇬🇧 English',
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                // Play button (bottom-right)
+                Positioned(
+                  bottom: 6,
+                  right: 6,
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
@@ -804,7 +963,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
               ],
             ),
             Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
               child: Text(
                 title,
                 style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, height: 1.3),

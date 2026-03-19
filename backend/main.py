@@ -21,7 +21,8 @@ from routes import (
     hod_routes,
     learning_routes,
     subject_routes,
-    quiz_routes
+    quiz_routes,
+    project_routes
 )
 
 # Create database tables
@@ -57,6 +58,7 @@ app.include_router(hod_routes.router)
 app.include_router(learning_routes.router, prefix="/api/learning", tags=["Learning"])
 app.include_router(subject_routes.router)
 app.include_router(quiz_routes.router)
+app.include_router(project_routes.router)
 
 @app.get("/")
 async def root():

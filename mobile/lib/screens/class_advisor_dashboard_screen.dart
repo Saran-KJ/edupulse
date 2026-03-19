@@ -182,7 +182,7 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: ContentConstraints(
-          maxWidth: 1400,
+          maxWidth: 1200,
           padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

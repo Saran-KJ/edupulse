@@ -1747,23 +1747,37 @@ def get_youtube_learning_resources(
 
 # ─── Skill Development — Gemini Content + YouTube + Quiz ─────────────────────
 
-SKILL_YOUTUBE_QUERIES = {
-    "Communication": "communication skills engineering students placement interview",
-    "Programming": "programming problem solving coding interview engineering",
-    "Aptitude": "aptitude quantitative reasoning placement preparation engineering",
-    "Critical Thinking": "critical thinking problem solving engineering students",
-    "Leadership": "leadership skills team management engineering college students",
+# English video search queries — optimised for educational / placement-prep content
+SKILL_YOUTUBE_QUERIES_EN = {
+    "Communication": "communication skills engineering students placement interview tips",
+    "Programming": "programming tutorial beginners coding engineering student",
+    "Aptitude": "aptitude quantitative reasoning placement preparation engineering college",
+    "Critical Thinking": "critical thinking logical reasoning problem solving engineering students",
+    "Leadership": "leadership skills team management engineering college students placement",
 }
+
+# Tamil video search queries — specific and education-focused
+SKILL_YOUTUBE_QUERIES_TA = {
+    "Communication": "தொடர்பு திறன் பொறியியல் மாணவர்கள் interview Tamil",
+    "Programming": "programming tutorial Tamil beginners coding",
+    "Aptitude": "aptitude reasoning Tamil placement preparation engineering",
+    "Critical Thinking": "critical thinking logical reasoning Tamil engineering placement",
+    "Leadership": "leadership skills Tamil engineering students personality development",
+}
+
+# Backwards-compat alias
+SKILL_YOUTUBE_QUERIES = SKILL_YOUTUBE_QUERIES_EN
 
 
 def fetch_skill_youtube_videos(db: Session, skill_category: str, language: str = "English") -> list:
     """
     Fetch YouTube videos for a skill category — cached in YouTubeRecommendation with subject_code='SKILL'.
-    Returns list of {video_id, title, thumbnail, video_url}.
+    Uses dedicated Tamil and English query dictionaries for better relevance.
+    Returns list of {video_id, title, thumbnail, video_url, language}.
     """
     SKILL_SUBJECT_CODE = "SKILL"
 
-    # Check cache
+    # Composite cache key: skill_category is stored in `unit`, language in `language`
     cached = db.query(YouTubeRecommendation).filter(
         YouTubeRecommendation.subject_code == SKILL_SUBJECT_CODE,
         YouTubeRecommendation.unit == skill_category,
@@ -1777,6 +1791,7 @@ def fetch_skill_youtube_videos(db: Session, skill_category: str, language: str =
                 "title": c.title,
                 "thumbnail": c.thumbnail,
                 "video_url": c.video_url,
+                "language": c.language or language,
             }
             for c in cached
         ]
@@ -1784,19 +1799,27 @@ def fetch_skill_youtube_videos(db: Session, skill_category: str, language: str =
     if not YOUTUBE_API_KEY:
         return []
 
-    base_query = SKILL_YOUTUBE_QUERIES.get(skill_category, f"{skill_category} skills engineering")
+    # Pick the right query dict
     if language == "Tamil":
-        base_query += " in Tamil"
+        query_dict = SKILL_YOUTUBE_QUERIES_TA
+        relevance_lang = "ta"
+    else:
+        query_dict = SKILL_YOUTUBE_QUERIES_EN
+        relevance_lang = "en"
 
+    base_query = query_dict.get(skill_category, f"{skill_category} skills tutorial")
+    # For sub-categories (e.g. Python Beginner) inject those terms too
+    # The caller may pass "Python Beginner" as skill_category; split gracefully
+    
     try:
         params = {
             "part": "snippet",
             "q": base_query,
             "key": YOUTUBE_API_KEY,
-            "maxResults": 8,
+            "maxResults": 10,  # Fetch extra so we can filter irrelevant ones
             "type": "video",
             "videoEmbeddable": "true",
-            "relevanceLanguage": "ta" if language == "Tamil" else "en",
+            "relevanceLanguage": relevance_lang,
         }
         resp = requests.get(YOUTUBE_SEARCH_URL, params=params, timeout=10)
         resp.raise_for_status()
@@ -1805,12 +1828,16 @@ def fetch_skill_youtube_videos(db: Session, skill_category: str, language: str =
         results = []
         irrelevant_kw = ["don't watch", "warning", "notice", "experience", "vlog", "shorts", "news", "wrong"]
         for item in data.get("items", []):
-            if len(results) >= 5:
+            if len(results) >= 6:
                 break
             video_id = item["id"]["videoId"]
             title = item["snippet"]["title"]
             thumb_data = item["snippet"]["thumbnails"]
-            thumb = thumb_data.get("medium", thumb_data.get("default", {})).get("url", "")
+            # Prefer high-res thumbnail
+            thumb = (
+                thumb_data.get("high", thumb_data.get("medium", thumb_data.get("default", {})))
+                .get("url", "")
+            )
             video_url = f"https://www.youtube.com/watch?v={video_id}"
 
             if any(kw in title.lower() for kw in irrelevant_kw):
@@ -1833,13 +1860,14 @@ def fetch_skill_youtube_videos(db: Session, skill_category: str, language: str =
                 "title": title,
                 "thumbnail": thumb,
                 "video_url": video_url,
+                "language": language,
             })
 
         db.commit()
         return results
 
     except Exception as e:
-        print(f"ERROR fetching skill YouTube videos for {skill_category}: {e}")
+        print(f"ERROR fetching skill YouTube videos for {skill_category} / {language}: {e}")
         return []
 
 
@@ -1892,13 +1920,15 @@ def get_skill_content(
     if resource.content:
         try:
             cached_data = json.loads(resource.content)
-            # Fetch YouTube videos dynamically even if content is cached
+            # Fetch YouTube videos dynamically even if content is cached —
+            # always use the requested language so Tamil/English videos stay separate
             video_query = skill
             if sub_category: video_query = f"{sub_category} {level}"
             youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
-            
+
             cached_data["youtube_videos"] = youtube_videos
-            cached_data["resource_id"] = resource.resource_id # Inject real ID
+            cached_data["language"] = language
+            cached_data["resource_id"] = resource.resource_id  # Inject real ID
             
             # Backwards compatibility for old cached data missing project details
             if "project" in cached_data:
@@ -1919,7 +1949,7 @@ def get_skill_content(
     sections = content_data.get("sections", [])
     project = content_data.get("project", {})
 
-    # ── 3. YouTube Videos ─────────────
+    # ── 3. YouTube Videos (language-aware) ─────────────────────────────────────
     video_query = skill
     if sub_category: video_query = f"{sub_category} {level}"
     youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
@@ -1933,6 +1963,7 @@ def get_skill_content(
         "skill": skill,
         "sub_category": sub_category,
         "level": level,
+        "language": language,
         "summary": summary,
         "sections": sections,
         "project": project,

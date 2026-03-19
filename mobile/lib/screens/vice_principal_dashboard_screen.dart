@@ -72,15 +72,19 @@ class _VicePrincipalDashboardScreenState extends State<VicePrincipalDashboardScr
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildWelcomeSection(),
-                    const SizedBox(height: 32),
-                    const Text('College Overview (Read-Only)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                    _buildStatsGrid(),
-                  ],
+                child: ContentConstraints(
+                  maxWidth: 1200,
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildWelcomeSection(),
+                      const SizedBox(height: 32),
+                      const Text('College Overview (Read-Only)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      _buildStatsGrid(),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -22,10 +22,10 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
   final _formKey = GlobalKey<FormState>();
   int _selectedYear = 1;
   String _selectedSection = 'A';
-  String _selectedSemester = 'I';
+  String _selectedSemester = 'All';
   
   // Mapping for semester display
-  static const List<String> _semesters = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+  static const List<String> _semesters = ['All', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'PEC', 'OEC', 'EEC'];
   
   bool _isLoading = false;
   List<Map<String, dynamic>> _subjects = [];
@@ -47,12 +47,45 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
     setState(() => _isLoading = true);
     try {
       final faculty = await ApiService().getDepartmentFaculty(widget.dept);
-      final subjects = await ApiService().getSubjects(semester: _selectedSemester);
+      final subjects = await ApiService().getSubjects(
+        semester: _selectedSemester == 'All' ? null : _selectedSemester
+      );
       final allocations = await ApiService().getAllocations(widget.dept, _selectedYear, _selectedSection);
+      
+      List<Map<String, dynamic>> filteredSubjects = subjects;
+      
+      // Filter electives for semesters V, VI, VII based on HOD selections
+      Set<String> selectedElectiveCodes = {};
+      bool hasElectiveSemester = false;
+
+      for (String sem in ['V', 'VI', 'VII']) {
+         if (_selectedSemester == 'All' || _selectedSemester == sem) {
+            hasElectiveSemester = true;
+            try {
+              final selections = await ApiService().getSubjectSelections(widget.dept, _selectedYear, _selectedSection, sem);
+              selectedElectiveCodes.addAll(selections.map((s) => s['subject_code'].toString()));
+            } catch (e) {
+              // Ignore if no selections or error, just means no electives selected yet
+            }
+         }
+      }
+
+      if (hasElectiveSemester) {
+         filteredSubjects = subjects.where((s) {
+            final sem = s['semester']?.toString() ?? '';
+            if (sem == 'V' || sem == 'VI' || sem == 'VII') {
+               final cat = s['category']?.toString().toUpperCase();
+               if (cat == 'PEC' || cat == 'OEC' || cat == 'EEC') {
+                  return selectedElectiveCodes.contains(s['subject_code'].toString());
+               }
+            }
+            return true;
+         }).toList();
+      }
       
       setState(() {
         _facultyMembers = faculty;
-        _subjects = subjects;
+        _subjects = filteredSubjects;
         _allocations = allocations;
       });
     } catch (e) {
@@ -165,14 +198,22 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
                   DropdownButtonFormField<String>(
                     value: dialogSemester,
                     decoration: const InputDecoration(labelText: 'Semester', border: OutlineInputBorder()),
-                    items: _semesters.map((s) => DropdownMenuItem(value: s, child: Text('Semester $s'))).toList(),
+                    items: _semesters.map((s) {
+                      String label = s;
+                      if (s != 'All' && s != 'PEC' && s != 'OEC' && s != 'EEC') {
+                        label = 'Semester $s';
+                      }
+                      return DropdownMenuItem(value: s, child: Text(label));
+                    }).toList(),
                     onChanged: (val) async {
                       if (val != null) {
                         setState(() {
                           dialogSemester = val;
                           selectedSubject = null;
                         });
-                        final subs = await ApiService().getSubjects(semester: val);
+                        final subs = await ApiService().getSubjects(
+                          semester: val == 'All' ? null : val
+                        );
                         setState(() => dialogSubjects = subs);
                       }
                     },
@@ -302,7 +343,13 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
               value: _selectedSemester,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Sem', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-              items: _semesters.map((s) => DropdownMenuItem(value: s, child: Text('Sem $s', overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)))).toList(),
+              items: _semesters.map((s) {
+                String label = s;
+                if (s != 'All' && s != 'PEC' && s != 'OEC' && s != 'EEC') {
+                  label = 'Sem $s';
+                }
+                return DropdownMenuItem(value: s, child: Text(label, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)));
+              }).toList(),
               onChanged: (val) {
                 if (val != null) {
                   setState(() => _selectedSemester = val);

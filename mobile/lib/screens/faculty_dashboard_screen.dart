@@ -8,6 +8,10 @@ import '../widgets/responsive_layout.dart';
 import '../widgets/web_scaffold.dart';
 import 'attendance_entry_screen.dart';
 import 'new_mark_entry_screen.dart';
+import 'project_roadmap_screen.dart';
+import 'project_batch_allocation_screen.dart';
+import 'project_coordinator_management_screen.dart';
+import '../widgets/project_dialogs.dart';
 
 void _handleLogout(BuildContext context) async {
   final prefs = await SharedPreferences.getInstance();
@@ -105,7 +109,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: ContentConstraints(
-          maxWidth: 1400,
+          maxWidth: 1200,
           padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,12 +124,20 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
               ),
               const SizedBox(height: 16),
               _buildClassesList(),
+              const SizedBox(height: 32),
+              const SectionHeader(title: 'Project Guidance', icon: Icons.group_work_rounded, color: AppColors.info),
+              const SizedBox(height: 16),
+              _buildProjectBattchesList(user),
+              const SizedBox(height: 32),
+              _buildCoordinatorSection(user),
+
             ],
           ),
         ),
       ),
     );
   }
+
 
   Widget _buildMobileLayout(User user) {
     return Scaffold(
@@ -185,11 +197,19 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
             SectionHeader(title: 'My Classes', icon: Icons.class_rounded, color: AppColors.info),
             const SizedBox(height: 16),
             _buildClassesList(),
+            const SizedBox(height: 24),
+            const SectionHeader(title: 'Project Guidance', icon: Icons.group_work_rounded, color: AppColors.info),
+            const SizedBox(height: 16),
+            _buildProjectBattchesList(user),
+            const SizedBox(height: 24),
+            _buildCoordinatorSection(user),
+            const SizedBox(height: 100), // Extra space to ensure scrollability
           ],
         ),
       ),
     );
   }
+
 
   Widget _buildUserHeader(User user) {
     return Row(
@@ -785,5 +805,179 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
       }
     }
   }
+
+  void _openAddReviewDialog(Map<String, dynamic> batch) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AddReviewDialog(
+        batch: batch,
+        onReviewAdded: () => setState(() {}),
+      ),
+    );
+  }
+
+  Widget _buildProjectBattchesList(User user) {
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: ApiService().getGuideBatches(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        final batches = snapshot.data ?? [];
+        if (batches.isEmpty) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Center(child: Text('No project batches assigned for guidance.')),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: batches.length,
+          itemBuilder: (context, index) {
+            final batch = batches[index];
+            final students = batch['students'] as List<dynamic>;
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ProjectRoadmapScreen(batch: batch)),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Batch #${batch['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
+                          FutureBuilder<List<Map<String, dynamic>>>(
+                            future: ApiService().getProjectCoordinators(batch['dept'] ?? ''),
+                            builder: (context, coordSnapshot) {
+                              final isReviewer = batch['reviewer_id'] == user.userId;
+                              final isCoord = coordSnapshot.data?.any((c) => c['faculty_id'] == user.userId && c['year'] == batch['year']) ?? false;
+                              
+                              if (isReviewer || isCoord) {
+                                return IconButton(
+                                  icon: const Icon(Icons.rate_review_outlined, color: AppColors.primary),
+                                  onPressed: () => _openAddReviewDialog(batch),
+                                  tooltip: 'Add Review',
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 4),
+                      Text(
+                        'Class: Year ${batch['year']} - ${batch['section']} (${batch['dept']})',
+                        style: AppTextStyles.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: students.map((s) => Chip(
+                          label: Text(s['name'] ?? '', style: const TextStyle(fontSize: 11)),
+                          backgroundColor: AppColors.surface,
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                        )).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCoordinatorSection(User user) {
+    if (user.dept == null) return const SizedBox.shrink();
+    
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: ApiService().getProjectCoordinators(user.dept!),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(height: 50, child: Center(child: CircularProgressIndicator()));
+        }
+        
+        if (snapshot.hasError) {
+          return Center(child: Text('Coord Error: ${snapshot.error}', style: const TextStyle(color: Colors.red, fontSize: 10)));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
+        final isCoordinator = snapshot.data!.any((c) => 
+          c['faculty_id'].toString() == user.userId.toString()
+        );
+        
+        debugPrint('User ${user.userId} isCoordinator: $isCoordinator');
+        
+        if (!isCoordinator) {
+          // Temporarily show why not coordinator for debugging
+          // return Center(child: Text('Not a coord for ${user.dept}', style: TextStyle(fontSize: 10)));
+          return const SizedBox.shrink();
+        }
+
+        final coordinatorData = snapshot.data!.firstWhere((c) => 
+          c['faculty_id'].toString() == user.userId.toString()
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(title: 'Project Coordination - Year ${coordinatorData['year']}', icon: Icons.admin_panel_settings, color: AppColors.primary),
+            const SizedBox(height: 16),
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(16),
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  child: const Icon(Icons.assignment_ind, color: AppColors.primary),
+                ),
+                title: const Text('Manage Department Project Batches', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('Assign reviewers and track progress for Year ${coordinatorData['year']} students.'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProjectCoordinatorManagementScreen(
+                        dept: user.dept!,
+                        assignedYear: coordinatorData['year'],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
+
 

@@ -156,14 +156,14 @@ mobile/
 - ✅ AI risk prediction
 - ✅ Interactive charts
 - ✅ Responsive UI
+- ✅ Marks entry form
+- ✅ Attendance entry form
+- ✅ Activity management
+- ✅ PDF & Excel export
 
-### To Be Implemented
-- ⏳ Marks entry form
-- ⏳ Attendance entry form
-- ⏳ Activity management
-- ⏳ PDF export
-- ⏳ Excel export
+### Future Enhancements
 - ⏳ Push notifications
+- ⏳ Offline mode support
 
 ## Testing
 

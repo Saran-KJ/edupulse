@@ -11,6 +11,8 @@ import 'activity_management_screen.dart';
 import 'activity_approval_screen.dart';
 import 'attendance_entry_screen.dart';
 import 'faculty_allocation_screen.dart';
+import 'subject_selection_screen.dart';
+import 'project_batch_allocation_screen.dart';
 
 void _handleLogout(BuildContext context) async {
   final prefs = await SharedPreferences.getInstance();
@@ -144,13 +146,18 @@ class _HODDashboardScreenState extends State<HODDashboardScreen> {
           label: 'Faculty Allocation',
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FacultyAllocationScreen(dept: dept))),
         ),
+        NavigationItem(
+          icon: Icons.library_books,
+          label: 'Subject Selection',
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SubjectSelectionScreen(dept: dept))),
+        ),
       ],
       userHeader: _buildUserHeader(user),
       onLogout: () => _handleLogout(context),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: ContentConstraints(
-          maxWidth: 1400,
+          maxWidth: 1200,
           padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,6 +427,8 @@ class _HODDashboardScreenState extends State<HODDashboardScreen> {
       {'label': 'Department Reports', 'icon': Icons.analytics, 'color': Colors.indigo, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()))},
       {'label': 'Activity Approvals', 'icon': Icons.approval, 'color': Colors.deepOrange, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityApprovalScreen(dept: user!.dept!, year: 1, section: 'A')))},
       {'label': 'Faculty Allocation', 'icon': Icons.school, 'color': Colors.green, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => FacultyAllocationScreen(dept: user!.dept!)))},
+      {'label': 'Subject Selection', 'icon': Icons.library_books, 'color': Colors.teal, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => SubjectSelectionScreen(dept: user!.dept!)))},
+      {'label': 'Project Batches', 'icon': Icons.group_work, 'color': Colors.purple, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectBatchAllocationScreen(dept: user!.dept!)))},
     ];
 
     final crossAxisCount = ResponsiveBreakpoints.getCrossAxisCount(

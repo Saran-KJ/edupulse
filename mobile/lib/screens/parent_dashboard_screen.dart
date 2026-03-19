@@ -93,17 +93,21 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildWelcomeHeader(data),
-                const SizedBox(height: 16),
-                _buildChildInfoCard(data),
-                const SizedBox(height: 24),
-                _buildSummaryCards(data),
-                const SizedBox(height: 24),
-                _buildQuickActions(context, data),
-              ],
+            child: ContentConstraints(
+              maxWidth: 1200,
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeHeader(data),
+                  const SizedBox(height: 16),
+                  _buildChildInfoCard(data),
+                  const SizedBox(height: 24),
+                  _buildSummaryCards(data),
+                  const SizedBox(height: 24),
+                  _buildQuickActions(context, data),
+                ],
+              ),
             ),
           );
         },

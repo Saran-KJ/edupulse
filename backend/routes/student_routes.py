@@ -596,3 +596,48 @@ async def get_pending_quizzes(
             
     return pending
 
+@router.get("/me/project-batch", response_model=Optional[schemas.ProjectBatchResponse])
+async def get_my_project_batch(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    """
+    Get the project batch details for the currently logged-in student.
+    Returns null/404 if not assigned to any batch.
+    """
+    if current_user.role != models.RoleEnum.STUDENT:
+        raise HTTPException(status_code=403, detail="Only students can access this endpoint")
+        
+    student_mapping = db.query(models.ProjectBatchStudent).filter(
+        models.ProjectBatchStudent.student_id == current_user.user_id
+    ).first()
+    
+    if not student_mapping:
+         return None
+         
+    batch = student_mapping.batch
+    if not batch:
+         return None
+         
+    st_resp = []
+    for bs in batch.students:
+        s = bs.student
+        st_resp.append(schemas.ProjectBatchStudentResponse(
+            student_id=s.user_id,
+            name=s.name,
+            reg_no=s.reg_no,
+            email=s.email,
+            phone=s.phone
+        ))
+        
+    return schemas.ProjectBatchResponse(
+        id=batch.id,
+        guide_id=batch.guide.user_id,
+        guide_name=batch.guide.name,
+        dept=batch.dept,
+        year=batch.year,
+        section=batch.section,
+        students=st_resp,
+        created_at=batch.created_at
+    )
+

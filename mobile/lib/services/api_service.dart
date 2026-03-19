@@ -1173,8 +1173,245 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> saveSubjectSelections(List<Map<String, dynamic>> selections) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/hod/subject-selection'),
+      headers: _getHeaders(),
+      body: json.encode(selections),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to save subject selections: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getSubjectSelections(String dept, int year, String section, String semester) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/hod/subject-selection/$dept/$year/$section/$semester'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load subject selections: ${response.body}');
+    }
+  }
 
 
+
+  // --- HOD Project Batch Endpoints ---
+  
+  Future<Map<String, dynamic>> createProjectBatch({
+    required int guideId,
+    required String dept,
+    required int year,
+    required String section,
+    required List<String> studentRegNos,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/hod/batches/create'),
+      headers: _getHeaders(),
+      body: json.encode({
+        'guide_id': guideId,
+        'dept': dept,
+        'year': year,
+        'section': section,
+        'student_reg_nos': studentRegNos,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to create batch: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getProjectBatches({
+    String? dept,
+    int? year,
+    String? section,
+  }) async {
+    final queryParams = <String, String>{};
+    if (dept != null) queryParams['dept'] = dept;
+    if (year != null) queryParams['year'] = year.toString();
+    if (section != null) queryParams['section'] = section;
+
+    final uri = Uri.parse('${AppConfig.baseUrl}/api/hod/batches').replace(queryParameters: queryParams);
+
+    final response = await http.get(
+      uri,
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load project batches: ${response.body}');
+    }
+  }
+
+  // Coordinator Assignment
+  Future<Map<String, dynamic>> assignProjectCoordinator({
+    required int facultyId,
+    required String dept,
+    required int year,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/hod/coordinator'),
+      headers: _getHeaders(),
+      body: json.encode({
+        'faculty_id': facultyId,
+        'dept': dept,
+        'year': year,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to assign coordinator: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getProjectCoordinators(String dept) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/hod/coordinators/$dept'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load coordinators: ${response.body}');
+    }
+  }
+
+
+  // --- Project Management Endpoints ---
+  Future<Map<String, dynamic>?> getMyProjectBatch() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/my-batch'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+      return decoded;
+    } else if (response.statusCode == 404 || response.statusCode == 400) {
+      return null;
+    } else {
+      throw Exception('Failed to load my project batch: ${response.body}');
+    }
+  }
+
+  Future<void> updateProjectTask(int taskId, int isCompleted) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/tasks/$taskId'),
+      headers: _getHeaders(),
+      body: json.encode({'is_completed': isCompleted}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update project task: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> recordProjectReview({
+    required int batchId,
+    required int reviewNumber,
+    required double marks,
+    String? feedback,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/reviews'),
+      headers: _getHeaders(),
+      body: json.encode({
+        'batch_id': batchId,
+        'review_number': reviewNumber,
+        'marks': marks,
+        'feedback': feedback,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to record project review: ${response.body}');
+    }
+  }
+
+
+  Future<List<Map<String, dynamic>>> getGuideBatches() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/guide-batches'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load guide batches: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> assignBatchReviewer(int batchId, int reviewerId) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/batches/$batchId/reviewer'),
+      headers: _getHeaders(),
+      body: json.encode({'reviewer_id': reviewerId}),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to assign reviewer: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getCoordinatorBatches({String? section}) async {
+    final queryParams = <String, String>{};
+    if (section != null) queryParams['section'] = section;
+
+    final uri = Uri.parse('${AppConfig.baseUrl}/api/projects/coordinator-batches').replace(queryParameters: queryParams);
+
+    final response = await http.get(
+      uri,
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load coordinator batches: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getReviewerBatches() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/reviewer-batches'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load reviewer batches: ${response.body}');
+    }
+  }
+
+
+  // --- Helper Methods ---
   Future<List<FacultyAllocation>> getFacultyAllocations() async {
     final response = await http.get(
       Uri.parse('${AppConfig.baseUrl}/api/faculty/allocations'),
@@ -1306,5 +1543,32 @@ class ApiService {
       throw Exception('Failed to load pending quizzes: ${response.body}');
     }
   }
+
+  Future<void> deleteProjectCoordinator(int coordId) async {
+    final response = await http.delete(
+      Uri.parse('${AppConfig.baseUrl}/api/hod/coordinator/$coordId'),
+      headers: _getHeaders(),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete project coordinator: ${response.body}');
+    }
+  }
+
+  Future<void> updateProjectCoordinator(int coordId, {required int facultyId, required String dept, required int year}) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.baseUrl}/api/hod/coordinator/$coordId'),
+      headers: _getHeaders(),
+      body: json.encode({
+        'faculty_id': facultyId,
+        'dept': dept,
+        'year': year,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update project coordinator: ${response.body}');
+    }
+  }
 }
+
+
 // 

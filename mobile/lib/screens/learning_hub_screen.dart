@@ -3,6 +3,7 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import 'quiz_screen.dart';
 import 'skill_content_screen.dart';
+import '../widgets/responsive_layout.dart';
 
 class LearningHubScreen extends StatefulWidget {
   const LearningHubScreen({super.key});
@@ -93,13 +94,17 @@ class _LearningHubScreenState extends State<LearningHubScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(path),
-            const SizedBox(height: 24),
-            _buildSkillView(),
-          ],
+        child: ContentConstraints(
+          maxWidth: 1200,
+          padding: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(path),
+              const SizedBox(height: 24),
+              _buildSkillView(),
+            ],
+          ),
         ),
       ),
     );
@@ -148,6 +153,13 @@ class _LearningHubScreenState extends State<LearningHubScreen> {
       'SKILL_SOFT': 'Leadership',
     };
 
+    final crossAxisCount = ResponsiveBreakpoints.getCrossAxisCount(
+      context,
+      mobile: 2,
+      tablet: 2,
+      desktop: 4,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -156,50 +168,78 @@ class _LearningHubScreenState extends State<LearningHubScreen> {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: ResponsiveBreakpoints.isDesktop(context) ? 1.1 : 1.0,
           ),
           itemCount: _skills.length,
           itemBuilder: (context, index) {
             final skill = _skills[index];
             final isSelected = _selectedSkill == skill['code'];
             final backendCategory = categoryMap[skill['code']] ?? 'Aptitude';
-            return InkWell(
+            
+            return HoverScaleEffect(
               onTap: () async {
-                // Save preference first (non-blocking visual update)
                 setState(() => _selectedSkill = skill['code']);
-                // Navigate immediately to the full skill content screen
                 _openSkillModule(backendCategory);
-                // Save preference in background
                 try {
                   await ApiService().submitGlobalPathPreference("Skill Development", subChoice: skill['code']);
                 } catch (_) {}
               },
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: isSelected ? Colors.blue.shade50 : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isSelected ? Colors.blue : Colors.grey.shade300, width: isSelected ? 2 : 1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected ? Colors.blue : Colors.grey.shade200, 
+                    width: isSelected ? 2 : 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(skill['icon'], color: isSelected ? Colors.blue : Colors.grey, size: 32),
-                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: (isSelected ? Colors.blue : Colors.grey).withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        skill['icon'], 
+                        color: isSelected ? Colors.blue : Colors.grey.shade700, 
+                        size: ResponsiveBreakpoints.isDesktop(context) ? 48 : 36,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text(
                       skill['title'],
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: ResponsiveBreakpoints.isDesktop(context) ? 18 : 15,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.blue.shade900 : Colors.black87,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Text(
                       skill['description'],
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: ResponsiveBreakpoints.isDesktop(context) ? 12 : 11, 
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),

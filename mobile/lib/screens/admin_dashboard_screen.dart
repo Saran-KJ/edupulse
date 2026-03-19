@@ -103,31 +103,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             ),
             // Main content
             Expanded(
-              child: Column(
-                children: [
-                  Container(
-                    height: 64,
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
+              child: ContentConstraints(
+                maxWidth: 1200,
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    Container(
+                      height: 64,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                      ),
+                      child: Row(
+                        children: [
+                          Text(_getTabTitle(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          const Spacer(),
+                          if (_tabController.index == 0)
+                            ElevatedButton.icon(
+                              onPressed: _showCreateUserDialog,
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('Add User'),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade800, foregroundColor: Colors.white),
+                            ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        Text(_getTabTitle(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        const Spacer(),
-                        if (_tabController.index == 0)
-                          ElevatedButton.icon(
-                            onPressed: _showCreateUserDialog,
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Add User'),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade800, foregroundColor: Colors.white),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Expanded(child: Container(color: Colors.grey.shade50, child: tabContent)),
-                ],
+                    Expanded(child: Container(color: Colors.grey.shade50, child: tabContent)),
+                  ],
+                ),
               ),
             ),
           ],

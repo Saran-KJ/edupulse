@@ -446,6 +446,26 @@ class FacultyAllocationResponse(FacultyAllocationBase):
     class Config:
         from_attributes = True
 
+# HOD Subject Selection Schemas
+class SubjectSelectionBase(BaseModel):
+    dept: str
+    year: int
+    section: str
+    semester: str
+    subject_code: str
+    subject_title: str
+    category: str
+
+class SubjectSelectionCreate(SubjectSelectionBase):
+    pass
+
+class SubjectSelectionResponse(SubjectSelectionBase):
+    id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 # Personalized Learning Plan Schemas
 class PersonalizedLearningPlanResponse(BaseModel):
     id: int
@@ -599,3 +619,98 @@ class QuizAttemptResponse(BaseModel):
     wrong_answers: int
     score: float
     status: str # "success"
+
+# Project Coordinator Schemas
+class ProjectCoordinatorBase(BaseModel):
+    faculty_id: int
+    dept: str
+    year: int
+
+class ProjectCoordinatorCreate(ProjectCoordinatorBase):
+    pass
+
+class ProjectCoordinatorResponse(ProjectCoordinatorBase):
+    id: int
+    faculty_name: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Project Review Schemas
+
+class ProjectReviewBase(BaseModel):
+    batch_id: int
+    review_number: int
+    marks: float
+    feedback: Optional[str] = None
+
+class ProjectReviewCreate(ProjectReviewBase):
+    pass
+
+class ProjectReviewResponse(ProjectReviewBase):
+    id: int
+    reviewer_id: Optional[int] = None
+    reviewer_name: Optional[str] = None
+    reviewed_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Project Task Schemas
+
+class ProjectTaskBase(BaseModel):
+    batch_id: int
+    phase: str
+    task_name: str
+    is_completed: int
+
+class ProjectTaskCreate(ProjectTaskBase):
+    pass
+
+class ProjectTaskUpdate(BaseModel):
+    is_completed: int
+
+class ProjectTaskResponse(ProjectTaskBase):
+    id: int
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Project Batch Allocation Schemas
+class ProjectBatchCreate(BaseModel):
+    guide_id: int
+    dept: Optional[str] = None
+    year: Optional[int] = None
+    section: Optional[str] = None
+    student_reg_nos: List[str]
+
+class ProjectBatchStudentResponse(BaseModel):
+    student_id: int
+    name: str
+    reg_no: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    
+class ProjectBatchResponse(BaseModel):
+    id: int
+    guide_id: int
+    guide_name: str
+    reviewer_id: Optional[int] = None
+    reviewer_name: Optional[str] = None
+    dept: Optional[str] = None
+    year: Optional[int] = None
+    section: Optional[str] = None
+    students: List[ProjectBatchStudentResponse]
+    reviews: List[ProjectReviewResponse] = []
+    tasks: List[ProjectTaskResponse] = []
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class ProjectBatchReviewerUpdate(BaseModel):
+    reviewer_id: int
+
+

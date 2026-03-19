@@ -280,6 +280,21 @@ class FacultyAllocation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class SubjectSelection(Base):
+    """Stores elective subjects (PEC, OEC, EEC) selected by HOD for a specific class."""
+    __tablename__ = "subject_selections"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    dept = Column(String(10), nullable=False)
+    year = Column(Integer, nullable=False)
+    section = Column(String(10), nullable=False)
+    semester = Column(String(10), nullable=False)
+    subject_code = Column(String(20), nullable=False)
+    subject_title = Column(String(200), nullable=False)
+    category = Column(String(10), nullable=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class LearningResource(Base):
     __tablename__ = "learning_resources"
     
@@ -422,3 +437,77 @@ class ScheduledQuiz(Base):
     deadline = Column(DateTime, nullable=False)
     is_active = Column(Integer, default=1)  # 1=active, 0=closed
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class ProjectCoordinator(Base):
+    """Faculty assigned as project coordinator for a department/year."""
+    __tablename__ = "project_coordinators"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    faculty_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    dept = Column(String(50), nullable=False)
+    year = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    faculty = relationship("User")
+
+
+class ProjectBatch(Base):
+    """Represents a final year/semester project batch guided by a faculty member."""
+    __tablename__ = "batches"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    guide_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    reviewer_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    dept = Column(String(50), nullable=True) # E.g., CSE, ECE
+    year = Column(Integer, nullable=True)     # E.g., 4
+    section = Column(String(10), nullable=True) # E.g., A
+    created_by = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    guide = relationship("User", foreign_keys=[guide_id])
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
+    creator = relationship("User", foreign_keys=[created_by])
+    students = relationship("ProjectBatchStudent", back_populates="batch", cascade="all, delete-orphan")
+    reviews = relationship("ProjectReview", back_populates="batch", cascade="all, delete-orphan")
+    tasks = relationship("ProjectTask", back_populates="batch", cascade="all, delete-orphan")
+
+
+class ProjectBatchStudent(Base):
+    """Maps a student to a specific project batch."""
+    __tablename__ = "batch_students"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    
+    batch = relationship("ProjectBatch", back_populates="students")
+    student = relationship("User", foreign_keys=[student_id])
+
+class ProjectReview(Base):
+    """Stores assessment data for Reviews 1, 2, and 3."""
+    __tablename__ = "project_reviews"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=False)
+    reviewer_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    review_number = Column(Integer, nullable=False) # 1, 2, or 3
+    marks = Column(Float, default=0.0)
+    feedback = Column(Text, nullable=True)
+    reviewed_at = Column(DateTime, default=datetime.utcnow)
+    
+    batch = relationship("ProjectBatch", back_populates="reviews")
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
+
+
+class ProjectTask(Base):
+    """Tracking individual tasks for project phases."""
+    __tablename__ = "project_tasks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=False)
+    phase = Column(String(50), nullable=False) # Phase 1, Phase 2, Phase 3
+    task_name = Column(String(200), nullable=False)
+    is_completed = Column(Integer, default=0) # 0=Pending, 1=Completed
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    batch = relationship("ProjectBatch", back_populates="tasks")
