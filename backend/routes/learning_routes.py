@@ -1807,10 +1807,16 @@ def fetch_skill_youtube_videos(db: Session, skill_category: str, language: str =
         query_dict = SKILL_YOUTUBE_QUERIES_EN
         relevance_lang = "en"
 
-    base_query = query_dict.get(skill_category, f"{skill_category} skills tutorial")
     # For sub-categories (e.g. Python Beginner) inject those terms too
     # The caller may pass "Python Beginner" as skill_category; split gracefully
     
+    if skill_category not in query_dict:
+        if language == "Tamil":
+            base_query = f"{skill_category} tutorial in Tamil engineering"
+        else:
+            base_query = f"{skill_category} programming tutorial"
+    else:
+        base_query = query_dict[skill_category]
     try:
         params = {
             "part": "snippet",
