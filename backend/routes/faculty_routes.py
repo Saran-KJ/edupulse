@@ -153,7 +153,12 @@ async def schedule_quiz(
     from datetime import datetime
     deadline_str = data.get("deadline")
     try:
-        deadline = datetime.fromisoformat(deadline_str)
+        # Convert to local time (IST) then to UTC to store consistently
+        deadline = datetime.fromisoformat(deadline_str.replace('Z', ''))
+        if deadline.tzinfo is None:
+            # Assume IST (+5:30) and convert to UTC
+            from datetime import timedelta
+            deadline = deadline - timedelta(hours=5, minutes=30)
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid deadline format. Use ISO format: YYYY-MM-DDTHH:MM:SS")
         
@@ -161,7 +166,10 @@ async def schedule_quiz(
     start_time = None
     if start_time_str:
         try:
-            start_time = datetime.fromisoformat(start_time_str)
+            start_time = datetime.fromisoformat(start_time_str.replace('Z', ''))
+            if start_time.tzinfo is None:
+                from datetime import timedelta
+                start_time = start_time - timedelta(hours=5, minutes=30)
         except (TypeError, ValueError):
             pass # Ignore invalid start times and let it be null
 

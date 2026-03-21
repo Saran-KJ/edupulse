@@ -308,9 +308,9 @@ class ApiService {
 
 
   // Attendance
-  Future<List<Attendance>> getClassAttendance(String dept, int year, String section, String date) async {
+  Future<List<Attendance>> getClassAttendance(String dept, int year, String section, String date, {int period = 1}) async {
     final response = await http.get(
-      Uri.parse('${AppConfig.baseUrl}${AppConfig.attendanceEndpoint}/class/$dept/$year/$section/$date'),
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.attendanceEndpoint}/class/$dept/$year/$section/$date?period=$period'),
       headers: _getHeaders(),
     );
 
@@ -328,17 +328,25 @@ class ApiService {
     required String section,
     required String dept,
     required List<AttendanceInput> attendanceList,
+    int period = 1,
+    String? subjectCode,
   }) async {
+    final bodyData = <String, dynamic>{
+      'date': date,
+      'year': year,
+      'section': section,
+      'dept': dept,
+      'period': period,
+      'attendance_list': attendanceList.map((a) => a.toJson()).toList(),
+    };
+    if (subjectCode != null) {
+      bodyData['subject_code'] = subjectCode;
+    }
+
     final response = await http.post(
       Uri.parse('${AppConfig.baseUrl}${AppConfig.attendanceEndpoint}/bulk'),
       headers: _getHeaders(),
-      body: json.encode({
-        'date': date,
-        'year': year,
-        'section': section,
-        'dept': dept,
-        'attendance_list': attendanceList.map((a) => a.toJson()).toList(),
-      }),
+      body: json.encode(bodyData),
     );
 
     if (response.statusCode == 200) {

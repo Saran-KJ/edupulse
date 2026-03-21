@@ -26,16 +26,18 @@ async def create_bulk_attendance(
     created_records = []
     
     for item in bulk_data.attendance_list:
-        # Check if record already exists for this student and date
+        # Check if record already exists for this student and date and period
         existing = db.query(models.Attendance).filter(
             models.Attendance.reg_no == item.reg_no,
-            models.Attendance.date == bulk_data.date
+            models.Attendance.date == bulk_data.date,
+            models.Attendance.period == bulk_data.period
         ).first()
         
         if existing:
             # Update status
             existing.status = item.status
             existing.reason = item.reason
+            existing.subject_code = bulk_data.subject_code
             created_records.append(existing)
         else:
             # Create new record
@@ -43,6 +45,8 @@ async def create_bulk_attendance(
                 reg_no=item.reg_no,
                 student_name=item.student_name,
                 date=bulk_data.date,
+                period=bulk_data.period,
+                subject_code=bulk_data.subject_code,
                 status=item.status,
                 year=bulk_data.year,
                 section=bulk_data.section,
@@ -63,10 +67,11 @@ async def get_class_attendance(
     year: int,
     section: str,
     date_str: str,
+    period: int = 1,
     db: Session = Depends(get_db),
     current_user = Depends(auth.get_current_active_user)
 ):
-    """Get attendance for a specific class and date"""
+    """Get attendance for a specific class and date and period"""
     # Parse date string to date object
     try:
         query_date = date.fromisoformat(date_str)
@@ -78,7 +83,8 @@ async def get_class_attendance(
         models.Attendance.dept == dept,
         models.Attendance.year == year,
         models.Attendance.section == section,
-        models.Attendance.date == query_date
+        models.Attendance.date == query_date,
+        models.Attendance.period == period
     )
     
     return query.all()

@@ -7,7 +7,7 @@ import config as cfg
 # Sentinel to signal quota/rate-limit hit so caller can fall back to Gemini
 _OPENAI_QUOTA_HIT = object()
 
-def _call_ollama(prompt: str, is_json: bool, max_retries: int = 3):
+def _call_ollama(prompt: str, is_json: bool, api_key: str = None, max_retries: int = 3):
     """
     Calls the local Ollama server (OpenAI-compatible API).
     Uses model and base URL from settings (default: qwen2.5:3b @ localhost:11434).
@@ -31,10 +31,17 @@ def _call_ollama(prompt: str, is_json: bool, max_retries: int = 3):
     if is_json:
         payload["format"] = "json"
 
+    headers = {}
+    if api_key and api_key.lower() != "ollama":
+        headers["Authorization"] = f"Bearer {api_key}"
+
     for attempt in range(max_retries):
         try:
             print(f"DEBUG: Calling Ollama ({model}) [Attempt {attempt + 1}/{max_retries}]...")
-            resp = requests.post(url, json=payload, timeout=180)
+            if headers:
+                print(f"DEBUG: Using Authorization header (masked: {headers['Authorization'][:15]}...)")
+            
+            resp = requests.post(url, json=payload, headers=headers, timeout=300)
             resp.raise_for_status()
             text = resp.json()["message"]["content"].strip()
 
@@ -42,12 +49,19 @@ def _call_ollama(prompt: str, is_json: bool, max_retries: int = 3):
                 print(f"✓ Ollama ({model}) responded successfully")
                 return text
 
-            # Strip markdown fences if model added them anyway
-            if text.startswith("```json"): text = text[7:]
-            elif text.startswith("```"):    text = text[3:]
-            if text.endswith("```"):        text = text[:-3]
+            # Robustly clean markdown fences and whitespace
+            text = text.strip()
+            if text.startswith("```"):
+                # Remove first line if it's a code block header
+                lines = text.splitlines()
+                if lines[0].startswith("```"):
+                    lines = lines[1:]
+                # Remove last line if it's a code block footer
+                if lines and lines[-1].startswith("```"):
+                    lines = lines[:-1]
+                text = "\n".join(lines).strip()
 
-            data = json.loads(text.strip())
+            data = json.loads(text)
             print(f"✓ Ollama ({model}) responded successfully")
             return data
 
@@ -103,15 +117,15 @@ def _call_openai(prompt: str, is_json: bool, api_key: str):
         result = response.json()
         text = result['choices'][0]['message']['content'].strip()
         
-        # Clean markdown if present
-        if text.startswith("```json"):
-            text = text[7:]
-        elif text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
+        # Robustly clean markdown fences and whitespace
+        text = text.strip()
+        if text.startswith("```"):
+            lines = text.splitlines()
+            if lines[0].startswith("```"): lines = lines[1:]
+            if lines and lines[-1].startswith("```"): lines = lines[:-1]
+            text = "\n".join(lines).strip()
             
-        data = json.loads(text.strip()) if is_json else text
+        data = json.loads(text) if is_json else text
         print(f"✓ Successfully called OpenAI")
         return data
     except requests.exceptions.HTTPError as e:
@@ -158,8 +172,13 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
         key_label = "Primary" if key_idx == 0 else "Secondary"
 
         # Route to local Ollama if key is set to "ollama"
-        if api_key.lower() == "ollama":
-            data = _call_ollama(prompt, is_json)
+        if api_key.lower() == "ollama" or api_key.lower().startswith("ollama:"):
+            # Extract internal key if provided (e.g. "ollama:sk-...")
+            internal_key = None
+            if ":" in api_key:
+                internal_key = api_key.split(":", 1)[1]
+            
+            data = _call_ollama(prompt, is_json, internal_key)
             if data:
                 return data
             overall_errors.append(f"{key_label}[Ollama]: Failed, falling back")
@@ -225,7 +244,31 @@ def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str
     Return ONLY raw JSON list.
     """
     data = _call_ai_service(prompt, is_json=True)
-    return data if isinstance(data, list) else []
+    print(f"DEBUG: AI Service raw response type: {type(data)}")
+    
+    # Robustly extract list from data (could be wrapped in a dict)
+    if isinstance(data, dict):
+        print(f"DEBUG: Data is dict, keys: {list(data.keys())}")
+        
+        # Case A: Dictionary wraps a list (e.g. {"questions": [...]})
+        for key, val in data.items():
+            if isinstance(val, list):
+                print(f"DEBUG: Found list in key '{key}' with {len(val)} items")
+                return val
+        
+        # Case B: Dictionary IS a single question (e.g. {"question": "...", ...})
+        # Use a more robust check for any typical question-related key
+        dict_keys = {str(k).lower().strip() for k in data.keys()}
+        if any(k in dict_keys for k in ["question", "option_a", "option_1", "correct_answer"]):
+            print("DEBUG: Data matches single question pattern. Wrapping in list.")
+            return [data]
+    
+    if isinstance(data, list):
+        print(f"DEBUG: Data is already a list with {len(data)} items")
+        return data
+        
+    print(f"DEBUG: Failed to find list in AI response. Returning empty list.")
+    return []
 
 def generate_study_strategy(risk_level: str, subjects_summary: list, global_preference: str = None):
     subjects_str = "\n".join([f"- {s['subject_title']} ({s['subject_code']}): {s['risk_level']} Risk" for s in subjects_summary])

@@ -14,6 +14,7 @@ class ViewAttendanceScreen extends StatefulWidget {
 class _ViewAttendanceScreenState extends State<ViewAttendanceScreen> {
   final _apiService = ApiService();
   DateTime _selectedDate = DateTime.now();
+  int _selectedPeriod = 1;
   List<Attendance> _attendanceList = [];
   bool _isLoading = false;
   User? _currentUser;
@@ -52,6 +53,7 @@ class _ViewAttendanceScreenState extends State<ViewAttendanceScreen> {
         int.parse(_currentUser!.year!),
         _currentUser!.section!,
         dateStr,
+        period: _selectedPeriod,
       );
 
       int present = 0;
@@ -118,10 +120,33 @@ class _ViewAttendanceScreenState extends State<ViewAttendanceScreen> {
                     Text(
                       DateFormat('dd MMM yyyy').format(_selectedDate),
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.blue,
                       ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Period: ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                        DropdownButton<int>(
+                          value: _selectedPeriod,
+                          items: List.generate(7, (index) => index + 1)
+                              .map((p) => DropdownMenuItem(
+                                    value: p,
+                                    child: Text('$p', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  ))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null && val != _selectedPeriod) {
+                              setState(() {
+                                _selectedPeriod = val;
+                              });
+                              _loadData(); // Re-fetch data
+                            }
+                          },
+                        ),
+                      ],
                     ),
                     ElevatedButton.icon(
                       onPressed: () => _selectDate(context),

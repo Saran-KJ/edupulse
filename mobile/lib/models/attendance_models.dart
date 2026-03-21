@@ -3,6 +3,8 @@ class Attendance {
   final String regNo;
   final String studentName;
   final String date;
+  final int period;
+  final String? subjectCode;
   final String status;
   final int year;
   final String section;
@@ -13,6 +15,8 @@ class Attendance {
     required this.regNo,
     required this.studentName,
     required this.date,
+    required this.period,
+    this.subjectCode,
     required this.status,
     required this.year,
     required this.section,
@@ -25,6 +29,8 @@ class Attendance {
       regNo: json['reg_no'],
       studentName: json['student_name'],
       date: json['date'],
+      period: json['period'] ?? 1,
+      subjectCode: json['subject_code'],
       status: json['status'],
       year: json['year'],
       section: json['section'],

@@ -1030,6 +1030,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                               subjectTitle: quiz['subject_title'],
                               unitNumber: quiz['unit_number'],
                               riskLevel: 'MEDIUM',
+                              scheduledQuizId: quiz['id'],
                             ),
                           ),
                         ).then((_) => setState(() {}));

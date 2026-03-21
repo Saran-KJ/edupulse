@@ -555,9 +555,12 @@ async def get_pending_quizzes(
 
     # Get active scheduled quizzes for this student's class
     # NOTE: DB timestamps are stored in local time (not UTC), so we use datetime.now()
-    from datetime import datetime
-    from sqlalchemy import or_
+    from datetime import datetime, timedelta
+    from sqlalchemy import or_, and_
     now = datetime.now()
+    # Simple check for IST vs UTC: if server is definitely in UTC, now() will be much earlier than local IST
+    # If the server time is early (UTC), we might need to adjust or use a different comparison
+    # For now, let's ensure we find quizzes whose start_time (stored as UTC-equivalent) has passed
     
     scheduled_quizzes = db.query(models.ScheduledQuiz).filter(
         models.ScheduledQuiz.dept == student.dept,
@@ -573,13 +576,22 @@ async def get_pending_quizzes(
     
     pending = []
     for quiz in scheduled_quizzes:
-        # Check if the student has already taken this quiz (matching subject code/title and unit)
-        # We check both subject_code and subject_title since StudentQuizAttempt might store either depending on frontend
+        # Check if the student has already taken this quiz
+        # Priority 1: Check by exact scheduled_quiz_id
+        # Priority 2: Check by subject and unit (for backward compatibility or practice quizzes)
         has_attempted = db.query(models.StudentQuizAttempt).filter(
             models.StudentQuizAttempt.reg_no == student.reg_no,
-            models.StudentQuizAttempt.unit == quiz.unit_number,
-            (models.StudentQuizAttempt.subject == quiz.subject_code) | 
-            (models.StudentQuizAttempt.subject == quiz.subject_title)
+            or_(
+                models.StudentQuizAttempt.scheduled_quiz_id == quiz.id,
+                and_(
+                    models.StudentQuizAttempt.scheduled_quiz_id == None,
+                    models.StudentQuizAttempt.unit == quiz.unit_number,
+                    or_(
+                        models.StudentQuizAttempt.subject == quiz.subject_code,
+                        models.StudentQuizAttempt.subject == quiz.subject_title
+                    )
+                )
+            )
         ).first()
         
         if not has_attempted:

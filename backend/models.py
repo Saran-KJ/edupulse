@@ -176,6 +176,8 @@ class Attendance(Base):
     reg_no = Column(String(20), nullable=False, index=True)
     student_name = Column(String(100), nullable=False)
     date = Column(Date, nullable=False)
+    period = Column(Integer, nullable=False, server_default='1')
+    subject_code = Column(String(20), nullable=True)
     status = Column(String(10), nullable=False) # 'Present', 'Absent'
     
     # Class details for easier querying
@@ -407,6 +409,7 @@ class StudentQuizAttempt(Base):
     score = Column(Float, nullable=False) # (Correct / Total) * 100
     risk_level = Column(String(20), nullable=False)
     attempted_at = Column(DateTime, default=datetime.utcnow)
+    scheduled_quiz_id = Column(Integer, ForeignKey("scheduled_quizzes.id"), nullable=True)
 
 class AcademicAlert(Base):
     __tablename__ = "academic_alerts"

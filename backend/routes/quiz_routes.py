@@ -70,7 +70,12 @@ def get_quiz(
     raw_quiz = generate_quiz_questions(subject_name, unit_number, risk_level)
     
     if not raw_quiz:
+        print("ERROR: generate_quiz_questions returned empty list or None")
         raise HTTPException(status_code=500, detail="Failed to generate quiz questions")
+
+    print(f"DEBUG: Processing {len(raw_quiz)} questions from AI...")
+    if len(raw_quiz) > 0:
+        print(f"DEBUG: Sample question skip keys: {list(raw_quiz[0].keys())}")
 
     # 3. Save to database
     db_questions = []
@@ -89,7 +94,14 @@ def get_quiz(
         db.add(db_q)
         db_questions.append(db_q)
     
-    db.commit()
+    try:
+        db.commit()
+        print("✓ Quiz successfully saved to database")
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Database Error during quiz save: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
     for q in db_questions:
         db.refresh(q)
 
@@ -142,7 +154,8 @@ def submit_quiz(
         correct_answers=correct_count,
         wrong_answers=wrong_count,
         score=score_percentage,
-        risk_level=submission.risk_level
+        risk_level=submission.risk_level,
+        scheduled_quiz_id=submission.scheduled_quiz_id
     )
     db.add(attempt)
     db.flush() # Flush to let the ML service query it immediately

@@ -8,6 +8,7 @@ class QuizScreen extends StatefulWidget {
   final String subjectTitle;
   final int unitNumber;
   final String riskLevel;
+  final int? scheduledQuizId;
 
   const QuizScreen({
     Key? key,
@@ -15,6 +16,7 @@ class QuizScreen extends StatefulWidget {
     required this.subjectTitle,
     required this.unitNumber,
     required this.riskLevel,
+    this.scheduledQuizId,
   }) : super(key: key);
 
   @override
@@ -99,6 +101,7 @@ class _QuizScreenState extends State<QuizScreen> {
         unit: widget.unitNumber,
         riskLevel: widget.riskLevel,
         answers: _userAnswers.map((key, value) => MapEntry(key.toString(), value)),
+        scheduledQuizId: widget.scheduledQuizId,
       );
       final result = await ApiService().submitQuiz(submission);
       setState(() {

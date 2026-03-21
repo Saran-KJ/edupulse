@@ -256,6 +256,8 @@ class AttendanceBase(BaseModel):
     reg_no: str
     student_name: str
     date: date
+    period: int = 1
+    subject_code: Optional[str] = None
     status: str
     year: int
     section: str
@@ -280,6 +282,8 @@ class StudentAttendanceInput(BaseModel):
 
 class BulkAttendanceCreate(BaseModel):
     date: date
+    period: int = 1
+    subject_code: Optional[str] = None
     year: int
     section: str
     dept: str
@@ -612,6 +616,7 @@ class QuizAttemptSubmission(BaseModel):
     unit: int
     answers: Dict[int, str] # question_id -> selected_option
     risk_level: str
+    scheduled_quiz_id: Optional[int] = None
 
 class QuizAttemptResponse(BaseModel):
     total_questions: int

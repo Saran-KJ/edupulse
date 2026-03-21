@@ -5,3 +5,16 @@ __pycache__/
 .DS_Store
 .idea/
 .vscode/
+
+# Mobile Build Artifacts
+mobile/android/build/
+mobile/ios/Flutter/Generated.xcconfig
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+
+# Temporary Files
+*.txt
+!PROJECT_SUMMARY.md
+!README.md

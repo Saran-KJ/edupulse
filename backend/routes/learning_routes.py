@@ -1775,7 +1775,7 @@ def fetch_skill_youtube_videos(db: Session, skill_category: str, language: str =
     Uses dedicated Tamil and English query dictionaries for better relevance.
     Returns list of {video_id, title, thumbnail, video_url, language}.
     """
-    SKILL_SUBJECT_CODE = "SKILL"
+    SKILL_SUBJECT_CODE = "SKILL_V4"
 
     # Composite cache key: skill_category is stored in `unit`, language in `language`
     cached = db.query(YouTubeRecommendation).filter(
@@ -1811,10 +1811,20 @@ def fetch_skill_youtube_videos(db: Session, skill_category: str, language: str =
     # The caller may pass "Python Beginner" as skill_category; split gracefully
     
     if skill_category not in query_dict:
-        if language == "Tamil":
-            base_query = f"{skill_category} tutorial in Tamil engineering"
+        skill_lower = skill_category.lower()
+        if "beginner" in skill_lower or "basic" in skill_lower:
+            level_suffix = "for beginners from scratch full course"
+        elif "intermediate" in skill_lower or "medium" in skill_lower:
+            level_suffix = "intermediate tutorial object oriented projects"
+        elif "advanced" in skill_lower or "expert" in skill_lower:
+            level_suffix = "advanced deep dive system design architecture"
         else:
-            base_query = f"{skill_category} programming tutorial"
+            level_suffix = "programming tutorial"
+            
+        if language == "Tamil":
+            base_query = f"{skill_category} {level_suffix} in Tamil engineering"
+        else:
+            base_query = f"{skill_category} {level_suffix}"
     else:
         base_query = query_dict[skill_category]
     try:
@@ -1927,9 +1937,10 @@ def get_skill_content(
         try:
             cached_data = json.loads(resource.content)
             # Fetch YouTube videos dynamically even if content is cached —
-            # always use the requested language so Tamil/English videos stay separate
-            video_query = skill
-            if sub_category: video_query = f"{sub_category} {level}"
+            # always use the requested language and level so videos stay distinct
+            video_query = f"{skill} {level}"
+            if sub_category: 
+                video_query = f"{skill} {sub_category} {level}"
             youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
 
             cached_data["youtube_videos"] = youtube_videos
@@ -1955,9 +1966,10 @@ def get_skill_content(
     sections = content_data.get("sections", [])
     project = content_data.get("project", {})
 
-    # ── 3. YouTube Videos (language-aware) ─────────────────────────────────────
-    video_query = skill
-    if sub_category: video_query = f"{sub_category} {level}"
+    # ── 3. YouTube Videos (language and level aware) ───────────────────────────
+    video_query = f"{skill} {level}"
+    if sub_category: 
+        video_query = f"{skill} {sub_category} {level}"
     youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
 
     # ── 4. Generate Quiz ──────────────────────────────────────────────────────

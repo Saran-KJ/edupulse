@@ -640,11 +640,14 @@ class QuizAttemptSubmission {
   final String riskLevel;
   final Map<String, String> answers; // question_id -> selected_option
 
+  final int? scheduledQuizId;
+
   QuizAttemptSubmission({
     required this.subject,
     required this.unit,
     required this.riskLevel,
     required this.answers,
+    this.scheduledQuizId,
   });
 
   Map<String, dynamic> toJson() {
@@ -653,6 +656,7 @@ class QuizAttemptSubmission {
       'unit': unit,
       'risk_level': riskLevel,
       'answers': answers,
+      'scheduled_quiz_id': scheduledQuizId,
     };
   }
 }

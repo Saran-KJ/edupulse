@@ -353,12 +353,14 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
       );
     }
 
-    // Sort records within month by date (descending)
-    filteredRecords.sort((a, b) {
-      final dateA = DateTime.parse(a.date);
-      final dateB = DateTime.parse(b.date);
-      return dateB.compareTo(dateA);
-    });
+    // Group by Date
+    final Map<String, List<Attendance>> groupedByDate = {};
+    for (var record in filteredRecords) {
+      groupedByDate.putIfAbsent(record.date, () => []).add(record);
+    }
+
+    final sortedDates = groupedByDate.keys.toList()
+      ..sort((a, b) => DateTime.parse(b).compareTo(DateTime.parse(a)));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,17 +382,19 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
             ],
           ),
         ),
-        ...filteredRecords.map((record) => _buildAttendanceCard(record)),
+        ...sortedDates.map((dateStr) => _buildDailyAttendanceCard(dateStr, groupedByDate[dateStr]!)),
         const SizedBox(height: 16),
       ],
     );
   }
 
-  Widget _buildAttendanceCard(Attendance record) {
-    final statusColor = _getStatusColor(record.status);
+  Widget _buildDailyAttendanceCard(String dateStr, List<Attendance> dailyRecords) {
+    // sort records by period ascending
+    dailyRecords.sort((a, b) => a.period.compareTo(b.period));
+    final parsedDate = DateTime.parse(dateStr);
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
@@ -403,67 +407,93 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         ],
         border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with Date
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today, size: 18, color: Colors.blue.shade800),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormat('EEEE, MMM dd, yyyy').format(parsedDate),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue.shade900),
+                ),
+              ],
+            ),
           ),
-          child: Icon(
-            record.status.toUpperCase() == 'PRESENT'
-                ? Icons.check_circle
-                : record.status.toUpperCase() == 'ABSENT'
-                    ? Icons.cancel
-                    : Icons.work,
-            color: statusColor,
-            size: 28,
-          ),
-        ),
-        title: Text(
-          DateFormat('EEEE, MMM dd, yyyy').format(DateTime.parse(record.date)),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        subtitle: record.reason != null && record.reason!.isNotEmpty
-            ? Padding(
-                padding: const EdgeInsets.only(top: 6.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        record.reason!,
+          
+          // List of periods
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: dailyRecords.map((record) {
+                final statusColor = _getStatusColor(record.status);
+                String subCode = record.subjectCode ?? '-';
+                
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'P${record.period}',
                         style: TextStyle(
                           fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(width: 1, height: 12, color: Colors.grey.shade400),
+                      const SizedBox(width: 6),
+                      Text(
+                        subCode,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color: Colors.grey.shade700,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              )
-            : null,
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: statusColor.withValues(alpha: 0.5)),
-          ),
-          child: Text(
-            record.status.toUpperCase(),
-            style: TextStyle(
-              color: statusColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-              letterSpacing: 0.5,
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          record.status.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

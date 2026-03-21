@@ -32,6 +32,7 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
   final Map<String, String> _attendanceStatus = {}; // regNo -> 'Present'/'Absent'
   final Map<String, String> _attendanceReasons = {}; // regNo -> Reason
   bool _isLoading = false;
+  int _selectedPeriod = 1;
 
   @override
   void initState() {
@@ -75,6 +76,7 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
         widget.year,
         widget.section,
         dateStr,
+        period: _selectedPeriod,
       );
 
       setState(() {
@@ -119,6 +121,8 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
         year: widget.year,
         section: widget.section,
         dept: widget.dept,
+        period: _selectedPeriod,
+        subjectCode: widget.subjectCode,
         attendanceList: inputs,
       );
 
@@ -187,11 +191,36 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
                 Text(
                   'Date: ${DateFormat('dd MMM yyyy').format(_selectedDate)}',
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.blue,
                   ),
                 ),
+                const SizedBox(width: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Period: ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                    DropdownButton<int>(
+                      value: _selectedPeriod,
+                      items: List.generate(7, (index) => index + 1)
+                          .map((p) => DropdownMenuItem(
+                                value: p,
+                                child: Text('$p', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              ))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null && val != _selectedPeriod) {
+                          setState(() {
+                            _selectedPeriod = val;
+                          });
+                          _loadAttendanceForDate();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () => _selectDate(context),
                   icon: const Icon(Icons.calendar_today),
