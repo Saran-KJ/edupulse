@@ -375,6 +375,21 @@ class StudentActivitySubmissionReview(BaseModel):
 class RiskPredictionRequest(BaseModel):
     reg_no: str # Changed from student_id
 
+class EarlyRiskQuizRequest(BaseModel):
+    reg_no: str
+    subject_code: str
+    unit_number: int = 1
+
+class EarlyRiskResponse(BaseModel):
+    reg_no: str
+    subject_code: str
+    risk_level: str
+    probability: float
+    probability_percentage: float
+    features: Dict[str, Any]
+    recommendations: List[str]
+    interpretation: str
+
 class RiskPredictionResponse(BaseModel):
     prediction_id: int
     reg_no: str # Changed from student_id

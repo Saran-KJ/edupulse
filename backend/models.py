@@ -394,6 +394,7 @@ class QuizQuestion(Base):
     option_d = Column(String(500), nullable=False)
     correct_answer = Column(String(500), nullable=False)
     difficulty_level = Column(String(50), nullable=False)
+    is_early_risk_quiz = Column(Integer, default=0)  # 1 if part of early risk assessment
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class StudentQuizAttempt(Base):

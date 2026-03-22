@@ -836,3 +836,80 @@ class QuizWithContent {
     };
   }
 }
+
+// Early Risk Assessment Models
+class EarlyRiskAssessment {
+  final String regNo;
+  final String subjectCode;
+  final String riskLevel;
+  final double probability;
+  final double probabilityPercentage;
+  final Map<String, dynamic> features;
+  final List<String> recommendations;
+  final String interpretation;
+
+  EarlyRiskAssessment({
+    required this.regNo,
+    required this.subjectCode,
+    required this.riskLevel,
+    required this.probability,
+    required this.probabilityPercentage,
+    required this.features,
+    required this.recommendations,
+    required this.interpretation,
+  });
+
+  factory EarlyRiskAssessment.fromJson(Map<String, dynamic> json) {
+    return EarlyRiskAssessment(
+      regNo: json['reg_no'] ?? '',
+      subjectCode: json['subject_code'] ?? '',
+      riskLevel: json['risk_level'] ?? 'Unknown',
+      probability: (json['probability'] as num?)?.toDouble() ?? 0.0,
+      probabilityPercentage: (json['probability_percentage'] as num?)?.toDouble() ?? 0.0,
+      features: json['features'] ?? {},
+      recommendations: List<String>.from(json['recommendations'] ?? []),
+      interpretation: json['interpretation'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'reg_no': regNo,
+      'subject_code': subjectCode,
+      'risk_level': riskLevel,
+      'probability': probability,
+      'probability_percentage': probabilityPercentage,
+      'features': features,
+      'recommendations': recommendations,
+      'interpretation': interpretation,
+    };
+  }
+
+  // Get color based on risk level
+  String get riskColor {
+    switch (riskLevel.toLowerCase()) {
+      case 'high':
+        return '0xFFE74C3C'; // Red
+      case 'medium':
+        return '0xFFF39C12'; // Orange
+      case 'low':
+        return '0xFF27AE60'; // Green
+      default:
+        return '0xFF95A5A6'; // Gray
+    }
+  }
+
+  // Get emoji based on risk level
+  String get riskEmoji {
+    switch (riskLevel.toLowerCase()) {
+      case 'high':
+        return '⚠️';
+      case 'medium':
+        return '⏱️';
+      case 'low':
+        return '✅';
+      default:
+        return '❓';
+    }
+  }
+}

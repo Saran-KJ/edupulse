@@ -50,11 +50,13 @@ def get_quiz(
     difficulty = difficulty_map.get(risk_level.upper(), "Moderate")
 
     # 1. Check if quiz already exists in database for this subject, unit, and difficulty
+    print(f"DEBUG: Checking existing quiz for {subject_name} Unit {unit_number}...")
     existing_questions = db.query(QuizQuestion).filter(
         QuizQuestion.subject == subject_name,
         QuizQuestion.unit == unit_number,
         QuizQuestion.difficulty_level == difficulty
     ).all()
+    print(f"DEBUG: Found {len(existing_questions)} existing questions.")
 
     if existing_questions:
         return {
@@ -66,7 +68,7 @@ def get_quiz(
         }
 
     # 2. Generate new quiz if not found
-    print(f"Generating new quiz for {subject_name} Unit {unit_number} ({difficulty})...")
+    print(f"DEBUG: No existing quiz. Generating new quiz for {subject_name} Unit {unit_number} ({difficulty})...")
     raw_quiz = generate_quiz_questions(subject_name, unit_number, risk_level)
     
     if not raw_quiz:

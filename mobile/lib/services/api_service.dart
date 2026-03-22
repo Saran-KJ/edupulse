@@ -1636,6 +1636,45 @@ class ApiService {
       throw Exception('Failed to fetch topics: ${response.body}');
     }
   }
+
+  // Early Risk Assessment APIs
+  Future<EarlyRiskAssessment> getEarlyRiskAssessment({
+    required String regNo,
+    required String subjectCode,
+  }) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/predict/early-risk/$regNo/$subjectCode'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return EarlyRiskAssessment.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to get early risk assessment: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> generateEarlyRiskQuiz({
+    required String regNo,
+    required String subjectCode,
+    int unitNumber = 1,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/predict/early-risk-quiz'),
+      headers: _getHeaders(),
+      body: jsonEncode({
+        'reg_no': regNo,
+        'subject_code': subjectCode,
+        'unit_number': unitNumber,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to generate early risk quiz: ${response.body}');
+    }
+  }
 }
 
 

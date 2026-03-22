@@ -46,7 +46,7 @@ def _call_ollama(prompt: str, is_json: bool, api_key: str = None, max_retries: i
             text = resp.json()["message"]["content"].strip()
 
             if not is_json:
-                print(f"✓ Ollama ({model}) responded successfully")
+                print(f"SUCCESS: Ollama ({model}) responded successfully")
                 return text
 
             # Robustly clean markdown fences and whitespace
@@ -62,7 +62,7 @@ def _call_ollama(prompt: str, is_json: bool, api_key: str = None, max_retries: i
                 text = "\n".join(lines).strip()
 
             data = json.loads(text)
-            print(f"✓ Ollama ({model}) responded successfully")
+            print(f"SUCCESS: Ollama ({model}) responded successfully")
             return data
 
         except requests.exceptions.ConnectionError:
@@ -110,7 +110,7 @@ def _call_openai(prompt: str, is_json: bool, api_key: str):
         # Detect quota / rate-limit before raise_for_status
         if response.status_code == 429:
             err_msg = response.json().get("error", {}).get("message", "Rate limit exceeded")
-            print(f"⚠ OpenAI quota/rate-limit hit: {err_msg}. Falling back to Gemini...")
+            print(f"WARNING: OpenAI quota/rate-limit hit: {err_msg}. Falling back to Gemini...")
             return _OPENAI_QUOTA_HIT
 
         response.raise_for_status()
@@ -126,14 +126,14 @@ def _call_openai(prompt: str, is_json: bool, api_key: str):
             text = "\n".join(lines).strip()
             
         data = json.loads(text) if is_json else text
-        print(f"✓ Successfully called OpenAI")
+        print(f"SUCCESS: Successfully called OpenAI")
         return data
     except requests.exceptions.HTTPError as e:
         status = e.response.status_code if e.response is not None else 0
         err_body = e.response.json() if e.response is not None else {}
         err_msg = err_body.get("error", {}).get("message", str(e))
         if status == 429 or "quota" in err_msg.lower() or "rate limit" in err_msg.lower():
-            print(f"⚠ OpenAI quota/rate-limit hit ({status}): {err_msg}. Falling back to Gemini...")
+            print(f"WARNING: OpenAI quota/rate-limit hit ({status}): {err_msg}. Falling back to Gemini...")
             return _OPENAI_QUOTA_HIT
         print(f"OpenAI HTTP Error {status}: {err_msg}")
         return None
@@ -164,6 +164,8 @@ def _call_opencode(prompt: str, is_json: bool):
     try:
         print(f"DEBUG: Calling OpenCode (Local Relay @ {settings.opencode_base_url})...")
         response = requests.post(url, headers=headers, json=payload, timeout=60)
+        print(f"DEBUG: OpenCode Status: {response.status_code}")
+        print(f"DEBUG: OpenCode Raw: {response.text[:500]}")
         response.raise_for_status()
         result = response.json()
         text = result['choices'][0]['message']['content'].strip()
@@ -177,7 +179,7 @@ def _call_opencode(prompt: str, is_json: bool):
             text = "\n".join(lines).strip()
             
         data = json.loads(text) if is_json else text
-        print(f"✓ Successfully called OpenCode")
+        print(f"SUCCESS: Successfully called OpenCode")
         return data
     except Exception as e:
         print(f"OpenCode API Error: {str(e)}")
@@ -277,7 +279,7 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
                 
                 data = json.loads(clean_text.strip()) if is_json else clean_text
                 print(f"DEBUG: {model_name} raw text first 100 chars: {clean_text[:100]}")
-                print(f"✓ Successfully called Gemini using {key_label} Key and {model_name}")
+                print(f"SUCCESS: Successfully called Gemini using {key_label} Key and {model_name}")
                 return data
             except Exception as e:
                 err_str = str(e)
