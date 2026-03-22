@@ -1576,6 +1576,66 @@ class ApiService {
       throw Exception('Failed to update project coordinator: ${response.body}');
     }
   }
+
+  // Content Generation APIs
+  Future<LearningContent> generateContent({
+    required String subjectName,
+    required int unitNumber,
+    required String topic,
+    String learningPreference = "text",
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/content/generate'),
+      headers: _getHeaders(),
+      body: jsonEncode({
+        'subject_name': subjectName,
+        'unit_number': unitNumber,
+        'topic': topic,
+        'learning_preference': learningPreference,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return LearningContent.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to generate content: ${response.body}');
+    }
+  }
+
+  Future<QuizWithContent> generateContentWithQuiz({
+    required String subjectName,
+    required int unitNumber,
+    required String topic,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/content/with-quiz?unit_number=$unitNumber'),
+      headers: _getHeaders(),
+      body: jsonEncode({
+        'subject_name': subjectName,
+        'unit_number': unitNumber,
+        'topic': topic,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return QuizWithContent.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to generate content with quiz: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getAvailableTopics(String subjectName) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/content/subjects/$subjectName/topics'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to fetch topics: ${response.body}');
+    }
+  }
 }
 
 

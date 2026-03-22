@@ -718,4 +718,33 @@ class ProjectBatchResponse(BaseModel):
 class ProjectBatchReviewerUpdate(BaseModel):
     reviewer_id: int
 
+# Learning Content Generation Schemas
+class ContentSection(BaseModel):
+    title: str
+    content: str
+    key_points: List[str]
+    examples: Optional[List[str]] = None
+
+class ContentGenerationRequest(BaseModel):
+    subject_name: str
+    unit_number: int
+    topic: str
+    learning_preference: Optional[str] = "text"  # text, visual, mixed
+
+class ContentGenerationResponse(BaseModel):
+    subject: str
+    unit: int
+    topic: str
+    title: str
+    introduction: str
+    sections: List[ContentSection]
+    summary: str
+    learning_objectives: List[str]
+    difficulty_level: str
+    estimated_read_time: str
+
+class QuizWithContentResponse(BaseModel):
+    content: ContentGenerationResponse
+    quiz: QuizGenerationResponse
+
 

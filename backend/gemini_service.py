@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-import google.generativeai as genai
+from google import genai
 import config as cfg
 
 # Sentinel to signal quota/rate-limit hit so caller can fall back to Gemini
@@ -141,6 +141,48 @@ def _call_openai(prompt: str, is_json: bool, api_key: str):
         print(f"OpenAI API Error: {str(e)}")
         return None
 
+def _call_opencode(prompt: str, is_json: bool):
+    """
+    Helper to call the local OpenCode relay server on port 25725.
+    """
+    settings = cfg.get_settings()
+    url = f"{settings.opencode_base_url}/chat/completions"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    # OpenCode typically handles models internally or supports a default
+    payload = {
+        "messages": [
+            {"role": "system", "content": "You are a professional technical educator and software engineer."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+    if is_json:
+        payload["response_format"] = {"type": "json_object"}
+
+    try:
+        print(f"DEBUG: Calling OpenCode (Local Relay @ {settings.opencode_base_url})...")
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+        result = response.json()
+        text = result['choices'][0]['message']['content'].strip()
+        
+        # Clean markdown fences
+        text = text.strip()
+        if text.startswith("```"):
+            lines = text.splitlines()
+            if lines[0].startswith("```"): lines = lines[1:]
+            if lines and lines[-1].startswith("```"): lines = lines[:-1]
+            text = "\n".join(lines).strip()
+            
+        data = json.loads(text) if is_json else text
+        print(f"✓ Successfully called OpenCode")
+        return data
+    except Exception as e:
+        print(f"OpenCode API Error: {str(e)}")
+        return None
+
 def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = None):
     """
     Generic helper to call AI services (Gemini or OpenAI) with fallback logic.
@@ -150,9 +192,11 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
     # Priority: global gemini_api_key (especially if 'ollama') -> override_api_key -> secondary global
     keys_to_try = []
     
-    # If the user explicitly set 'ollama' as the global key, force it to be absolute #1 priority
-    if settings.gemini_api_key and settings.gemini_api_key.lower() == "ollama":
-        keys_to_try.append(settings.gemini_api_key)
+    # If the user explicitly set 'ollama' or 'opencode' as the global key, force it to be priority
+    if settings.gemini_api_key:
+        lower_key = settings.gemini_api_key.lower()
+        if lower_key == "ollama" or lower_key == "opencode":
+             keys_to_try.append(settings.gemini_api_key)
         
     if override_api_key and override_api_key not in keys_to_try:
         keys_to_try.append(override_api_key)
@@ -184,6 +228,14 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
             overall_errors.append(f"{key_label}[Ollama]: Failed, falling back")
             continue
 
+        # Route to local OpenCode relay if key is "opencode"
+        if api_key.lower() == "opencode":
+            data = _call_opencode(prompt, is_json)
+            if data:
+                return data
+            overall_errors.append(f"{key_label}[OpenCode]: Failed, falling back")
+            continue
+
         # Route to OpenAI if key starts with sk-
         if api_key.startswith("sk-"):
             data = _call_openai(prompt, is_json, api_key)
@@ -197,20 +249,23 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
             continue
 
         # Otherwise use Gemini
-        genai.configure(api_key=api_key)
+        client = genai.Client(api_key=api_key)
         models_to_try = [
-            'models/gemini-flash-latest', 
-            'models/gemini-2.0-flash',
-            'models/gemini-1.5-flash',
-            'models/gemini-pro-latest'
+            'gemini-2.0-flash', 
+            'gemini-1.5-flash',
+            'gemini-pro-latest'
         ]
         
         for model_name in models_to_try:
             try:
                 print(f"DEBUG: Trying {key_label} Key | Model: {model_name}...")
-                model = genai.GenerativeModel(model_name)
-                gen_config = {"response_mime_type": "application/json"} if is_json else None
-                response = model.generate_content(prompt, generation_config=gen_config)
+                
+                config = {"response_mime_type": "application/json"} if is_json else None
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=config
+                )
                 
                 clean_text = response.text.strip()
                 if clean_text.startswith("```json"):
@@ -221,13 +276,15 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
                     clean_text = clean_text[:-3]
                 
                 data = json.loads(clean_text.strip()) if is_json else clean_text
+                print(f"DEBUG: {model_name} raw text first 100 chars: {clean_text[:100]}")
                 print(f"✓ Successfully called Gemini using {key_label} Key and {model_name}")
                 return data
             except Exception as e:
                 err_str = str(e)
+                print(f"DEBUG: {model_name} failed: {err_str[:100]}")
                 if "429" in err_str or "quota" in err_str.lower():
-                    print(f"DEBUG: {key_label} Key hit quota limit. Switching...")
-                    break 
+                    print(f"DEBUG: {key_label} Key | {model_name} hit quota limit. Trying next model...")
+                    continue 
                 overall_errors.append(f"{key_label}[{model_name}]: {err_str[:50]}")
                 continue
     
@@ -385,3 +442,64 @@ Return ONLY the raw JSON list, no markdown, no extra text."""
     
     data = _call_ai_service(prompt, is_json=True, override_api_key=override_key)
     return data if isinstance(data, list) else []
+
+def generate_learning_content(subject_name: str, unit_number: int, topic: str, risk_level: str = "MEDIUM") -> dict:
+    """
+    Generate comprehensive learning content for a subject unit.
+    
+    Args:
+        subject_name: Name of the subject (e.g., "Data Structures")
+        unit_number: Unit number (1-5)
+        topic: Specific topic to cover
+        risk_level: Student risk level (LOW, MEDIUM, HIGH) - affects depth
+    
+    Returns:
+        dict with content structure including sections, examples, key points
+    """
+    difficulty_map = {
+        "HIGH": "Basic/Foundational",
+        "MEDIUM": "Intermediate",
+        "LOW": "Advanced/Comprehensive"
+    }
+    difficulty = difficulty_map.get(risk_level.upper(), "Intermediate")
+    
+    prompt = f"""Create comprehensive learning content for university students. Generate content for:
+Subject: {subject_name}
+Unit: {unit_number}
+Topic: {topic}
+Difficulty Level: {difficulty}
+
+Return a JSON object with this EXACT structure:
+{{
+    "title": "Topic Title",
+    "introduction": "Engaging introduction paragraph",
+    "learning_objectives": [
+        "Objective 1",
+        "Objective 2",
+        "Objective 3"
+    ],
+    "sections": [
+        {{
+            "title": "Section 1 Title",
+            "content": "Detailed explanation",
+            "key_points": ["Point 1", "Point 2", "Point 3"],
+            "examples": ["Real-world example 1", "Code example or scenario 2"]
+        }},
+        {{
+            "title": "Section 2 Title",
+            "content": "Detailed explanation",
+            "key_points": ["Point 1", "Point 2"],
+            "examples": ["Example 1", "Example 2"]
+        }}
+    ],
+    "summary": "Concise summary of the topic",
+    "difficulty_level": "{difficulty}",
+    "estimated_read_time": "15-20 minutes"
+}}
+
+Include 3-4 sections. Make content clear, structured, and suitable for {difficulty} level learners.
+Return ONLY valid raw JSON, no markdown fences, no extra text."""
+    
+    settings = cfg.get_settings()
+    data = _call_ai_service(prompt, is_json=True, override_api_key=settings.gemini_api_key)
+    return data if isinstance(data, dict) else {}

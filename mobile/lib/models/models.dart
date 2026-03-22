@@ -660,3 +660,179 @@ class QuizAttemptSubmission {
     };
   }
 }
+
+// Learning Content Models
+class ContentSection {
+  final String title;
+  final String content;
+  final List<String> keyPoints;
+  final List<String>? examples;
+
+  ContentSection({
+    required this.title,
+    required this.content,
+    required this.keyPoints,
+    this.examples,
+  });
+
+  factory ContentSection.fromJson(Map<String, dynamic> json) {
+    return ContentSection(
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
+      keyPoints: List<String>.from(json['key_points'] ?? []),
+      examples: json['examples'] != null 
+          ? List<String>.from(json['examples']) 
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'content': content,
+      'key_points': keyPoints,
+      'examples': examples,
+    };
+  }
+}
+
+class LearningContent {
+  final String subject;
+  final int unit;
+  final String topic;
+  final String title;
+  final String introduction;
+  final List<ContentSection> sections;
+  final String summary;
+  final List<String> learningObjectives;
+  final String difficultyLevel;
+  final String estimatedReadTime;
+
+  LearningContent({
+    required this.subject,
+    required this.unit,
+    required this.topic,
+    required this.title,
+    required this.introduction,
+    required this.sections,
+    required this.summary,
+    required this.learningObjectives,
+    required this.difficultyLevel,
+    required this.estimatedReadTime,
+  });
+
+  factory LearningContent.fromJson(Map<String, dynamic> json) {
+    return LearningContent(
+      subject: json['subject'] ?? '',
+      unit: json['unit'] ?? 0,
+      topic: json['topic'] ?? '',
+      title: json['title'] ?? '',
+      introduction: json['introduction'] ?? '',
+      sections: (json['sections'] as List<dynamic>?)
+              ?.map((s) => ContentSection.fromJson(s as Map<String, dynamic>))
+              .toList() ??
+          [],
+      summary: json['summary'] ?? '',
+      learningObjectives: List<String>.from(json['learning_objectives'] ?? []),
+      difficultyLevel: json['difficulty_level'] ?? '',
+      estimatedReadTime: json['estimated_read_time'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'subject': subject,
+      'unit': unit,
+      'topic': topic,
+      'title': title,
+      'introduction': introduction,
+      'sections': sections.map((s) => s.toJson()).toList(),
+      'summary': summary,
+      'learning_objectives': learningObjectives,
+      'difficulty_level': difficultyLevel,
+      'estimated_read_time': estimatedReadTime,
+    };
+  }
+}
+
+class Quiz {
+  final String subject;
+  final int unit;
+  final String riskLevel;
+  final int totalQuestions;
+  final List<QuizQuestion> questions;
+
+  Quiz({
+    required this.subject,
+    required this.unit,
+    required this.riskLevel,
+    required this.totalQuestions,
+    required this.questions,
+  });
+
+  factory Quiz.fromJson(Map<String, dynamic> json) {
+    var quizList = json['quiz'] as List<dynamic>? ?? [];
+    
+    return Quiz(
+      subject: json['subject'] ?? '',
+      unit: json['unit'] ?? 0,
+      riskLevel: json['risk_level'] ?? '',
+      totalQuestions: json['total_questions'] ?? 0,
+      questions: quizList
+          .map((q) => QuizQuestion(
+                id: q['id'] ?? 0,
+                question: q['question'] ?? '',
+                optionA: q['option_a'] ?? '',
+                optionB: q['option_b'] ?? '',
+                optionC: q['option_c'] ?? '',
+                optionD: q['option_d'] ?? '',
+                correctAnswer: q['correct_answer'] ?? '',
+                difficultyLevel: q['difficulty_level'] ?? '',
+              ))
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'subject': subject,
+      'unit': unit,
+      'risk_level': riskLevel,
+      'total_questions': totalQuestions,
+      'quiz': questions.map((q) => {
+        'id': q.id,
+        'question': q.question,
+        'option_a': q.optionA,
+        'option_b': q.optionB,
+        'option_c': q.optionC,
+        'option_d': q.optionD,
+        'correct_answer': q.correctAnswer,
+        'difficulty_level': q.difficultyLevel,
+      }).toList(),
+    };
+  }
+}
+
+class QuizWithContent {
+  final LearningContent content;
+  final Quiz quiz;
+
+  QuizWithContent({
+    required this.content,
+    required this.quiz,
+  });
+
+  factory QuizWithContent.fromJson(Map<String, dynamic> json) {
+    return QuizWithContent(
+      content: LearningContent.fromJson(json['content'] as Map<String, dynamic>),
+      quiz: Quiz.fromJson(json['quiz'] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'content': content.toJson(),
+      'quiz': quiz.toJson(),
+    };
+  }
+}
