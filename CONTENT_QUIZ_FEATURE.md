@@ -143,6 +143,79 @@ risk_level: "MEDIUM"  // HIGH, MEDIUM, or LOW
 
 ---
 
+### 5. Get Early Risk Assessment
+**GET** `/api/predict/early-risk/{reg_no}/{subject_code}`
+
+**Path Parameters:**
+- `reg_no`: Student registration number (e.g., "CSE001")
+- `subject_code`: Subject code (e.g., "CS101")
+
+**Response:**
+```json
+{
+  "student_id": "CSE001",
+  "subject_code": "CS101",
+  "risk_level": "HIGH",
+  "probability": 0.82,
+  "assessment_interpretation": "You are at HIGH risk. Your current performance metrics suggest you need immediate intervention...",
+  "contributing_factors": {
+    "quiz_score": 35.5,
+    "attendance_percentage": 65.0,
+    "internal_marks": 28,
+    "backlog_count": 2,
+    "learning_engagement": 4
+  },
+  "recommendations": [
+    "Attend all remaining classes to improve attendance",
+    "Increase study time focusing on fundamentals",
+    "Seek help from instructors immediately",
+    "Join study groups with peers"
+  ]
+}
+```
+
+---
+
+### 6. Generate Early Risk Assessment Quiz
+**POST** `/api/predict/early-risk-quiz`
+
+**Request Body:**
+```json
+{
+  "reg_no": "CSE001",
+  "subject_code": "CS101",
+  "unit_number": 1
+}
+```
+
+**Response:**
+```json
+{
+  "subject": "Data Structures",
+  "unit": 1,
+  "total_questions": 5,
+  "risk_level": "HIGH",
+  "difficulty_level": "Basic",
+  "quiz": [
+    {
+      "id": 1,
+      "subject": "Data Structures",
+      "unit": 1,
+      "difficulty_level": "Basic",
+      "question": "What is an array?",
+      "option_a": "An ordered collection of elements",
+      "option_b": "A tree structure",
+      "option_c": "A linked list",
+      "option_d": "A queue",
+      "correct_answer": "A",
+      "is_early_risk_quiz": 1
+    }
+  ]
+}
+```
+
+---
+
 ## Authentication
 All endpoints require Bearer token authentication:
 ```
@@ -230,6 +303,53 @@ try {
 }
 ```
 
+### 5. Using the Early Risk Assessment Screen
+
+```dart
+import 'package:your_app/screens/early_risk_quiz_screen.dart';
+
+// Navigate to early risk assessment
+Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => EarlyRiskQuizScreen(
+      studentRegNo: 'CSE001',
+      subjectCode: 'CS101',
+    ),
+  ),
+);
+```
+
+### 6. Programmatic Early Risk Assessment
+
+```dart
+final apiService = ApiService();
+
+try {
+  // Get early risk assessment
+  final assessment = await apiService.getEarlyRiskAssessment(
+    regNo: 'CSE001',
+    subjectCode: 'CS101',
+  );
+  
+  print('Risk Level: ${assessment.riskLevel}');
+  print('Probability: ${assessment.probability}');
+  print('Recommendations: ${assessment.recommendations}');
+  
+  // Generate early risk quiz
+  final quiz = await apiService.generateEarlyRiskQuiz(
+    regNo: 'CSE001',
+    subjectCode: 'CS101',
+    unitNumber: 1,
+  );
+  
+  // Quiz difficulty is automatically set based on risk level
+  print('Quiz Difficulty: ${quiz.difficultyLevel}');
+} catch (e) {
+  print('Error: $e');
+}
+```
+
 ---
 
 ## Data Models
@@ -282,6 +402,24 @@ class QuizQuestion {
   final String optionD;
   final String correctAnswer;
   final String difficultyLevel;
+  final int? isEarlyRiskQuiz;  // 1 if question is from early risk quiz, null otherwise
+}
+```
+
+### EarlyRiskAssessment
+```dart
+class EarlyRiskAssessment {
+  final String studentId;
+  final String subjectCode;
+  final String riskLevel;  // "LOW", "MEDIUM", or "HIGH"
+  final double probability;  // 0.0 to 1.0
+  final String assessmentInterpretation;
+  final Map<String, dynamic> contributingFactors;  // quiz_score, attendance_percentage, etc.
+  final List<String> recommendations;
+  
+  // Helper methods
+  String getRiskColor();  // Returns color hex for risk level
+  String getRiskEmoji();  // Returns emoji (😊, 😐, 😟) for risk level
 }
 ```
 
@@ -295,13 +433,16 @@ class QuizQuestion {
 1. **`backend/routes/content_routes.py`** - Content generation API endpoints
 2. **`mobile/lib/screens/content_generation_screen.dart`** - Flutter UI for content display
 3. **`mobile/lib/screens/quiz_answering_screen.dart`** - Flutter UI for quiz answering
+4. **`mobile/lib/screens/early_risk_quiz_screen.dart`** - Flutter UI for early risk assessment and quiz
 
 #### Modified Files:
 1. **`backend/gemini_service.py`** - Added `generate_learning_content()` function
-2. **`backend/schemas.py`** - Added content-related Pydantic schemas
+2. **`backend/schemas.py`** - Added content-related and early risk Pydantic schemas
 3. **`backend/main.py`** - Registered content routes
-4. **`mobile/lib/models/models.dart`** - Added content and quiz model classes
-5. **`mobile/lib/services/api_service.dart`** - Added content API methods
+4. **`backend/models.py`** - Added `is_early_risk_quiz` column to QuizQuestion table
+5. **`backend/routes/prediction_routes.py`** - Added early risk quiz generation endpoints
+6. **`mobile/lib/models/models.dart`** - Added content, quiz, and EarlyRiskAssessment model classes
+7. **`mobile/lib/services/api_service.dart`** - Added content and early risk API methods
 
 ### Gemini Integration
 
@@ -395,6 +536,83 @@ curl -X POST http://localhost:8000/api/quiz/submit-attempt \
 
 ---
 
+### Example 4: Get Early Risk Assessment
+
+**cURL:**
+```bash
+curl -X GET "http://localhost:8000/api/predict/early-risk/CSE001/CS101" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "student_id": "CSE001",
+  "subject_code": "CS101",
+  "risk_level": "HIGH",
+  "probability": 0.82,
+  "assessment_interpretation": "You are at HIGH risk. Your current performance metrics...",
+  "contributing_factors": {
+    "quiz_score": 35.5,
+    "attendance_percentage": 65.0,
+    "internal_marks": 28,
+    "backlog_count": 2,
+    "learning_engagement": 4
+  },
+  "recommendations": [
+    "Attend all remaining classes",
+    "Increase study time on fundamentals",
+    "Seek help from instructors immediately",
+    "Join study groups"
+  ]
+}
+```
+
+---
+
+### Example 5: Generate Early Risk Assessment Quiz
+
+**cURL:**
+```bash
+curl -X POST http://localhost:8000/api/predict/early-risk-quiz \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reg_no": "CSE001",
+    "subject_code": "CS101",
+    "unit_number": 1
+  }'
+```
+
+**Python:**
+```python
+import requests
+
+headers = {
+    "Authorization": "Bearer YOUR_TOKEN",
+    "Content-Type": "application/json"
+}
+
+data = {
+    "reg_no": "CSE001",
+    "subject_code": "CS101",
+    "unit_number": 1
+}
+
+response = requests.post(
+    "http://localhost:8000/api/predict/early-risk-quiz",
+    headers=headers,
+    json=data
+)
+
+quiz = response.json()
+print(f"Risk Level: {quiz['risk_level']}")
+print(f"Difficulty: {quiz['difficulty_level']}")
+print(f"Questions: {quiz['total_questions']}")
+```
+
+---
+
 ## Error Handling
 
 ### Common Errors
@@ -438,6 +656,9 @@ curl -X POST http://localhost:8000/api/quiz/submit-attempt \
 5. **Custom Content**: Allow teachers to customize generated content
 6. **Multiple Languages**: Support Tamil, Telugu, Kannada, Hindi
 7. **Offline Mode**: Cache content for offline access
+8. **Risk Trend Analysis**: Show historical risk level trends for students
+9. **Intervention Automation**: Auto-notify instructors when student reaches HIGH risk
+10. **Content Recommendations**: Suggest specific content based on risk factors
 
 ---
 
@@ -453,6 +674,12 @@ curl -X POST http://localhost:8000/api/quiz/submit-attempt \
 - [ ] Verify error handling for missing fields
 - [ ] Check authentication requirements
 - [ ] Test database storage of generated content
+- [ ] Get early risk assessment for a student
+- [ ] Verify risk level matches ML prediction
+- [ ] Generate early risk quiz and verify difficulty
+- [ ] Verify quiz questions marked as early risk quiz
+- [ ] Test early risk assessment recommendations based on risk level
+- [ ] Verify contributing factors display correctly
 
 ### API Testing
 
