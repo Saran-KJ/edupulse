@@ -519,3 +519,184 @@ Return ONLY valid raw JSON, no markdown fences, no extra text."""
     settings = cfg.get_settings()
     data = _call_ai_service(prompt, is_json=True, override_api_key=settings.gemini_api_key)
     return data if isinstance(data, dict) else {}
+
+def generate_assessment_quiz(subject_name: str, unit_number: int, assessment_type: str, risk_level: str = "MEDIUM"):
+    """
+    Generate mixed-type quiz questions for assessments.
+    
+    Question Type Mix:
+    - SlipTest: 20 questions (30% MCQ, 40% MCS, 30% NAT)
+    - CIA: 40 questions (25% MCQ, 50% MCS, 25% NAT)
+    - ModelExam: 50 questions (30% MCQ, 40% MCS, 30% NAT)
+    
+    Question Types:
+    - MCQ: Multiple Choice Question (single correct answer)
+    - MCS: Multiple Choice Selection (multiple correct answers)
+    - NAT: Numerical Answer Type (numeric value to be filled)
+    """
+    
+    # Define assessment configurations
+    configs = {
+        "SlipTest": {"total": 20, "mcq": 6, "mcs": 8, "nat": 6},      # 30%, 40%, 30%
+        "CIA": {"total": 40, "mcq": 10, "mcs": 20, "nat": 10},        # 25%, 50%, 25%
+        "ModelExam": {"total": 50, "mcq": 15, "mcs": 20, "nat": 15},  # 30%, 40%, 30%
+    }
+    
+    config = configs.get(assessment_type, configs["SlipTest"])
+    
+    difficulty_map = {
+        "HIGH": "Basic",
+        "MEDIUM": "Moderate",
+        "LOW": "Advanced"
+    }
+    difficulty = difficulty_map.get(risk_level.upper(), "Moderate")
+    
+    all_questions = []
+    
+    # Generate MCQ questions
+    if config["mcq"] > 0:
+        mcq_questions = _generate_mcq_questions(subject_name, unit_number, config["mcq"], difficulty)
+        all_questions.extend(mcq_questions)
+    
+    # Generate MCS questions
+    if config["mcs"] > 0:
+        mcs_questions = _generate_mcs_questions(subject_name, unit_number, config["mcs"], difficulty)
+        all_questions.extend(mcs_questions)
+    
+    # Generate NAT questions
+    if config["nat"] > 0:
+        nat_questions = _generate_nat_questions(subject_name, unit_number, config["nat"], difficulty)
+        all_questions.extend(nat_questions)
+    
+    print(f"DEBUG: Generated {len(all_questions)} total questions for {assessment_type}")
+    print(f"  - MCQ: {len([q for q in all_questions if q.get('question_type') == 'MCQ'])}")
+    print(f"  - MCS: {len([q for q in all_questions if q.get('question_type') == 'MCS'])}")
+    print(f"  - NAT: {len([q for q in all_questions if q.get('question_type') == 'NAT'])}")
+    
+    return all_questions
+
+def _generate_mcq_questions(subject_name: str, unit_number: int, count: int, difficulty: str) -> list:
+    """Generate Multiple Choice Questions (single correct answer)"""
+    prompt = f"""
+    Generate exactly {count} multiple choice questions for "{subject_name}" Unit {unit_number}.
+    Type: MCQ (Single Correct Answer)
+    Difficulty: {difficulty}. Syllabus relevant.
+    
+    Each question must have EXACTLY ONE correct answer from 4 options (A, B, C, D).
+    
+    Return as JSON array with exactly {count} objects:
+    {{
+        "question": "question text",
+        "option_a": "option A text",
+        "option_b": "option B text",
+        "option_c": "option C text",
+        "option_d": "option D text",
+        "correct_answer": "A" or "B" or "C" or "D",
+        "question_type": "MCQ"
+    }}
+    
+    Return ONLY the raw JSON array. Do NOT wrap in any object.
+    """
+    
+    data = _call_ai_service(prompt, is_json=True)
+    
+    if isinstance(data, list):
+        # Add question_type to each question
+        for q in data:
+            q['question_type'] = 'MCQ'
+        return data
+    elif isinstance(data, dict):
+        # Try to extract list from wrapped response
+        for key, val in data.items():
+            if isinstance(val, list) and len(val) > 0:
+                for q in val:
+                    q['question_type'] = 'MCQ'
+                return val
+    
+    return []
+
+def _generate_mcs_questions(subject_name: str, unit_number: int, count: int, difficulty: str) -> list:
+    """Generate Multiple Choice Selection (multiple correct answers)"""
+    prompt = f"""
+    Generate exactly {count} multiple choice questions for "{subject_name}" Unit {unit_number}.
+    Type: MCS (Multiple Correct Answers - 2 to 3 answers are correct)
+    Difficulty: {difficulty}. Syllabus relevant.
+    
+    Each question can have 2, 3, or all 4 correct answers from the 4 options (A, B, C, D).
+    
+    Return as JSON array with exactly {count} objects:
+    {{
+        "question": "question text",
+        "option_a": "option A text",
+        "option_b": "option B text",
+        "option_c": "option C text",
+        "option_d": "option D text",
+        "correct_answer": "A,B" or "B,C,D" or "A,C,D" or similar (comma-separated),
+        "question_type": "MCS"
+    }}
+    
+    Return ONLY the raw JSON array. Do NOT wrap in any object.
+    """
+    
+    data = _call_ai_service(prompt, is_json=True)
+    
+    if isinstance(data, list):
+        for q in data:
+            q['question_type'] = 'MCS'
+        return data
+    elif isinstance(data, dict):
+        for key, val in data.items():
+            if isinstance(val, list) and len(val) > 0:
+                for q in val:
+                    q['question_type'] = 'MCS'
+                return val
+    
+    return []
+
+def _generate_nat_questions(subject_name: str, unit_number: int, count: int, difficulty: str) -> list:
+    """Generate Numerical Answer Type (student fills in numeric answer)"""
+    prompt = f"""
+    Generate exactly {count} numerical answer type questions for "{subject_name}" Unit {unit_number}.
+    Type: NAT (Numerical Answer Type - student enters a number/formula result)
+    Difficulty: {difficulty}. Syllabus relevant.
+    
+    Questions should be computational/calculation problems where student enters a numerical answer.
+    Answer should be a single number, decimal, or expression result.
+    
+    Return as JSON array with exactly {count} objects:
+    {{
+        "question": "question text with calculation needed",
+        "option_a": null,
+        "option_b": null,
+        "option_c": null,
+        "option_d": null,
+        "correct_answer": "123" or "45.6" or "789.123" (numeric value as string),
+        "question_type": "NAT"
+    }}
+    
+    Return ONLY the raw JSON array. Do NOT wrap in any object.
+    """
+    
+    data = _call_ai_service(prompt, is_json=True)
+    
+    if isinstance(data, list):
+        for q in data:
+            q['question_type'] = 'NAT'
+            # Ensure options are null for NAT
+            q['option_a'] = None
+            q['option_b'] = None
+            q['option_c'] = None
+            q['option_d'] = None
+        return data
+    elif isinstance(data, dict):
+        for key, val in data.items():
+            if isinstance(val, list) and len(val) > 0:
+                for q in val:
+                    q['question_type'] = 'NAT'
+                    q['option_a'] = None
+                    q['option_b'] = None
+                    q['option_c'] = None
+                    q['option_d'] = None
+                return val
+    
+    return []

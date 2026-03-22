@@ -604,10 +604,10 @@ class LearningResourcesResponse(BaseModel):
 # Quiz Schemas
 class QuizQuestionBase(BaseModel):
     question: str
-    option_a: str
-    option_b: str
-    option_c: str
-    option_d: str
+    option_a: Optional[str] = None  # Can be None for NAT
+    option_b: Optional[str] = None
+    option_c: Optional[str] = None
+    option_d: Optional[str] = None
     correct_answer: str
 
 class QuizQuestionResponse(QuizQuestionBase):
@@ -615,6 +615,8 @@ class QuizQuestionResponse(QuizQuestionBase):
     subject: str
     unit: int
     difficulty_level: str
+    question_type: str = "MCQ"  # MCQ, MCS, NAT
+    assessment_type: Optional[str] = None  # SlipTest, CIA, ModelExam
     
     class Config:
         from_attributes = True

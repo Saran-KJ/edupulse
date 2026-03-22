@@ -7,7 +7,7 @@ from models import (
     StudentCSE, StudentECE, StudentEEE, StudentMECH, StudentCIVIL, StudentBIO, StudentAIDS
 )
 import schemas
-from gemini_service import generate_quiz_questions
+from gemini_service import generate_quiz_questions, generate_assessment_quiz
 from typing import List, Dict
 
 router = APIRouter(prefix="/api/quiz", tags=["Quiz"])
@@ -107,6 +107,103 @@ def get_quiz(
     for q in db_questions:
         db.refresh(q)
 
+    return {
+        "subject": subject_name,
+        "unit": unit_number,
+        "risk_level": risk_level,
+        "total_questions": len(db_questions),
+        "quiz": db_questions
+    }
+
+@router.get("/assessment/generate", response_model=schemas.QuizGenerationResponse)
+def get_assessment_quiz(
+    subject_name: str,
+    unit_number: int,
+    assessment_type: str,
+    risk_level: str = "MEDIUM",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generate mixed-type quiz for scheduled assessments (SlipTest, CIA, ModelExam).
+    
+    Question mix by assessment type:
+    - SlipTest: 20 questions (30% MCQ, 40% MCS, 30% NAT)
+    - CIA: 40 questions (25% MCQ, 50% MCS, 25% NAT)
+    - ModelExam: 50 questions (30% MCQ, 40% MCS, 30% NAT)
+    """
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Only students can access quizzes")
+    
+    if assessment_type not in ["SlipTest", "CIA", "ModelExam"]:
+        raise HTTPException(status_code=400, detail="Invalid assessment type. Use: SlipTest, CIA, ModelExam")
+    
+    difficulty_map = {
+        "HIGH": "Basic",
+        "MEDIUM": "Moderate",
+        "LOW": "Advanced"
+    }
+    difficulty = difficulty_map.get(risk_level.upper(), "Moderate")
+    
+    # 1. Check if assessment quiz already exists in database
+    print(f"DEBUG: Checking existing assessment quiz for {subject_name} Unit {unit_number} ({assessment_type})...")
+    existing_questions = db.query(QuizQuestion).filter(
+        QuizQuestion.subject == subject_name,
+        QuizQuestion.unit == unit_number,
+        QuizQuestion.difficulty_level == difficulty,
+        QuizQuestion.assessment_type == assessment_type
+    ).all()
+    print(f"DEBUG: Found {len(existing_questions)} existing assessment questions.")
+    
+    if existing_questions:
+        return {
+            "subject": subject_name,
+            "unit": unit_number,
+            "risk_level": risk_level,
+            "total_questions": len(existing_questions),
+            "quiz": existing_questions
+        }
+    
+    # 2. Generate new assessment quiz
+    print(f"DEBUG: Generating new assessment quiz: {assessment_type} for {subject_name} Unit {unit_number}...")
+    raw_quiz = generate_assessment_quiz(subject_name, unit_number, assessment_type, risk_level)
+    
+    if not raw_quiz:
+        print("ERROR: generate_assessment_quiz returned empty list")
+        raise HTTPException(status_code=500, detail="Failed to generate assessment quiz")
+    
+    print(f"DEBUG: Processing {len(raw_quiz)} questions from AI...")
+    
+    # 3. Save to database
+    db_questions = []
+    for q in raw_quiz:
+        db_q = QuizQuestion(
+            subject=subject_name,
+            unit=unit_number,
+            question=q.get("question", ""),
+            option_a=q.get("option_a"),  # Can be None for NAT
+            option_b=q.get("option_b"),
+            option_c=q.get("option_c"),
+            option_d=q.get("option_d"),
+            correct_answer=q.get("correct_answer", ""),
+            difficulty_level=difficulty,
+            question_type=q.get("question_type", "MCQ"),
+            assessment_type=assessment_type
+        )
+        db.add(db_q)
+        db_questions.append(db_q)
+    
+    try:
+        db.commit()
+        print(f"SUCCESS: Saved {len(db_questions)} assessment questions to database")
+    except Exception as e:
+        db.rollback()
+        print(f"ERROR during assessment quiz save: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+    for q in db_questions:
+        db.refresh(q)
+    
     return {
         "subject": subject_name,
         "unit": unit_number,

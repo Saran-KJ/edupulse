@@ -388,12 +388,14 @@ class QuizQuestion(Base):
     subject = Column(String(100), nullable=False)
     unit = Column(Integer, nullable=False)
     question = Column(Text, nullable=False)
-    option_a = Column(String(500), nullable=False)
-    option_b = Column(String(500), nullable=False)
-    option_c = Column(String(500), nullable=False)
-    option_d = Column(String(500), nullable=False)
+    option_a = Column(String(500), nullable=True)  # NULL for NAT questions
+    option_b = Column(String(500), nullable=True)  # NULL for NAT questions
+    option_c = Column(String(500), nullable=True)  # NULL for NAT questions
+    option_d = Column(String(500), nullable=True)  # NULL for NAT questions
     correct_answer = Column(String(500), nullable=False)
     difficulty_level = Column(String(50), nullable=False)
+    question_type = Column(String(20), default="MCQ")  # MCQ, MCS, NAT
+    assessment_type = Column(String(50), nullable=True)  # SlipTest, CIA, ModelExam, Practice
     is_early_risk_quiz = Column(Integer, default=0)  # 1 if part of early risk assessment
     created_at = Column(DateTime, default=datetime.utcnow)
 
