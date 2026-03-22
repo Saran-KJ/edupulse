@@ -299,8 +299,10 @@ def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str
     prompt = f"""
     Generate exactly {num} multiple choice quiz questions for "{subject_name}" Unit {unit_number}.
     Difficulty: {diff}. Syllabus relevant.
-    Return output as JSON list of objects: {{"question", "option_a", "option_b", "option_c", "option_d", "correct_answer"}}.
-    Return ONLY raw JSON list.
+    Return output as JSON array with exactly {num} objects.
+    Each object must have: {{"question": "...", "option_a": "...", "option_b": "...", "option_c": "...", "option_d": "...", "correct_answer": "A/B/C/D"}}.
+    Return ONLY the raw JSON array. Do NOT wrap in any other object.
+    Example: [{{"question": "...", "option_a": "...", ...}}, {{"question": "...", ...}}]
     """
     data = _call_ai_service(prompt, is_json=True)
     print(f"DEBUG: AI Service raw response type: {type(data)}")
@@ -309,24 +311,36 @@ def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str
     if isinstance(data, dict):
         print(f"DEBUG: Data is dict, keys: {list(data.keys())}")
         
-        # Case A: Dictionary wraps a list (e.g. {"questions": [...]})
+        # Case A: Dictionary wraps a list (e.g. {"questions": [...]} or {"data": [...]})
         for key, val in data.items():
-            if isinstance(val, list):
+            if isinstance(val, list) and len(val) > 0:
                 print(f"DEBUG: Found list in key '{key}' with {len(val)} items")
-                return val
+                # Validate first item looks like a question
+                first_item = val[0]
+                if isinstance(first_item, dict) and any(k in first_item.keys() for k in ["question", "option_a"]):
+                    print(f"DEBUG: List items appear to be questions. Returning {len(val)} questions.")
+                    return val
         
-        # Case B: Dictionary IS a single question (e.g. {"question": "...", ...})
-        # Use a more robust check for any typical question-related key
+        # Case B: Dictionary might be a SINGLE question mistakenly returned as dict
+        # IMPORTANT: Only wrap in list if we have very few questions (< 3)
+        # This is likely an error from the AI
         dict_keys = {str(k).lower().strip() for k in data.keys()}
-        if any(k in dict_keys for k in ["question", "option_a", "option_1", "correct_answer"]):
-            print("DEBUG: Data matches single question pattern. Wrapping in list.")
-            return [data]
+        if any(k in dict_keys for k in ["question", "option_a", "option_1"]) and len(data) < 10:
+            print("WARNING: AI returned single question as dict instead of list. This is a format error.")
+            print(f"WARNING: Expected {num} questions but got 1. Do not wrap.")
+            # Don't wrap - return empty list to force retry
+            return []
     
     if isinstance(data, list):
         print(f"DEBUG: Data is already a list with {len(data)} items")
-        return data
+        if len(data) > 0:
+            # Validate it's a list of questions, not something else
+            first_item = data[0]
+            if isinstance(first_item, dict) and any(k in first_item.keys() for k in ["question", "option_a"]):
+                return data
+        return []
         
-    print(f"DEBUG: Failed to find list in AI response. Returning empty list.")
+    print(f"DEBUG: Failed to find valid question list in AI response. Returning empty list.")
     return []
 
 def generate_study_strategy(risk_level: str, subjects_summary: list, global_preference: str = None):
