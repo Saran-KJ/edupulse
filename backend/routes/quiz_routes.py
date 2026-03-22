@@ -8,6 +8,7 @@ from models import (
 )
 import schemas
 from gemini_service import generate_quiz_questions, generate_assessment_quiz
+from scoring_service import scoring_service
 from typing import List, Dict
 
 router = APIRouter(prefix="/api/quiz", tags=["Quiz"])
@@ -219,7 +220,13 @@ def submit_quiz(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Submits a quiz attempt, calculates the score, and stores the result.
+    Submits a quiz attempt, calculates the score based on question types (MCQ, MCS, NAT),
+    and stores the result.
+    
+    Answer formats:
+    - MCQ: str (single option)
+    - MCS: List[str] (multiple options) or comma-separated string
+    - NAT: str or float (numeric value)
     """
     if current_user.role != "student":
         raise HTTPException(status_code=403, detail="Only students can submit quizzes")
@@ -231,14 +238,34 @@ def submit_quiz(
     student = _get_student(db, current_user)
     correct_count = 0
     
-    # Verify answers
-    for q_id_str, selected_option in submission.answers.items():
+    # Verify answers based on question type
+    for q_id_str, student_answer in submission.answers.items():
         try:
             q_id = int(q_id_str)
             question = db.query(QuizQuestion).filter(QuizQuestion.id == q_id).first()
-            if question and question.correct_answer.strip().lower() == selected_option.strip().lower():
+            
+            if not question:
+                print(f"WARNING: Question {q_id} not found")
+                continue
+            
+            # Get question type (default to MCQ for backward compatibility)
+            question_type = question.question_type or "MCQ"
+            
+            # Evaluate answer based on question type
+            is_correct = scoring_service.evaluate_answer(
+                student_answer,
+                question.correct_answer,
+                question_type
+            )
+            
+            if is_correct:
                 correct_count += 1
+                print(f"DEBUG: Question {q_id} ({question_type}) - CORRECT")
+            else:
+                print(f"DEBUG: Question {q_id} ({question_type}) - INCORRECT")
+                
         except ValueError:
+            print(f"ERROR: Invalid question ID format: {q_id_str}")
             continue
             
     wrong_count = total_questions - correct_count

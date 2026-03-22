@@ -631,7 +631,10 @@ class QuizGenerationResponse(BaseModel):
 class QuizAttemptSubmission(BaseModel):
     subject: str
     unit: int
-    answers: Dict[int, str] # question_id -> selected_option
+    answers: Dict[int, Any]  # question_id -> selected_option(s)
+    # For MCQ: str (single answer)
+    # For MCS: List[str] (multiple answers)
+    # For NAT: str or float (numeric answer)
     risk_level: str
     scheduled_quiz_id: Optional[int] = None
 
@@ -641,6 +644,7 @@ class QuizAttemptResponse(BaseModel):
     wrong_answers: int
     score: float
     status: str # "success"
+    risk_probability: Optional[float] = None
 
 # Project Coordinator Schemas
 class ProjectCoordinatorBase(BaseModel):
