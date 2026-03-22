@@ -150,14 +150,14 @@ async def schedule_quiz(
     if not alloc:
         raise HTTPException(status_code=403, detail="You are not allocated to this class/subject")
     
-    from datetime import datetime
+    from datetime import datetime, timedelta
     deadline_str = data.get("deadline")
     try:
-        # Convert to local time (IST) then to UTC to store consistently
+        # Parse input (assumed to be IST/local time from frontend)
+        # Convert from IST to UTC for consistent storage in database
         deadline = datetime.fromisoformat(deadline_str.replace('Z', ''))
         if deadline.tzinfo is None:
-            # Assume IST (+5:30) and convert to UTC
-            from datetime import timedelta
+            # Assume IST (+5:30) and convert to UTC by subtracting 5:30
             deadline = deadline - timedelta(hours=5, minutes=30)
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid deadline format. Use ISO format: YYYY-MM-DDTHH:MM:SS")
@@ -166,9 +166,11 @@ async def schedule_quiz(
     start_time = None
     if start_time_str:
         try:
+            # Parse input (assumed to be IST/local time from frontend)
+            # Convert from IST to UTC for consistent storage
             start_time = datetime.fromisoformat(start_time_str.replace('Z', ''))
             if start_time.tzinfo is None:
-                from datetime import timedelta
+                # Assume IST (+5:30) and convert to UTC by subtracting 5:30
                 start_time = start_time - timedelta(hours=5, minutes=30)
         except (TypeError, ValueError):
             pass # Ignore invalid start times and let it be null

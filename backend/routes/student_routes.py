@@ -16,7 +16,7 @@ def get_student_model(dept: str):
     if dept == 'EEE': return models.StudentEEE
     if dept == 'MECH': return models.StudentMECH
     if dept == 'CIVIL': return models.StudentCIVIL
-    if dept == 'BIO.TECH': return models.StudentBIO
+    if dept == 'BIO.TECH' or dept == 'BIO': return models.StudentBIO  # Support both mappings
     if dept == 'AIDS': return models.StudentAIDS
     return None
 
@@ -554,44 +554,33 @@ async def get_pending_quizzes(
         raise HTTPException(status_code=404, detail="Student profile not found")
 
     # Get active scheduled quizzes for this student's class
-    # NOTE: DB timestamps are stored in local time (not UTC), so we use datetime.now()
-    from datetime import datetime, timedelta
+    # NOTE: All timestamps in database are stored in UTC (converted from IST at storage time)
+    # So we must use UTC time for comparison to ensure consistency
+    from datetime import datetime, timedelta, timezone
     from sqlalchemy import or_, and_
-    now = datetime.now()
-    # Simple check for IST vs UTC: if server is definitely in UTC, now() will be much earlier than local IST
-    # If the server time is early (UTC), we might need to adjust or use a different comparison
-    # For now, let's ensure we find quizzes whose start_time (stored as UTC-equivalent) has passed
+    
+    # Use UTC time for comparison (consistent with how faculty stores times)
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
     
     scheduled_quizzes = db.query(models.ScheduledQuiz).filter(
         models.ScheduledQuiz.dept == student.dept,
         models.ScheduledQuiz.year == (int(student.year) if isinstance(student.year, (int, str)) and str(student.year).isdigit() else 0),
         models.ScheduledQuiz.section == student.section,
         models.ScheduledQuiz.is_active == 1,
-        models.ScheduledQuiz.deadline > now,
+        models.ScheduledQuiz.deadline > now_utc,
         or_(
-            models.ScheduledQuiz.start_time <= now,
+            models.ScheduledQuiz.start_time <= now_utc,
             models.ScheduledQuiz.start_time.is_(None)
         )
     ).all()
     
     pending = []
     for quiz in scheduled_quizzes:
-        # Check if the student has already taken this quiz
-        # Priority 1: Check by exact scheduled_quiz_id
-        # Priority 2: Check by subject and unit (for backward compatibility or practice quizzes)
+        # FIX: Only check by exact scheduled_quiz_id to avoid backward compatibility bug
+        # where old practice attempts (scheduled_quiz_id=NULL) hide new scheduled quizzes
         has_attempted = db.query(models.StudentQuizAttempt).filter(
             models.StudentQuizAttempt.reg_no == student.reg_no,
-            or_(
-                models.StudentQuizAttempt.scheduled_quiz_id == quiz.id,
-                and_(
-                    models.StudentQuizAttempt.scheduled_quiz_id == None,
-                    models.StudentQuizAttempt.unit == quiz.unit_number,
-                    or_(
-                        models.StudentQuizAttempt.subject == quiz.subject_code,
-                        models.StudentQuizAttempt.subject == quiz.subject_title
-                    )
-                )
-            )
+            models.StudentQuizAttempt.scheduled_quiz_id == quiz.id
         ).first()
         
         if not has_attempted:
