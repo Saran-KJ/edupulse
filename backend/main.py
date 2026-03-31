@@ -13,17 +13,15 @@ from routes import (
     analytics_routes,
     prediction_routes,
     admin_routes,
-    admin_routes,
     report_routes,
-    report_routes,
-    faculty_routes,
     faculty_routes,
     hod_routes,
     learning_routes,
     subject_routes,
     quiz_routes,
     project_routes,
-    content_routes
+    content_routes,
+    opencode_routes
 )
 
 # Create database tables
@@ -60,6 +58,7 @@ app.include_router(learning_routes.router, prefix="/api/learning", tags=["Learni
 app.include_router(subject_routes.router)
 app.include_router(quiz_routes.router)
 app.include_router(content_routes.router)
+app.include_router(opencode_routes.router)
 app.include_router(project_routes.router)
 
 @app.get("/")

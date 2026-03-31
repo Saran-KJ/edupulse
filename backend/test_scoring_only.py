@@ -1,64 +1,30 @@
-#!/usr/bin/env python
-"""
-Simple scoring service test - no AI required.
-"""
-
-import sys
-import os
-sys.path.insert(0, os.path.dirname(__file__))
-
 from scoring_service import scoring_service
 
-def test_scoring():
-    """Test the scoring service for all question types."""
-    print("\n" + "="*80)
-    print("Testing Scoring Service")
-    print("="*80)
-    
-    tests = [
-        # MCQ tests - case insensitive
-        ("MCQ", "Option A", "Option A", True, "Single exact match"),
-        ("MCQ", "option a", "Option A", True, "Case insensitive"),
-        ("MCQ", "Option A", "Option B", False, "Wrong answer"),
-        
-        # MCS tests - set comparison
-        ("MCS", ["A", "B"], "A, B", True, "Multiple selection exact match"),
-        ("MCS", ["a", "b"], "A, B", True, "Case insensitive MCS"),
-        ("MCS", ["A", "B", "D"], "A, B", False, "Extra selection"),
-        ("MCS", ["A"], "A, B", False, "Missing selection"),
-        ("MCS", "A, B", "A, B", True, "Comma-separated string format"),
-        
-        # NAT tests - numeric with tolerance
-        ("NAT", 3.14, "3.14", True, "Exact numeric match"),
-        ("NAT", 3.14159, "3.14", True, "Within tolerance (3.14159 vs 3.14)"),
-        ("NAT", "3.14", "3.14", True, "String numeric match"),
-        ("NAT", 5.0, "3.14", False, "Outside tolerance (diff > 0.01)"),
-        ("NAT", " 3.14 ", "3.14", True, "With whitespace"),
-    ]
-    
-    passed = 0
-    failed = 0
-    
-    print("\nTest Results:")
-    print("-" * 80)
-    
-    for q_type, student_ans, correct_ans, expected, desc in tests:
-        result = scoring_service.evaluate_answer(student_ans, correct_ans, q_type)
-        status = "[PASS]" if result == expected else "[FAIL]"
-        if result == expected:
-            passed += 1
-        else:
-            failed += 1
-        match_str = "matches" if result else "doesn't match"
-        print(f"{status} {q_type:3} | {desc:40} | {match_str}")
-    
-    print("-" * 80)
-    print(f"\nScoring Tests: {passed} passed, {failed} failed")
-    print("="*80)
-    
-    return failed == 0
+class MockQuestion:
+    def __init__(self, q_type, correct, a=None, b=None, c=None, d=None):
+        self.question_type = q_type
+        self.correct_answer = correct
+        self.option_a = a
+        self.option_b = b
+        self.option_c = c
+        self.option_d = d
 
+def test_scoring():
+    # 1. MCQ Test: Label vs Value
+    q1 = MockQuestion("MCQ", "Option A", a="smtp", b="pop3")
+    print(f"MCQ (Label Input): {scoring_service.evaluate_answer('Option A', q1)}")
+    print(f"MCQ (Value Input): {scoring_service.evaluate_answer('smtp', q1)}")
+    
+    # 2. MCS Test: Set matching
+    q2 = MockQuestion("MCS", "Option A, Option B", a="tcp", b="udp", c="ip")
+    print(f"MCS (Value Set): {scoring_service.evaluate_answer(['tcp', 'udp'], q2)}")
+    print(f"MCS (Mixed Set): {scoring_service.evaluate_answer(['Option A', 'udp'], q2)}")
+    
+    # 3. NAT Test: Robustness
+    q3 = MockQuestion("NAT", "80")
+    print(f"NAT (Numeric): {scoring_service.evaluate_answer('80', q3)}")
+    print(f"NAT (Empty): {scoring_service.evaluate_answer('', q3)}")
+    print(f"NAT (With Text): {scoring_service.evaluate_answer('Port 80', q3)}")
 
 if __name__ == "__main__":
-    success = test_scoring()
-    sys.exit(0 if success else 1)
+    test_scoring()

@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from google import genai
+import google.generativeai as genai
 import config as cfg
 
 # Sentinel to signal quota/rate-limit hit so caller can fall back to Gemini
@@ -141,36 +141,42 @@ def _call_openai(prompt: str, is_json: bool, api_key: str):
         print(f"OpenAI API Error: {str(e)}")
         return None
 
-def _call_opencode(prompt: str, is_json: bool):
+def _call_nvidia(prompt: str, is_json: bool, api_key: str):
     """
-    Helper to call the local OpenCode relay server on port 25725.
+    Helper to call NVIDIA NIM API for keys starting with 'nvapi-'.
     """
-    settings = cfg.get_settings()
-    url = f"{settings.opencode_base_url}/chat/completions"
+    url = "https://integrate.api.nvidia.com/v1/chat/completions"
     headers = {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
     }
-    # OpenCode typically handles models internally or supports a default
+    # Using Llama-3.1-70B-Instruct as it is verified and stable
     payload = {
+        "model": "meta/llama-3.1-70b-instruct",
         "messages": [
             {"role": "system", "content": "You are a professional technical educator and software engineer."},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.7
+        "temperature": 0.5,
+        "top_p": 1,
+        "max_tokens": 4096,
     }
     if is_json:
         payload["response_format"] = {"type": "json_object"}
 
     try:
-        print(f"DEBUG: Calling OpenCode (Local Relay @ {settings.opencode_base_url})...")
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
-        print(f"DEBUG: OpenCode Status: {response.status_code}")
-        print(f"DEBUG: OpenCode Raw: {response.text[:500]}")
+        print(f"DEBUG: Calling NVIDIA NIM API...")
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        
+        if response.status_code == 429:
+            print(f"WARNING: NVIDIA rate-limit hit. Status 429.")
+            return None
+
         response.raise_for_status()
         result = response.json()
         text = result['choices'][0]['message']['content'].strip()
         
-        # Clean markdown fences
+        # Robustly clean markdown fences and whitespace
         text = text.strip()
         if text.startswith("```"):
             lines = text.splitlines()
@@ -179,10 +185,12 @@ def _call_opencode(prompt: str, is_json: bool):
             text = "\n".join(lines).strip()
             
         data = json.loads(text) if is_json else text
-        print(f"SUCCESS: Successfully called OpenCode")
+        print(f"SUCCESS: Successfully called NVIDIA NIM")
         return data
     except Exception as e:
-        print(f"OpenCode API Error: {str(e)}")
+        print(f"NVIDIA API Error: {str(e)}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"NVIDIA Response: {e.response.text}")
         return None
 
 def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = None):
@@ -191,9 +199,13 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
     """
     settings = cfg.get_settings()
     
-    # Priority: global gemini_api_key (especially if 'ollama') -> override_api_key -> secondary global
+    # Priority: nvidia_api_key -> global gemini_api_key (especially if 'ollama') -> override_api_key -> secondary global
     keys_to_try = []
     
+    # If NVIDIA key is present, it becomes Top Priority
+    if settings.nvidia_api_key:
+        keys_to_try.append(settings.nvidia_api_key)
+
     # If the user explicitly set 'ollama' or 'opencode' as the global key, force it to be priority
     if settings.gemini_api_key:
         lower_key = settings.gemini_api_key.lower()
@@ -236,6 +248,14 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
             if data:
                 return data
             overall_errors.append(f"{key_label}[OpenCode]: Failed, falling back")
+            continue
+
+        # Route to NVIDIA if key starts with nvapi-
+        if api_key.startswith("nvapi-"):
+            data = _call_nvidia(prompt, is_json, api_key)
+            if data:
+                return data
+            overall_errors.append(f"{key_label}[NVIDIA]: Failed")
             continue
 
         # Route to OpenAI if key starts with sk-
@@ -291,57 +311,108 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
                 continue
     
     return None
-
 def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str):
+    from dynamic_quiz_generator import DynamicQuizGenerator
     risk_level_upper = risk_level.upper()
     num, diff = (20, "Basic") if risk_level_upper == "HIGH" else (25, "Moderate") if risk_level_upper == "MEDIUM" else (30, "Advanced")
         
-    prompt = f"""
-    Generate exactly {num} multiple choice quiz questions for "{subject_name}" Unit {unit_number}.
-    Difficulty: {diff}. Syllabus relevant.
-    Return output as JSON array with exactly {num} objects.
-    Each object must have: {{"question": "...", "option_a": "...", "option_b": "...", "option_c": "...", "option_d": "...", "correct_answer": "A/B/C/D"}}.
-    Return ONLY the raw JSON array. Do NOT wrap in any other object.
-    Example: [{{"question": "...", "option_a": "...", ...}}, {{"question": "...", ...}}]
+    seen_questions = set()
+    final_questions = []
+
+    # BATCH 1: Core Concepts (Mixed Types)
+    prompt1 = f"""
+    Generate 15 UNIQUE quiz questions in JSON format for "{subject_name}" Unit {unit_number}.
+    Mix: 10 MCQ (Single Select), 3 MCS (Multiple Select), and 2 NAT (Numerical/Fill-in).
+    Focus: Core concepts and definitions.
+    Difficulty: {diff}. Return exactly 15 objects in a flat JSON array.
+    
+    Types & Schema:
+    - MCQ: {{"question": "...", "option_a": "...", "option_b": "...", "option_c": "...", "option_d": "...", "correct_answer": "A", "question_type": "MCQ"}}
+    - MCS: {{"question": "Select all that apply...", "option_a": "...", ..., "correct_answer": "A, B", "question_type": "MCS"}}
+    - NAT: {{"question": "Numerical answer question", "option_a": null, "option_b": null, "option_c": null, "option_d": null, "correct_answer": "80", "question_type": "NAT"}}
     """
-    data = _call_ai_service(prompt, is_json=True)
-    print(f"DEBUG: AI Service raw response type: {type(data)}")
     
-    # Robustly extract list from data (could be wrapped in a dict)
-    if isinstance(data, dict):
-        print(f"DEBUG: Data is dict, keys: {list(data.keys())}")
-        
-        # Case A: Dictionary wraps a list (e.g. {"questions": [...]} or {"data": [...]})
-        for key, val in data.items():
-            if isinstance(val, list) and len(val) > 0:
-                print(f"DEBUG: Found list in key '{key}' with {len(val)} items")
-                # Validate first item looks like a question
-                first_item = val[0]
-                if isinstance(first_item, dict) and any(k in first_item.keys() for k in ["question", "option_a"]):
-                    print(f"DEBUG: List items appear to be questions. Returning {len(val)} questions.")
-                    return val
-        
-        # Case B: Dictionary might be a SINGLE question mistakenly returned as dict
-        # IMPORTANT: Only wrap in list if we have very few questions (< 3)
-        # This is likely an error from the AI
-        dict_keys = {str(k).lower().strip() for k in data.keys()}
-        if any(k in dict_keys for k in ["question", "option_a", "option_1"]) and len(data) < 10:
-            print("WARNING: AI returned single question as dict instead of list. This is a format error.")
-            print(f"WARNING: Expected {num} questions but got 1. Do not wrap.")
-            # Don't wrap - return empty list to force retry
-            return []
+    # BATCH 2: Advanced Topics (Mixed Types)
+    prompt2 = f"""
+    Generate 15 UNIQUE quiz questions in JSON format for "{subject_name}" Unit {unit_number}.
+    Mix: 10 MCQ, 3 MCS, and 2 NAT.
+    Focus: Advanced protocols and problem-solving.
+    Difficulty: {diff}. Return exactly 15 objects in a flat JSON array.
     
-    if isinstance(data, list):
-        print(f"DEBUG: Data is already a list with {len(data)} items")
-        if len(data) > 0:
-            # Validate it's a list of questions, not something else
-            first_item = data[0]
-            if isinstance(first_item, dict) and any(k in first_item.keys() for k in ["question", "option_a"]):
-                return data
+    Follow the same JSON schema as Batch 1. Do not repeat any basics.
+    """
+
+    for prompt_title, focus in [("Core", "Core concepts and foundations"), ("Advanced", "Advanced protocols and applications")]:
+        prompt = f"""
+        Generate 15 UNIQUE MCQ questions in JSON format for "{subject_name}" Unit {unit_number}.
+        Focus: {focus}.
+        Difficulty: {diff}. Return exactly 15 objects in a flat JSON array.
+        Schema: {{"question": "...", "option_a": "...", ..., "correct_answer": "A", "question_type": "MCQ"}}
+        """
+        
+        # Retry loop for AI service robustness
+        data = None
+        for attempt in range(2):
+            try:
+                data = _call_ai_service(prompt, is_json=True)
+                if data: break
+                print(f"DEBUG: AI Batch {prompt_title} attempt {attempt+1} failed/empty. Retrying...")
+            except Exception as e:
+                print(f"DEBUG: AI Batch {prompt_title} exception: {e}")
+        
+        batch = []
+        if isinstance(data, list): batch = data
+        elif isinstance(data, dict):
+            for v in data.values():
+                if isinstance(v, list) and len(v) > 0: batch = v; break
+            if not batch and "question" in data: batch = [data]
+        
+        for q in batch:
+            if isinstance(q, dict) and "question" in q:
+                q_text = q["question"].strip().lower()
+                if q_text not in seen_questions:
+                    seen_questions.add(q_text)
+                    q["question_type"] = "MCQ"
+                    final_questions.append(q)
+        
+    print(f"DEBUG: AI Batches returned {len(final_questions)} unique questions combined")
+
+    # MIXING STRATEGY: Add static questions to fill gaps
+    try:
+        static_questions = DynamicQuizGenerator.generate_quiz(subject_name, unit_number, risk_level, num)
+        for sq in static_questions:
+            sq_text = sq["question"].strip().lower()
+            if sq_text not in seen_questions:
+                seen_questions.add(sq_text)
+                final_questions.append(sq)
+                if len(final_questions) >= num + 5: # Get a few extra for shuffling
+                    break
+    except Exception as e:
+        print(f"DEBUG: DynamicQuizGenerator fallback failed: {e}")
+
+    # FINAL PROCESSING: Truncate / Pad (only if absolutely necessary)
+    if not final_questions:
         return []
         
-    print(f"DEBUG: Failed to find valid question list in AI response. Returning empty list.")
-    return []
+    import random
+    random.shuffle(final_questions)
+    
+    if len(final_questions) > num:
+        final_questions = final_questions[:num]
+    elif len(final_questions) < num:
+        print(f"DEBUG: Still need {num - len(final_questions)} more questions. Using round-robin clones.")
+        u_count = len(final_questions)
+        while len(final_questions) < num:
+            final_questions.append(final_questions[len(final_questions) % u_count].copy())
+    
+    # Shuffle again and assign IDs
+    random.shuffle(final_questions)
+    for i, q in enumerate(final_questions):
+        q["id"] = i + 1
+        
+    print(f"DEBUG: Final quiz generated with {len(final_questions)} questions.")
+    return final_questions
+
 
 def generate_study_strategy(risk_level: str, subjects_summary: list, global_preference: str = None):
     subjects_str = "\n".join([f"- {s['subject_title']} ({s['subject_code']}): {s['risk_level']} Risk" for s in subjects_summary])

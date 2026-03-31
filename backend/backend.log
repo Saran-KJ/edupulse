@@ -1,0 +1,379 @@
+C:\Users\Dell\AppData\Roaming\Python\Python313\site-packages\sklearn\base.py:463: InconsistentVersionWarning: Trying to unpickle estimator DecisionTreeClassifier from version 1.3.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Dell\AppData\Roaming\Python\Python313\site-packages\sklearn\base.py:463: InconsistentVersionWarning: Trying to unpickle estimator RandomForestClassifier from version 1.3.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Dell\AppData\Roaming\Python\Python313\site-packages\sklearn\base.py:463: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.3.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Dell\AppData\Roaming\Python\Python313\site-packages\sklearn\base.py:463: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.3.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+E:\final-year-project-demo\backend\gemini_service.py:4: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [20612]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+ML model loaded successfully
+Feature scaler loaded successfully
+Subject ML model loaded successfully
+Subject feature scaler loaded successfully
+INFO:     127.0.0.1:61096 - "GET / HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Operating Systems Unit 1...
+DEBUG: Found 4 existing questions.
+INFO:     127.0.0.1:61103 - "GET /api/quiz/generate?subject_name=Operating%20Systems&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Operating Systems Unit 1...
+DEBUG: Found 4 existing questions.
+INFO:     127.0.0.1:61110 - "GET /api/quiz/generate?subject_name=Operating%20Systems&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Algorithms Unit 1...
+DEBUG: Found 4 existing questions.
+INFO:     127.0.0.1:61112 - "GET /api/quiz/generate?subject_name=Algorithms&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Object-Oriented Programming Unit 1...
+DEBUG: Found 0 existing questions.
+DEBUG: No existing quiz. Generating new quiz for Object-Oriented Programming Unit 1 (Moderate)...
+DEBUG: Generated 5 quiz questions dynamically for Object-Oriented Programming Unit 1
+DEBUG: Processing 5 questions from AI...
+DEBUG: Sample question skip keys: ['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'difficulty_level', 'question_type', 'assessment_type', 'id']
+[OK] Quiz successfully saved to database
+INFO:     127.0.0.1:61114 - "GET /api/quiz/generate?subject_name=Object-Oriented%20Programming&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Web Technologies Unit 1...
+DEBUG: Found 0 existing questions.
+DEBUG: No existing quiz. Generating new quiz for Web Technologies Unit 1 (Moderate)...
+DEBUG: Generated 5 quiz questions dynamically for Web Technologies Unit 1
+DEBUG: Processing 5 questions from AI...
+DEBUG: Sample question skip keys: ['question', 'correct_answer', 'difficulty_level', 'question_type', 'assessment_type', 'option_a', 'option_b', 'option_c', 'option_d', 'id']
+[OK] Quiz successfully saved to database
+INFO:     127.0.0.1:61118 - "GET /api/quiz/generate?subject_name=Web%20Technologies&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "OPTIONS /api/predict/risk HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61899 - "OPTIONS /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "OPTIONS /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "OPTIONS /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "OPTIONS /api/students/me/alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61899 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61906 - "OPTIONS /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61907 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61908 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61909 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61899 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61907 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61906 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61915 - "OPTIONS /api/quiz/generate?subject_name=Database+Systems&unit_number=2&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Database Systems Unit 2...
+DEBUG: Found 0 existing questions.
+DEBUG: No existing quiz. Generating new quiz for Database Systems Unit 2 (Moderate)...
+DEBUG: Generated 4 quiz questions dynamically for Database Systems Unit 2
+DEBUG: Processing 4 questions from AI...
+DEBUG: Sample question skip keys: ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'difficulty_level', 'question_type', 'assessment_type']
+[OK] Quiz successfully saved to database
+INFO:     127.0.0.1:61915 - "GET /api/quiz/generate?subject_name=Database+Systems&unit_number=2&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61916 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61916 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61916 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61916 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61922 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61923 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61924 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61916 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61925 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61925 - "OPTIONS /api/quiz/generate?subject_name=dbms&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for dbms Unit 1...
+DEBUG: Found 25 existing questions.
+INFO:     127.0.0.1:61925 - "GET /api/quiz/generate?subject_name=dbms&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61925 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61926 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61925 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61926 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61925 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61932 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61933 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61926 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61934 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for dbms Unit 1...
+DEBUG: Found 25 existing questions.
+INFO:     127.0.0.1:61934 - "GET /api/quiz/generate?subject_name=dbms&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61934 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61933 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61934 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61926 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61932 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61925 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61935 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61925 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61934 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for dbms Unit 1...
+DEBUG: Found 25 existing questions.
+INFO:     127.0.0.1:61934 - "GET /api/quiz/generate?subject_name=dbms&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61934 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61933 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61925 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61932 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61926 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61935 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61934 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:61935 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61934 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61959 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61959 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61959 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61959 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61960 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61959 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61960 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61959 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61960 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61960 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61959 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61959 - "OPTIONS /api/quiz/generate?subject_name=Computer+Networks&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Computer Networks Unit 1...
+DEBUG: Found 26 existing questions.
+INFO:     127.0.0.1:61959 - "GET /api/quiz/generate?subject_name=Computer+Networks&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61965 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61965 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61966 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61967 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61968 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61965 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61966 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61968 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61967 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Computer Networks Unit 1...
+DEBUG: Found 26 existing questions.
+INFO:     127.0.0.1:61967 - "GET /api/quiz/generate?subject_name=Computer+Networks&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61967 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61968 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61966 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61965 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61967 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61974 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61975 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61968 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61967 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Computer Networks Unit 1...
+DEBUG: Found 26 existing questions.
+INFO:     127.0.0.1:61967 - "GET /api/quiz/generate?subject_name=Computer+Networks&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61967 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61968 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61975 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61967 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61974 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61966 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61965 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61975 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61968 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Computer Networks Unit 1...
+DEBUG: Found 26 existing questions.
+INFO:     127.0.0.1:61968 - "GET /api/quiz/generate?subject_name=Computer+Networks&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61990 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61990 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61990 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61990 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61990 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61990 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61990 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61990 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Computer Networks Unit 1...
+DEBUG: Found 26 existing questions.
+INFO:     127.0.0.1:61995 - "GET /api/quiz/generate?subject_name=Computer+Networks&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61996 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61997 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61998 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61999 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:61997 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61996 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62133 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62135 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62137 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62139 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62141 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62175 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62175 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62175 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62175 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62175 - "OPTIONS /api/predict/risk HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62176 - "OPTIONS /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62176 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62175 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62175 - "OPTIONS /api/projects/my-batch HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62176 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62175 - "OPTIONS /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62181 - "OPTIONS /api/students/me/alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62182 - "OPTIONS /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62183 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62176 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62175 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62184 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62181 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62191 - "OPTIONS /api/quiz/generate?subject_name=dbms&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for dbms Unit 1...
+DEBUG: Found 25 existing questions.
+INFO:     127.0.0.1:62191 - "GET /api/quiz/generate?subject_name=dbms&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62192 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62192 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62192 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "OPTIONS /api/quiz/generate?subject_name=Database+Systems&unit_number=2&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Database Systems Unit 2...
+DEBUG: Found 4 existing questions.
+INFO:     127.0.0.1:62192 - "GET /api/quiz/generate?subject_name=Database+Systems&unit_number=2&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62199 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62200 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62201 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62202 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62203 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62199 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for dbms Unit 1...
+DEBUG: Found 25 existing questions.
+INFO:     127.0.0.1:62192 - "GET /api/quiz/generate?subject_name=dbms&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62199 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62203 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62202 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62201 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62200 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62199 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for dbms Unit 1...
+DEBUG: Found 25 existing questions.
+INFO:     127.0.0.1:62192 - "GET /api/quiz/generate?subject_name=dbms&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62200 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62199 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62201 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62202 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62192 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62203 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 81352510403
+INFO:     127.0.0.1:62199 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62200 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62212 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62212 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62212 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62213 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62212 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62212 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62213 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62212 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62213 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62213 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62212 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62235 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62237 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62239 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62241 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62243 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:62218 - "OPTIONS /api/quiz/generate?subject_name=Computer+Networks&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+DEBUG: Checking existing quiz for Computer Networks Unit 1...
+DEBUG: Found 26 existing questions.
+INFO:     127.0.0.1:62218 - "GET /api/quiz/generate?subject_name=Computer+Networks&unit_number=1&risk_level=MEDIUM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62219 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62220 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62219 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62221 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62220 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62219 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62220 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62220 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62219 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62247 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62248 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62249 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62220 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62279 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62279 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62279 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62284 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62279 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62279 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62279 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62284 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62284 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62279 - "GET /api/auth/me HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62285 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62284 - "POST /api/predict/risk HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62286 - "GET /api/projects/my-batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62287 - "GET /api/students/me/pending-quizzes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62288 - "GET /api/students/me/alerts HTTP/1.1" 200 OK
+DEBUG: Using cached risk prediction for 521456321
+INFO:     127.0.0.1:62285 - "GET /api/students/me/dashboard-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62279 - "GET /api/learning/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62297 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62297 - "GET /api/opencode/health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62299 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62299 - "GET /api/opencode/subjects/Data%20Structures/topics HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62301 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62301 - "POST /api/opencode/content/generate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62303 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62303 - "POST /api/opencode/quiz/generate?subject_name=Data+Structures&unit_number=1&num_questions=5&difficulty_level=Intermediate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62305 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62305 - "POST /api/opencode/content-and-quiz/generate?num_quiz_questions=5 HTTP/1.1" 404 Not Found

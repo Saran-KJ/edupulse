@@ -222,13 +222,20 @@ class _QuizScreenState extends State<QuizScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  const Text("CHOOSE AN OPTION", 
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
-                  const SizedBox(height: 16),
-                  _buildOption(question.id, 'A', question.optionA),
-                  _buildOption(question.id, 'B', question.optionB),
-                  _buildOption(question.id, 'C', question.optionC),
-                  _buildOption(question.id, 'D', question.optionD),
+                   Text(
+                    _isOptionEmpty(question.optionA) 
+                      ? "ENTER NUMERIC ANSWER" 
+                      : "CHOOSE AN OPTION", 
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                   const SizedBox(height: 16),
+                   if (!_isOptionEmpty(question.optionA)) _buildOption(question.id, 'A', question.optionA!),
+                   if (!_isOptionEmpty(question.optionB)) _buildOption(question.id, 'B', question.optionB!),
+                   if (!_isOptionEmpty(question.optionC)) _buildOption(question.id, 'C', question.optionC!),
+                   if (!_isOptionEmpty(question.optionD)) _buildOption(question.id, 'D', question.optionD!),
+                   
+                   // Fallback for NAT (Numerical Answer Type) or malformed MCQs
+                   if (_isOptionEmpty(question.optionA) && _isOptionEmpty(question.optionB)) 
+                     _buildNATInput(question.id),
                 ],
               ),
             ),
@@ -239,9 +246,41 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
+  bool _isOptionEmpty(String? text) {
+    if (text == null) return true;
+    final clean = text.trim().toLowerCase();
+    return clean.isEmpty || clean == "none" || clean == "null";
+  }
+
+  Widget _buildNATInput(int questionId) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: TextField(
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          hintText: "Type your numeric answer here...",
+          border: InputBorder.none,
+          icon: Icon(Icons.edit_note, color: Colors.blue.shade300),
+        ),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+        onChanged: (value) {
+          setState(() {
+            _userAnswers[questionId] = value;
+          });
+        },
+        controller: TextEditingController(text: _userAnswers[questionId] ?? "")
+          ..selection = TextSelection.fromPosition(TextPosition(offset: (_userAnswers[questionId] ?? "").length)),
+      ),
+    );
+  }
+
   Widget _buildOption(int questionId, String label, String text) {
     final isSelected = _userAnswers[questionId] == text;
-    final color = isSelected ? Colors.blue : Colors.grey.shade200;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -337,9 +376,9 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Widget _buildResultView() {
-    final score = _result!['score'];
-    final correct = _result!['correct_answers'];
-    final total = _result!['total_questions'];
+    final score = _result!['score'] ?? 0.0;
+    final correct = _result!['correct_answers'] ?? 0;
+    final total = _result!['total_questions'] ?? 0;
     final isSuccess = score >= 80;
 
     return Scaffold(
@@ -368,7 +407,7 @@ class _QuizScreenState extends State<QuizScreen> {
               child: CircularPercentIndicator(
                 radius: 80.0,
                 lineWidth: 12.0,
-                percent: score / 100,
+                percent: (score / 100).clamp(0.0, 1.0),
                 center: Text("${score.toInt()}%", 
                   style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
                 progressColor: isSuccess ? Colors.green : Colors.blue,

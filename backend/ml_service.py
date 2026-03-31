@@ -546,8 +546,13 @@ class MLService:
             final_rule_score = int2_score
             basis_rule = "Rule-based: Internal 2 Only"
         else:
-            final_rule_score = 0
-            basis_rule = "Rule-based: No Data"
+            # NO MARK DATA: Use the advanced Early Risk Prediction (Logistic Regression)
+            early = self.predict_early_risk(db, reg_no, subject_code)
+            return {
+                'risk_level': early['risk_level'],
+                'score': early['probability'] * 100,
+                'basis': "Early Risk Logic (Logistic Regression)"
+            }
 
         if final_rule_score < 50:
             rule_risk = "High"
@@ -565,7 +570,7 @@ class MLService:
                 rule_risk = "High"
                 basis_rule += " (Downgraded due to poor early quizzes)"
 
-        # ML Model Path
+        # ML Model Path (Subject-specific Logistic Regression)
         if self.subject_model and self.subject_scaler and has_int1 and has_int2:
             # Only use ML if both internals have data, otherwise it's too biased by zeros
             scaled = self.subject_scaler.transform(feature_array)

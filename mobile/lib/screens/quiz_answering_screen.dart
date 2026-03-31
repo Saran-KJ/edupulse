@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import 'learning_resources_screen.dart';
 
 class QuizAnsweringScreen extends StatefulWidget {
   final Quiz quiz;
@@ -22,7 +23,7 @@ class QuizAnsweringScreen extends StatefulWidget {
 class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
   final ApiService apiService = ApiService();
   
-  late Map<int, String> answers; // question_id -> selected_answer
+  late Map<int, dynamic> answers; // question_id -> answer (String for MCQ, List for MCS, String for NAT)
   int currentQuestionIndex = 0;
   bool isSubmitting = false;
   bool showResults = false;
@@ -34,9 +35,30 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     answers = {};
   }
 
-  void selectAnswer(String option) {
+  void selectMCQAnswer(String option) {
     setState(() {
       answers[widget.quiz.questions[currentQuestionIndex].id] = option;
+    });
+  }
+
+  void toggleMCSOption(String option) {
+    setState(() {
+      final questionId = widget.quiz.questions[currentQuestionIndex].id;
+      final currentAnswers = answers[questionId] as List<String>? ?? [];
+      
+      if (currentAnswers.contains(option)) {
+        currentAnswers.remove(option);
+      } else {
+        currentAnswers.add(option);
+      }
+      
+      answers[questionId] = currentAnswers;
+    });
+  }
+
+  void setNATAnswer(String value) {
+    setState(() {
+      answers[widget.quiz.questions[currentQuestionIndex].id] = value;
     });
   }
 
@@ -56,6 +78,18 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     }
   }
 
+  bool _isQuestionAnswered(int questionId) {
+    if (!answers.containsKey(questionId)) return false;
+    final answer = answers[questionId];
+    
+    if (answer is String) {
+      return answer.isNotEmpty;
+    } else if (answer is List) {
+      return (answer as List).isNotEmpty;
+    }
+    return false;
+  }
+
   void submitQuiz() async {
     if (answers.length != widget.quiz.questions.length) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,13 +98,23 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
       return;
     }
 
+    // Validate that each question is actually answered
+    for (final question in widget.quiz.questions) {
+      if (!_isQuestionAnswered(question.id)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please answer all questions')),
+        );
+        return;
+      }
+    }
+
     setState(() {
       isSubmitting = true;
     });
 
     try {
       // Convert answers map to string-keyed format
-      Map<String, String> submissionAnswers = {};
+      Map<String, dynamic> submissionAnswers = {};
       answers.forEach((qId, answer) {
         submissionAnswers[qId.toString()] = answer;
       });
@@ -84,20 +128,11 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
 
       final result = await apiService.submitQuiz(submission);
 
-      // Calculate results
-      int correct = 0;
-      for (var i = 0; i < widget.quiz.questions.length; i++) {
-        final question = widget.quiz.questions[i];
-        final userAnswer = answers[question.id];
-        if (userAnswer == question.correctAnswer) {
-          correct++;
-        }
-      }
-
       setState(() {
         isSubmitting = false;
         showResults = true;
-        correctAnswers = correct;
+        // Server calculates correct answers based on scoring service
+        correctAnswers = result['correct_answers'] ?? 0;
       });
     } catch (e) {
       setState(() {
@@ -116,7 +151,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     }
 
     final question = widget.quiz.questions[currentQuestionIndex];
-    final isAnswered = answers.containsKey(question.id);
+    final isAnswered = _isQuestionAnswered(question.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -162,29 +197,25 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                     elevation: 2,
                     child: Padding(
                       padding: EdgeInsets.all(16),
-                      child: Text(
-                        question.question,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              height: 1.5,
-                            ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            question.question,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.5,
+                                ),
+                          ),
+                          SizedBox(height: 12),
+                          _buildQuestionTypeChip(question.questionType),
+                        ],
                       ),
                     ),
                   ),
                   SizedBox(height: 24),
-                  // Options
-                  Text(
-                    'Select an option:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 12),
-                  _buildOptionButton('A', question.optionA),
-                  SizedBox(height: 8),
-                  _buildOptionButton('B', question.optionB),
-                  SizedBox(height: 8),
-                  _buildOptionButton('C', question.optionC),
-                  SizedBox(height: 8),
-                  _buildOptionButton('D', question.optionD),
+                  // Question Type Specific UI
+                  _buildQuestionTypeUI(question),
                 ],
               ),
             ),
@@ -239,12 +270,83 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     );
   }
 
-  Widget _buildOptionButton(String label, String text) {
-    final question = widget.quiz.questions[currentQuestionIndex];
-    final isSelected = answers[question.id] == label;
+  Widget _buildQuestionTypeChip(String questionType) {
+    Color chipColor = Colors.blue;
+    String label = questionType;
+
+    if (questionType == 'MCQ') {
+      chipColor = Colors.blue;
+      label = 'MCQ - Single Answer';
+    } else if (questionType == 'MCS') {
+      chipColor = Colors.purple;
+      label = 'MCS - Multiple Answers';
+    } else if (questionType == 'NAT') {
+      chipColor = Colors.orange;
+      label = 'NAT - Numeric Answer';
+    }
+
+    return Chip(
+      label: Text(label),
+      backgroundColor: chipColor.withOpacity(0.2),
+      labelStyle: TextStyle(
+        color: chipColor,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
+  Widget _buildQuestionTypeUI(QuizQuestion question) {
+    if (question.questionType == 'MCQ') {
+      return _buildMCQUI(question);
+    } else if (question.questionType == 'MCS') {
+      return _buildMCSUI(question);
+    } else if (question.questionType == 'NAT') {
+      return _buildNATUI(question);
+    }
+    
+    // Default to MCQ
+    return _buildMCQUI(question);
+  }
+
+  bool _isOptionEmpty(String? text) {
+    if (text == null) return true;
+    final clean = text.trim().toLowerCase();
+    return clean.isEmpty || clean == "none" || clean == "null";
+  }
+
+  Widget _buildMCQUI(QuizQuestion question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _isOptionEmpty(question.optionA) ? 'Enter numeric answer:' : 'Select one option:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 12),
+        if (!_isOptionEmpty(question.optionA))
+          _buildMCQOption('Option A', question.optionA!, question.id),
+        if (!_isOptionEmpty(question.optionA)) SizedBox(height: 8),
+        if (!_isOptionEmpty(question.optionB))
+          _buildMCQOption('Option B', question.optionB!, question.id),
+        if (!_isOptionEmpty(question.optionB)) SizedBox(height: 8),
+        if (!_isOptionEmpty(question.optionC))
+          _buildMCQOption('Option C', question.optionC!, question.id),
+        if (!_isOptionEmpty(question.optionC)) SizedBox(height: 8),
+        if (!_isOptionEmpty(question.optionD))
+          _buildMCQOption('Option D', question.optionD!, question.id),
+        
+        // Fallback for when options are missing but it's marked as MCQ
+        if (_isOptionEmpty(question.optionA) && _isOptionEmpty(question.optionB))
+          _buildNATUI(question),
+      ],
+    );
+  }
+
+  Widget _buildMCQOption(String optionLabel, String optionText, int questionId) {
+    final isSelected = answers[questionId] == optionLabel;
 
     return InkWell(
-      onTap: () => selectAnswer(label),
+      onTap: () => selectMCQAnswer(optionLabel),
       child: Card(
         elevation: isSelected ? 4 : 1,
         color: isSelected ? Colors.blue.shade50 : Colors.white,
@@ -252,27 +354,15 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
           padding: EdgeInsets.all(16),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected ? Colors.blueAccent : Colors.grey.shade300,
-                ),
-                child: Center(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : Colors.black,
-                    ),
-                  ),
-                ),
+              Radio<String>(
+                value: optionLabel,
+                groupValue: answers[questionId],
+                onChanged: (_) => selectMCQAnswer(optionLabel),
               ),
-              SizedBox(width: 16),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  text,
+                  optionText,
                   style: TextStyle(
                     fontSize: 16,
                     height: 1.4,
@@ -283,6 +373,141 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMCSUI(QuizQuestion question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Select all correct options:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 12),
+        if (question.optionA != null)
+          _buildMCSOption('Option A', question.optionA!, question.id),
+        if (question.optionA != null) SizedBox(height: 8),
+        if (question.optionB != null)
+          _buildMCSOption('Option B', question.optionB!, question.id),
+        if (question.optionB != null) SizedBox(height: 8),
+        if (question.optionC != null)
+          _buildMCSOption('Option C', question.optionC!, question.id),
+        if (question.optionC != null) SizedBox(height: 8),
+        if (question.optionD != null)
+          _buildMCSOption('Option D', question.optionD!, question.id),
+        SizedBox(height: 16),
+        Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade50,
+            border: Border.all(color: Colors.amber, width: 1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info, color: Colors.amber.shade800, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'You must select all correct answers and no incorrect ones',
+                  style: TextStyle(
+                    color: Colors.amber.shade800,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMCSOption(String optionLabel, String optionText, int questionId) {
+    final selectedOptions = answers[questionId] as List<String>? ?? [];
+    final isSelected = selectedOptions.contains(optionLabel);
+
+    return InkWell(
+      onTap: () => toggleMCSOption(optionLabel),
+      child: Card(
+        elevation: isSelected ? 4 : 1,
+        color: isSelected ? Colors.purple.shade50 : Colors.white,
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Checkbox(
+                value: isSelected,
+                onChanged: (_) => toggleMCSOption(optionLabel),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  optionText,
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNATUI(QuizQuestion question) {
+    final currentAnswer = answers[question.id] as String? ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Enter the numeric answer:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 16),
+        TextField(
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            hintText: 'Enter a number (e.g., 3.14 or 1024)',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+          onChanged: (value) => setNATAnswer(value),
+          controller: TextEditingController(text: currentAnswer),
+        ),
+        SizedBox(height: 16),
+        Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            border: Border.all(color: Colors.blue, width: 1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info, color: Colors.blue.shade800, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Answer is evaluated with ±0.01 tolerance',
+                  style: TextStyle(
+                    color: Colors.blue.shade800,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -393,75 +618,8 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                     final index = entry.key;
                     final question = entry.value;
                     final userAnswer = answers[question.id];
-                    final isCorrect = userAnswer == question.correctAnswer;
 
-                    return Card(
-                      elevation: 1,
-                      color: isCorrect ? Colors.green.shade50 : Colors.red.shade50,
-                      margin: EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color:
-                                        isCorrect ? Colors.green : Colors.red,
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      isCorrect
-                                          ? Icons.check
-                                          : Icons.close,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Question ${index + 1}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              question.question,
-                              style: TextStyle(height: 1.4),
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              'Your answer: $userAnswer',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isCorrect
-                                    ? Colors.green.shade800
-                                    : Colors.red.shade800,
-                              ),
-                            ),
-                            if (!isCorrect)
-                              Text(
-                                'Correct answer: ${question.correctAnswer}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green.shade800,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
+                    return _buildAnswerReviewCard(index + 1, question, userAnswer);
                   }).toList(),
                 ],
               ),
@@ -470,16 +628,40 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
             // Action Buttons
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blueAccent,
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LearningResourcesScreen(
+                              subjectCode: widget.subjectCode,
+                              subjectTitle: widget.subjectTitle,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: Icon(Icons.school),
+                      label: Text('View My Personalized Resources'),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
                   ),
-                  child: Text('Back to Home'),
-                ),
+                  SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Back to Home'),
+                    ),
+                  ),
+                ],
               ),
             ),
             SizedBox(height: 16),
@@ -487,6 +669,81 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildAnswerReviewCard(int questionNumber, QuizQuestion question, dynamic userAnswer) {
+    // For review purposes, we show what the user submitted
+    // The server will have already calculated if it's correct
+    final userAnswerText = _formatAnswerForDisplay(userAnswer);
+    
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.blue,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$questionNumber',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Question $questionNumber',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Chip(
+                  label: Text(question.questionType),
+                  backgroundColor: Colors.grey.shade300,
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            Text(
+              question.question,
+              style: TextStyle(height: 1.4),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Your answer: $userAnswerText',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatAnswerForDisplay(dynamic answer) {
+    if (answer == null) return 'Not answered';
+    if (answer is String) return answer;
+    if (answer is List) {
+      return (answer as List).join(', ');
+    }
+    return answer.toString();
   }
 
   Widget _buildStatRow(String label, String value) {

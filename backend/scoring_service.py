@@ -14,132 +14,108 @@ class ScoringService:
     NAT_TOLERANCE = 0.01
     
     @staticmethod
-    def evaluate_mcq(student_answer: str, correct_answer: str) -> bool:
+    def evaluate_mcq(student_answer: str, correct_answer: str, question_obj: Any = None) -> bool:
         """
-        Evaluate MCQ (Multiple Choice Question) answer.
-        Single correct answer from 4 options.
-        
-        Args:
-            student_answer: Student's selected option
-            correct_answer: Correct answer from database
-            
-        Returns:
-            True if answer is correct, False otherwise
+        Evaluate MCQ. Supports matching both the label (Option A) and the actual value.
         """
         if not student_answer or not correct_answer:
             return False
         
-        # Normalize: strip whitespace and convert to lowercase
         student = student_answer.strip().lower()
+        # The correct_answer in DB is usually "Option A" or just "A" 
+        # but could also be the text itself from AI generation
         correct = correct_answer.strip().lower()
-        
-        return student == correct
-    
-    @staticmethod
-    def evaluate_mcs(student_answers: Union[List[str], str], correct_answers: str) -> bool:
-        """
-        Evaluate MCS (Multiple Choice Selection) answer.
-        Multiple correct answers - student must select ALL correct options and NO incorrect options.
-        
-        Args:
-            student_answers: List of student's selected options or comma-separated string
-            correct_answers: Comma-separated correct answers from database (e.g., "A, B, D")
+
+        if student == correct:
+            return True
+
+        # Fallback: Resolve Option Label to Value
+        if question_obj:
+            val = ScoringService.get_option_value(question_obj, student)
+            if val and val.strip().lower() == correct:
+                return True
             
-        Returns:
-            True if answer is completely correct, False otherwise
+            # Or if student provided "smtp" and correct is "Option A" (which is "smtp")
+            c_val = ScoringService.get_option_value(question_obj, correct)
+            if c_val and c_val.strip().lower() == student:
+                return True
+                
+        return False
+
+    @staticmethod
+    def evaluate_mcs(student_answers: Union[List[str], str], correct_answers: str, question_obj: Any = None) -> bool:
+        """
+        Evaluate MCS. Cross-references labels and values.
         """
         if not student_answers or not correct_answers:
             return False
-        
-        # Normalize student answers
-        if isinstance(student_answers, str):
-            # If comma-separated string, split it
-            if ',' in student_answers:
-                student_set = set(opt.strip().lower() for opt in student_answers.split(','))
-            else:
-                # Single answer in string format - might be a list representation
-                student_set = set(opt.strip().lower() for opt in student_answers.split())
-        elif isinstance(student_answers, list):
-            student_set = set(opt.strip().lower() for opt in student_answers)
-        else:
+            
+        def normalize_set(vals):
+            if isinstance(vals, str):
+                if ',' in vals: return set(v.strip().lower() for v in vals.split(','))
+                return set(v.strip().lower() for v in vals.split())
+            return set(v.strip().lower() for v in vals)
+
+        student_set = normalize_set(student_answers)
+        correct_set = normalize_set(correct_answers)
+
+        if student_set == correct_set:
+            return True
+
+        if not question_obj:
             return False
-        
-        # Normalize correct answers
-        correct_set = set(opt.strip().lower() for opt in correct_answers.split(','))
-        
-        # Exact match required: student must have selected ALL correct options and NO extras
-        is_correct = student_set == correct_set
-        
-        if not is_correct:
-            print(f"DEBUG MCS: Student {student_set} != Correct {correct_set}")
-        
-        return is_correct
-    
+
+        # Deep Value Resolution for MCS
+        resolved_student = set()
+        for s in student_set:
+            val = ScoringService.get_option_value(question_obj, s)
+            resolved_student.add(val.strip().lower() if val else s)
+
+        resolved_correct = set()
+        for c in correct_set:
+            val = ScoringService.get_option_value(question_obj, c)
+            resolved_correct.add(val.strip().lower() if val else c)
+
+        return resolved_student == resolved_correct
+
+    @staticmethod
+    def get_option_value(q: Any, label: str) -> str:
+        """Helper to get text content from a label like 'Option A' or 'A'"""
+        l = label.strip().lower()
+        if 'option a' in l or l == 'a': return getattr(q, 'option_a', None)
+        if 'option b' in l or l == 'b': return getattr(q, 'option_b', None)
+        if 'option c' in l or l == 'c': return getattr(q, 'option_c', None)
+        if 'option d' in l or l == 'd': return getattr(q, 'option_d', None)
+        return None
+
     @staticmethod
     def evaluate_nat(student_answer: Union[str, int, float], correct_answer: str) -> bool:
-        """
-        Evaluate NAT (Numerical Answer Type) answer.
-        Student enters a numeric value with tolerance.
-        
-        Args:
-            student_answer: Student's numeric answer
-            correct_answer: Correct answer from database (numeric value as string)
-            
-        Returns:
-            True if answer is within tolerance, False otherwise
-        """
-        if not student_answer or not correct_answer:
+        if student_answer is None or student_answer == "" or str(student_answer).strip() == "":
             return False
-        
+            
         try:
-            # Convert student answer to float
-            if isinstance(student_answer, str):
-                # Remove any whitespace and special characters (except decimal point)
-                student_val = float(re.sub(r'[^\d.-]', '', student_answer))
-            else:
-                student_val = float(student_answer)
+            # Clean student input: " 80.0 " -> 80.0
+            s_str = str(student_answer).strip()
+            student_val = float(re.sub(r'[^\d.-]', '', s_str))
+            correct_val = float(str(correct_answer).strip())
             
-            # Convert correct answer to float
-            correct_val = float(correct_answer.strip())
-            
-            # Check if within tolerance
             difference = abs(student_val - correct_val)
-            is_correct = difference <= ScoringService.NAT_TOLERANCE
-            
-            if not is_correct:
-                print(f"DEBUG NAT: Student {student_val} (diff: {difference}) vs Correct {correct_val}")
-            
-            return is_correct
-            
-        except (ValueError, AttributeError) as e:
-            print(f"ERROR NAT: Failed to parse numeric answer - {e}")
+            return difference <= ScoringService.NAT_TOLERANCE
+        except Exception:
             return False
-    
+
     @staticmethod
-    def evaluate_answer(student_answer: Any, correct_answer: str, question_type: str = "MCQ") -> bool:
-        """
-        Unified answer evaluation based on question type.
+    def evaluate_answer(student_answer: Any, question: Any) -> bool:
+        """Unified evaluator using the question object for context."""
+        q_type = (question.question_type or "MCQ").upper()
         
-        Args:
-            student_answer: Student's answer (format depends on question_type)
-            correct_answer: Correct answer from database
-            question_type: Type of question (MCQ, MCS, or NAT)
-            
-        Returns:
-            True if answer is correct, False otherwise
-        """
-        question_type = question_type.upper()
-        
-        if question_type == "MCQ":
-            return ScoringService.evaluate_mcq(student_answer, correct_answer)
-        elif question_type == "MCS":
-            return ScoringService.evaluate_mcs(student_answer, correct_answer)
-        elif question_type == "NAT":
-            return ScoringService.evaluate_nat(student_answer, correct_answer)
-        else:
-            # Default to MCQ for unknown types
-            print(f"WARNING: Unknown question type '{question_type}', defaulting to MCQ")
-            return ScoringService.evaluate_mcq(student_answer, correct_answer)
+        if q_type == "MCQ":
+            return ScoringService.evaluate_mcq(student_answer, question.correct_answer, question)
+        elif q_type == "MCS":
+            return ScoringService.evaluate_mcs(student_answer, question.correct_answer, question)
+        elif q_type == "NAT":
+            return ScoringService.evaluate_nat(student_answer, question.correct_answer)
+        return False
 
 
 # Create singleton instance

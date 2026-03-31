@@ -602,22 +602,26 @@ class HighRiskAlert {
 class QuizQuestion {
   final int id;
   final String question;
-  final String optionA;
-  final String optionB;
-  final String optionC;
-  final String optionD;
+  final String? optionA; // Nullable for NAT questions
+  final String? optionB; // Nullable for NAT questions
+  final String? optionC; // Nullable for NAT questions
+  final String? optionD; // Nullable for NAT questions
   final String correctAnswer;
   final String difficultyLevel;
+  final String questionType; // MCQ, MCS, or NAT
+  final String? assessmentType; // SlipTest, CIA, ModelExam
 
   QuizQuestion({
     required this.id,
     required this.question,
-    required this.optionA,
-    required this.optionB,
-    required this.optionC,
-    required this.optionD,
+    this.optionA,
+    this.optionB,
+    this.optionC,
+    this.optionD,
     required this.correctAnswer,
     required this.difficultyLevel,
+    this.questionType = 'MCQ',
+    this.assessmentType,
   });
 
   factory QuizQuestion.fromJson(Map<String, dynamic> json) {
@@ -630,6 +634,8 @@ class QuizQuestion {
       optionD: json['option_d'],
       correctAnswer: json['correct_answer'],
       difficultyLevel: json['difficulty_level'],
+      questionType: json['question_type'] ?? 'MCQ',
+      assessmentType: json['assessment_type'],
     );
   }
 }
@@ -638,7 +644,7 @@ class QuizAttemptSubmission {
   final String subject;
   final int unit;
   final String riskLevel;
-  final Map<String, String> answers; // question_id -> selected_option
+  final Map<String, dynamic> answers; // question_id -> answer (String for MCQ, List for MCS, String for NAT)
 
   final int? scheduledQuizId;
 

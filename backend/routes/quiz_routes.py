@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from database import get_db
 from auth import get_current_user
@@ -7,7 +7,8 @@ from models import (
     StudentCSE, StudentECE, StudentEEE, StudentMECH, StudentCIVIL, StudentBIO, StudentAIDS
 )
 import schemas
-from gemini_service import generate_quiz_questions, generate_assessment_quiz
+from dynamic_quiz_generator import generate_quiz_questions as generate_quiz_dynamic, generate_assessment_quiz
+from gemini_service import generate_quiz_questions as generate_quiz_ai
 from scoring_service import scoring_service
 from typing import List, Dict
 
@@ -69,20 +70,29 @@ def get_quiz(
         }
 
     # 2. Generate new quiz if not found
-    print(f"DEBUG: No existing quiz. Generating new quiz for {subject_name} Unit {unit_number} ({difficulty})...")
-    raw_quiz = generate_quiz_questions(subject_name, unit_number, risk_level)
+    print(f"DEBUG: No existing quiz. Generating new quiz via AI for {subject_name} Unit {unit_number} ({difficulty})...")
+    raw_quiz = generate_quiz_ai(subject_name, unit_number, risk_level)
     
     if not raw_quiz:
-        print("ERROR: generate_quiz_questions returned empty list or None")
+        print("WARNING: generate_quiz_ai failed. Falling back to dynamic generation.")
+        raw_quiz = generate_quiz_dynamic(subject_name, unit_number, risk_level)
+        
+    if not raw_quiz:
+        print("ERROR: Both AI and Dynamic generation returned empty list")
         raise HTTPException(status_code=500, detail="Failed to generate quiz questions")
 
-    print(f"DEBUG: Processing {len(raw_quiz)} questions from AI...")
-    if len(raw_quiz) > 0:
-        print(f"DEBUG: Sample question skip keys: {list(raw_quiz[0].keys())}")
+    print(f"DEBUG: Processing {len(raw_quiz)} questions...")
 
     # 3. Save to database
     db_questions = []
     for q in raw_quiz:
+        q_type = q.get("question_type", "MCQ")
+        
+        # Ensure correct answer format for NAT if it's missing (e.g. from AI)
+        correct_answ = q.get("correct_answer", "")
+        if q_type == "NAT" and "correct_answer" not in q:
+            correct_answ = q.get("correct_answer", "")
+            
         db_q = QuizQuestion(
             subject=subject_name,
             unit=unit_number,
@@ -91,18 +101,19 @@ def get_quiz(
             option_b=q.get("option_b", ""),
             option_c=q.get("option_c", ""),
             option_d=q.get("option_d", ""),
-            correct_answer=q.get("correct_answer", ""),
-            difficulty_level=difficulty
+            correct_answer=correct_answ,
+            difficulty_level=difficulty,
+            question_type=q_type
         )
         db.add(db_q)
         db_questions.append(db_q)
     
     try:
         db.commit()
-        print("✓ Quiz successfully saved to database")
+        print(f"[OK] {len(db_questions)} quiz questions successfully saved to database")
     except Exception as e:
         db.rollback()
-        print(f"❌ Database Error during quiz save: {e}")
+        print(f"[ERROR] Database Error during quiz save: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
     for q in db_questions:
@@ -196,10 +207,10 @@ def get_assessment_quiz(
     
     try:
         db.commit()
-        print(f"SUCCESS: Saved {len(db_questions)} assessment questions to database")
+        print(f"[SUCCESS] Saved {len(db_questions)} assessment questions to database")
     except Exception as e:
         db.rollback()
-        print(f"ERROR during assessment quiz save: {e}")
+        print(f"[ERROR] during assessment quiz save: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
     for q in db_questions:
@@ -216,6 +227,7 @@ def get_assessment_quiz(
 @router.post("/submit", response_model=schemas.QuizAttemptResponse)
 def submit_quiz(
     submission: schemas.QuizAttemptSubmission,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -251,11 +263,10 @@ def submit_quiz(
             # Get question type (default to MCQ for backward compatibility)
             question_type = question.question_type or "MCQ"
             
-            # Evaluate answer based on question type
+            # Evaluate answer using the upgraded ScoringService
             is_correct = scoring_service.evaluate_answer(
                 student_answer,
-                question.correct_answer,
-                question_type
+                question
             )
             
             if is_correct:
@@ -289,6 +300,22 @@ def submit_quiz(
     # Run the Early Risk Prediction using ML Logistic Regression
     from ml_service import ml_service
     prediction_result = ml_service.predict_early_risk(db, student.reg_no, submission.subject)
+    
+    # Also update the OVERALL risk prediction (since quiz score is a feature in the main model)
+    try:
+        from routes.prediction_routes import predict_student_risk_get
+        # We can trigger an update in the background
+        def update_overall_risk(reg_no, db_session):
+            p_res = ml_service.predict_risk(db_session, reg_no)
+            ml_service.save_prediction(db_session, reg_no, p_res)
+        
+        background_tasks.add_task(update_overall_risk, student.reg_no, db)
+    except Exception as e:
+        print(f"DEBUG: Failed to queue overall risk update: {e}")
+
+    # After Updated Risk Prediction -> Trigger Learning Plan Refinement (Right Loop in diagram)
+    from routes.learning_routes import generate_plans_for_student_task
+    background_tasks.add_task(generate_plans_for_student_task, student.reg_no)
     
     # Alert System
     if prediction_result['risk_level'] == "High":

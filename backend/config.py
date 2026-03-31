@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     smtp_email: str = "edupulsesmartlearn@gmail.com"
     smtp_password: str = ""
     youtube_api_key: str = ""
+    nvidia_api_key: str = ""
     gemini_api_key: str = ""
     skill_gemini_api_key: str = Field(default="", validation_alias="skill_development")
     programming_api_key: str = Field(default="", validation_alias="Programming")

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import 'learning_resources_screen.dart';
 
 class EarlyRiskQuizScreen extends StatefulWidget {
   final String regNo;
@@ -381,13 +382,15 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
   Widget _buildQuizScreen() {
     final quiz = earlyRiskQuiz!;
     final question = quiz.questions[currentQuestionIndex];
-    final isAnswered = answers.containsKey(question.id);
+    final isAnswered = _isQuestionAnswered(question.id);
 
     return Column(
       children: [
         LinearProgressIndicator(
           value: (currentQuestionIndex + 1) / quiz.questions.length,
           minHeight: 8,
+          backgroundColor: Colors.grey.shade300,
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
         ),
         Padding(
           padding: EdgeInsets.all(16),
@@ -415,70 +418,24 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                   elevation: 2,
                   child: Padding(
                     padding: EdgeInsets.all(16),
-                    child: Text(
-                      question.question,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            height: 1.5,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          question.question,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                height: 1.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        SizedBox(height: 12),
+                        _buildQuestionTypeChip(question.questionType),
+                      ],
                     ),
                   ),
                 ),
                 SizedBox(height: 24),
-                ...['A', 'B', 'C', 'D'].asMap().entries.map((entry) {
-                  final label = entry.value;
-                  final options = [
-                    question.optionA,
-                    question.optionB,
-                    question.optionC,
-                    question.optionD,
-                  ];
-                  final text = options[entry.key];
-                  final isSelected = answers[question.id] == label;
-
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: InkWell(
-                      onTap: () => selectAnswer(label),
-                      child: Card(
-                        elevation: isSelected ? 4 : 1,
-                        color: isSelected ? Colors.blue.shade50 : Colors.white,
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isSelected
-                                      ? Colors.blueAccent
-                                      : Colors.grey.shade300,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    label,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: Text(text),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                _buildQuestionUI(question),
               ],
             ),
           ),
@@ -492,6 +449,7 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                 onPressed: currentQuestionIndex > 0 ? previousQuestion : null,
                 icon: Icon(Icons.arrow_back),
                 label: Text('Previous'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
               ),
               if (currentQuestionIndex < quiz.questions.length - 1)
                 ElevatedButton.icon(
@@ -513,6 +471,147 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                 ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  bool _isQuestionAnswered(int questionId) {
+    if (!answers.containsKey(questionId)) return false;
+    final answer = answers[questionId];
+    if (answer == null) return false;
+    return answer.isNotEmpty;
+  }
+
+  Widget _buildQuestionTypeChip(String type) {
+    Color color = Colors.blue;
+    if (type == 'MCS') color = Colors.purple;
+    if (type == 'NAT') color = Colors.orange;
+
+    return Chip(
+      label: Text(type, style: TextStyle(color: Colors.white, fontSize: 10)),
+      backgroundColor: color,
+      padding: EdgeInsets.zero,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
+bool _isOptionEmpty(String? text) {
+  if (text == null) return true;
+  final clean = text.trim().toLowerCase();
+  return clean.isEmpty || clean == "none" || clean == "null";
+}
+
+  Widget _buildQuestionUI(QuizQuestion question) {
+    if (question.questionType == 'NAT') {
+      return _buildNATUI(question);
+    } else if (question.questionType == 'MCS') {
+      return _buildMCSUI(question);
+    } else {
+      // If it's MCQ but has no options, fallback to NAT UI for robustness
+      if (_isOptionEmpty(question.optionA) && _isOptionEmpty(question.optionB)) {
+        return _buildNATUI(question);
+      }
+      return _buildMCQUI(question);
+    }
+  }
+
+  Widget _buildMCQUI(QuizQuestion question) {
+    return Column(
+      children: ['A', 'B', 'C', 'D'].asMap().entries.map((entry) {
+        final label = entry.value;
+        final options = [
+          question.optionA,
+          question.optionB,
+          question.optionC,
+          question.optionD,
+        ];
+        final text = options[entry.key];
+        if (text == null || text.isEmpty) return SizedBox.shrink();
+        final isSelected = answers[question.id] == label;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: InkWell(
+            onTap: () => selectAnswer(label),
+            child: Card(
+              elevation: isSelected ? 4 : 1,
+              color: isSelected ? Colors.blue.shade50 : Colors.white,
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Radio<String>(
+                      value: label,
+                      groupValue: answers[question.id],
+                      onChanged: (val) => selectAnswer(label),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(child: Text(text)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildMCSUI(QuizQuestion question) {
+    // Basic MCS support for Early Risk (simplified version of main quiz)
+    final List<String> selected = (answers[question.id] ?? '').split(',').where((e) => e.isNotEmpty).toList();
+
+    return Column(
+      children: ['A', 'B', 'C', 'D'].asMap().entries.map((entry) {
+        final label = entry.value;
+        final options = [question.optionA, question.optionB, question.optionC, question.optionD];
+        final text = options[entry.key];
+        if (text == null || text.isEmpty) return SizedBox.shrink();
+        final isSelected = selected.contains(label);
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: CheckboxListTile(
+            title: Text(text),
+            value: isSelected,
+            onChanged: (val) {
+              setState(() {
+                if (val == true) {
+                  selected.add(label);
+                } else {
+                  selected.remove(label);
+                }
+                answers[question.id] = selected.join(',');
+              });
+            },
+            controlAffinity: ListTileControlAffinity.leading,
+            tileColor: isSelected ? Colors.purple.shade50 : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade300)),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildNATUI(QuizQuestion question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Enter numeric answer:', style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(height: 12),
+        TextField(
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'e.g. 7',
+          ),
+          onChanged: (val) {
+            setState(() {
+              answers[question.id] = val;
+            });
+          },
+          controller: TextEditingController(text: answers[question.id] ?? '')..selection = TextSelection.fromPosition(TextPosition(offset: (answers[question.id] ?? '').length)),
         ),
       ],
     );
@@ -574,9 +673,33 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
             SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LearningResourcesScreen(
+                        subjectCode: widget.subjectCode,
+                        subjectTitle: widget.subjectCode, // Fallback title
+                      ),
+                    ),
+                  );
+                },
+                icon: Icon(Icons.menu_book),
+                label: Text('View My Study Plan & Resources'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Back'),
+                child: Text('Back to Dashboard'),
               ),
             ),
           ],
