@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -184,3 +185,65 @@ async def get_credits_summary(
         "semester_credits": semester_credits,
         "category_credits": category_credits,
     }
+
+@router.get("/student/{reg_no}/subject-risks", response_model=List[schemas.SubjectRiskResponse])
+async def get_student_subject_risks(
+    reg_no: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.get_current_active_user)
+):
+    """
+    Get consolidated risk analysis for all subjects a student is enrolled in or has attempted.
+    Combines data from the Marks table and StudentQuizAttempt table.
+    """
+    from ml_service import ml_service
+    
+    # 1. Get subjects from Marks table
+    marks = db.query(models.Mark).filter(models.Mark.reg_no == reg_no).all()
+    subject_map = {} # subject_code -> {title, semester, has_marks}
+    
+    for m in marks:
+        # Skip labs if strictly academic risk is focused, but here we include all for completeness
+        # SubjectRiskScreen on mobile can filter further if needed
+        subject_map[m.subject_code] = {
+            "title": m.subject_title,
+            "semester": m.semester,
+            "has_marks": True
+        }
+    
+    # 2. Get subjects from QuizAttempts table (for early risk detection before marks are out)
+    quiz_attempts = db.query(models.StudentQuizAttempt).filter(
+        models.StudentQuizAttempt.reg_no == reg_no
+    ).all()
+    
+    for q in quiz_attempts:
+        if q.subject not in subject_map:
+            # Try to get subject title from subjects table or use subject_code as title
+            subj_info = db.query(models.Subject).filter(
+                models.Subject.subject_code == q.subject
+            ).first()
+            
+            subject_map[q.subject] = {
+                "title": subj_info.subject_title if subj_info else q.subject,
+                "semester": int(subj_info.semester) if (subj_info and subj_info.semester and subj_info.semester.isdigit()) else None,
+                "has_marks": False
+            }
+            
+    # 3. Calculate risk for each identified subject
+    results = []
+    for code, info in subject_map.items():
+        try:
+            risk = ml_service.calculate_subject_risk(db, reg_no, code)
+            results.append({
+                "subject_code": code,
+                "subject_title": info["title"],
+                "risk_level": risk["risk_level"],
+                "score": risk["score"],
+                "basis": risk["basis"],
+                "has_marks": info["has_marks"],
+                "semester": info["semester"]
+            })
+        except Exception as e:
+            print(f"Error calculating subject risk for {code}: {e}")
+            
+    return results

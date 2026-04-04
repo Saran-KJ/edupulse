@@ -1,16 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from database import get_db
 import models
 import schemas
 import auth
+from sms_service import sms_service
 
 router = APIRouter(prefix="/api/marks", tags=["Marks"])
 
 @router.post("/bulk", response_model=List[schemas.MarkResponse])
 async def create_bulk_marks(
     bulk_data: schemas.BulkMarkEntry,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user = Depends(auth.require_role([
         models.RoleEnum.ADMIN,
@@ -80,6 +82,25 @@ async def create_bulk_marks(
         except Exception as e:
             print(f"Error generating plan for {reg_no}/{subject_code}: {e}")
             
+    # Trigger SMS notification to parent
+    # For bulk upload, we send a summary SMS per student
+    for reg_no in affected_students:
+        try:
+            # Find any mark from created_marks for this student to get details
+            m = next(mark for mark in created_marks if mark.reg_no == reg_no)
+            phone, name = sms_service.get_parent_phone(db, reg_no, m.dept)
+            if phone:
+                marks_data = {
+                    "cia_1": m.cia_1,
+                    "cia_2": m.cia_2,
+                    "model": m.model_exam
+                }
+                background_tasks.add_task(
+                    sms_service.notify_mark_update, phone, name, m.subject_title, marks_data
+                )
+        except Exception as e:
+            print(f"Error triggering SMS for {reg_no}: {e}")
+            
     return created_marks
 
 @router.get("/class/{dept}/{year}/{section}", response_model=List[schemas.MarkResponse])
@@ -124,6 +145,7 @@ async def get_mark(
 async def update_mark(
     mark_id: int,
     mark_update: schemas.MarkUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user = Depends(auth.require_role([
         models.RoleEnum.ADMIN,
@@ -162,6 +184,21 @@ async def update_mark(
         generate_plan_for_subject(db, db_mark.reg_no, db_mark.subject_code)
     except Exception as e:
         print(f"Error generating plan for {db_mark.reg_no}/{db_mark.subject_code}: {e}")
+        
+    # Trigger SMS notification
+    try:
+        phone, name = sms_service.get_parent_phone(db, db_mark.reg_no, db_mark.dept)
+        if phone:
+            marks_data = {
+                "cia_1": db_mark.cia_1,
+                "cia_2": db_mark.cia_2,
+                "model": db_mark.model_exam
+            }
+            background_tasks.add_task(
+                sms_service.notify_mark_update, phone, name, db_mark.subject_title, marks_data
+            )
+    except Exception as e:
+        print(f"Error triggering SMS for {db_mark.reg_no}: {e}")
         
     return db_mark
 

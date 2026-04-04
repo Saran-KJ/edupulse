@@ -407,6 +407,15 @@ class RiskPredictionResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class SubjectRiskResponse(BaseModel):
+    subject_code: str
+    subject_title: str
+    risk_level: str
+    score: float
+    basis: str
+    has_marks: bool
+    semester: Optional[int] = None
+
 # Dashboard Analytics
 class DashboardStats(BaseModel):
     total_students: int
@@ -768,4 +777,31 @@ class QuizWithContentResponse(BaseModel):
     content: ContentGenerationResponse
     quiz: QuizGenerationResponse
 
+# Quiz Status Schemas
+class StudentQuizStatus(BaseModel):
+    reg_no: str
+    name: str | None = None
+    status: str # "Completed", "Pending"
+    score: Optional[float] = None
+    attempted_at: Optional[datetime] = None
 
+class QuizStatusResponse(BaseModel):
+    quiz_id: int
+    subject_title: str
+    total_students: int
+    completed_count: int
+    pending_count: int
+    students: List[StudentQuizStatus]
+
+class StudentUnitScore(BaseModel):
+    reg_no: str
+    name: str | None = None
+    scores: Dict[str, float | None] # "1" -> 85.0, "2" -> 70.0
+
+class ClassQuizScoresResponse(BaseModel):
+    dept: str
+    year: int
+    section: str
+    subject_code: str
+    subject_title: str
+    students: List[StudentUnitScore]

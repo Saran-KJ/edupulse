@@ -342,11 +342,18 @@ def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str
     Follow the same JSON schema as Batch 1. Do not repeat any basics.
     """
 
-    for prompt_title, focus in [("Core", "Core concepts and foundations"), ("Advanced", "Advanced protocols and applications")]:
+    # Optimize batching to prevent timeouts (8 questions per batch instead of 15)
+    batches = [
+        ("Core", "Core concepts, definitions, and foundational principles"),
+        ("Applied", "Real-world applications and practical scenarios"),
+        ("Advanced", "Complex problem-solving and advanced theoretical aspects")
+    ]
+
+    for prompt_title, focus in batches:
         prompt = f"""
-        Generate 15 UNIQUE MCQ questions in JSON format for "{subject_name}" Unit {unit_number}.
+        Generate 8 UNIQUE MCQ questions in JSON format for "{subject_name}" Unit {unit_number}.
         Focus: {focus}.
-        Difficulty: {diff}. Return exactly 15 objects in a flat JSON array.
+        Difficulty: {diff}. Return exactly 8 objects in a flat JSON array.
         Schema: {{"question": "...", "option_a": "...", ..., "correct_answer": "A", "question_type": "MCQ"}}
         """
         
@@ -354,6 +361,7 @@ def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str
         data = None
         for attempt in range(2):
             try:
+                print(f"DEBUG: Requesting AI Batch '{prompt_title}' (8 questions)...")
                 data = _call_ai_service(prompt, is_json=True)
                 if data: break
                 print(f"DEBUG: AI Batch {prompt_title} attempt {attempt+1} failed/empty. Retrying...")
@@ -363,6 +371,7 @@ def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str
         batch = []
         if isinstance(data, list): batch = data
         elif isinstance(data, dict):
+            # Handle cases where AI wraps the list in a key
             for v in data.values():
                 if isinstance(v, list) and len(v) > 0: batch = v; break
             if not batch and "question" in data: batch = [data]
@@ -655,18 +664,22 @@ def _generate_mcq_questions(subject_name: str, unit_number: int, count: int, dif
     
     Each question must have EXACTLY ONE correct answer from 4 options (A, B, C, D).
     
-    Return as JSON array with exactly {count} objects:
+    Return as a JSON object with a key "questions" containing exactly {count} objects:
     {{
-        "question": "question text",
-        "option_a": "option A text",
-        "option_b": "option B text",
-        "option_c": "option C text",
-        "option_d": "option D text",
-        "correct_answer": "A" or "B" or "C" or "D",
-        "question_type": "MCQ"
+        "questions": [
+            {{
+                "question": "question text",
+                "option_a": "option A text",
+                "option_b": "option B text",
+                "option_c": "option C text",
+                "option_d": "option D text",
+                "correct_answer": "A" or "B" or "C" or "D",
+                "question_type": "MCQ"
+            }}
+        ]
     }}
     
-    Return ONLY the raw JSON array. Do NOT wrap in any object.
+    Return ONLY valid raw JSON.
     """
     
     data = _call_ai_service(prompt, is_json=True)
@@ -695,18 +708,22 @@ def _generate_mcs_questions(subject_name: str, unit_number: int, count: int, dif
     
     Each question can have 2, 3, or all 4 correct answers from the 4 options (A, B, C, D).
     
-    Return as JSON array with exactly {count} objects:
+    Return as a JSON object with a key "questions" containing exactly {count} objects:
     {{
-        "question": "question text",
-        "option_a": "option A text",
-        "option_b": "option B text",
-        "option_c": "option C text",
-        "option_d": "option D text",
-        "correct_answer": "A,B" or "B,C,D" or "A,C,D" or similar (comma-separated),
-        "question_type": "MCS"
+        "questions": [
+            {{
+                "question": "question text",
+                "option_a": "option A text",
+                "option_b": "option B text",
+                "option_c": "option C text",
+                "option_d": "option D text",
+                "correct_answer": "A,B" or "B,C,D" or "A,C,D" or similar (comma-separated),
+                "question_type": "MCS"
+            }}
+        ]
     }}
     
-    Return ONLY the raw JSON array. Do NOT wrap in any object.
+    Return ONLY valid raw JSON.
     """
     
     data = _call_ai_service(prompt, is_json=True)
@@ -734,18 +751,22 @@ def _generate_nat_questions(subject_name: str, unit_number: int, count: int, dif
     Questions should be computational/calculation problems where student enters a numerical answer.
     Answer should be a single number, decimal, or expression result.
     
-    Return as JSON array with exactly {count} objects:
+    Return as a JSON object with a key "questions" containing exactly {count} objects:
     {{
-        "question": "question text with calculation needed",
-        "option_a": null,
-        "option_b": null,
-        "option_c": null,
-        "option_d": null,
-        "correct_answer": "123" or "45.6" or "789.123" (numeric value as string),
-        "question_type": "NAT"
+        "questions": [
+            {{
+                "question": "question text with calculation needed",
+                "option_a": null,
+                "option_b": null,
+                "option_c": null,
+                "option_d": null,
+                "correct_answer": "123" or "45.6" or "789.123" (numeric value as string),
+                "question_type": "NAT"
+            }}
+        ]
     }}
     
-    Return ONLY the raw JSON array. Do NOT wrap in any object.
+    Return ONLY valid raw JSON.
     """
     
     data = _call_ai_service(prompt, is_json=True)

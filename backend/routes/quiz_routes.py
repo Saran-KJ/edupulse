@@ -11,6 +11,7 @@ from dynamic_quiz_generator import generate_quiz_questions as generate_quiz_dyna
 from gemini_service import generate_quiz_questions as generate_quiz_ai
 from scoring_service import scoring_service
 from typing import List, Dict
+from sms_service import sms_service
 
 router = APIRouter(prefix="/api/quiz", tags=["Quiz"])
 
@@ -347,6 +348,17 @@ def submit_quiz(
                 plan.risk_level = "Low"
                 plan.pending_choice = True
                 db.commit()
+
+    # Trigger SMS notification to parent
+    try:
+        phone, name = sms_service.get_parent_phone(db, student.reg_no, student.dept)
+        if phone:
+            background_tasks.add_task(
+                sms_service.notify_quiz_score, 
+                phone, name, submission.subject, submission.unit, score_percentage
+            )
+    except Exception as e:
+        print(f"Error triggering quiz SMS for {student.reg_no}: {e}")
 
     return {
         "total_questions": total_questions,

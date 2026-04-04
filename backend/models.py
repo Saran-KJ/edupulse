@@ -200,7 +200,7 @@ class Activity(Base):
     description = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    participations = relationship("ActivityParticipation", back_populates="activity")
+    participations = relationship("ActivityParticipation", back_populates="activity", cascade="all, delete-orphan")
 
 class ActivityParticipation(Base):
     __tablename__ = "activity_participation"
@@ -413,6 +413,8 @@ class StudentQuizAttempt(Base):
     risk_level = Column(String(20), nullable=False)
     attempted_at = Column(DateTime, default=datetime.utcnow)
     scheduled_quiz_id = Column(Integer, ForeignKey("scheduled_quizzes.id"), nullable=True)
+    
+    scheduled_quiz = relationship("ScheduledQuiz", back_populates="attempts")
 
 class AcademicAlert(Base):
     __tablename__ = "academic_alerts"
@@ -443,6 +445,9 @@ class ScheduledQuiz(Base):
     deadline = Column(DateTime, nullable=False)
     is_active = Column(Integer, default=1)  # 1=active, 0=closed
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    attempts = relationship("StudentQuizAttempt", back_populates="scheduled_quiz", cascade="all, delete-orphan")
 
 class ProjectCoordinator(Base):
     """Faculty assigned as project coordinator for a department/year."""

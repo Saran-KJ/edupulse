@@ -744,7 +744,8 @@ def get_plan_resources(
     # Filter by subject
     if plan.focus_type != "Skill Development":
         query = query.filter(
-            (LearningResource.subject_code == subject_code) | (LearningResource.subject_code == None)
+            (LearningResource.subject_code == subject_code) | 
+            ((LearningResource.subject_code == None) & (LearningResource.skill_category == None))
         )
 
     # Filter by language
@@ -930,7 +931,8 @@ def get_all_subject_resources(
     # Build query for the subject (case-insensitive match)
     query = db.query(LearningResource).filter(
         (LearningResource.dept == current_user.dept) | (LearningResource.dept == None),
-        (func.lower(LearningResource.subject_code) == subject_code.lower()) | (LearningResource.subject_code == None)
+        (func.lower(LearningResource.subject_code) == subject_code.lower()) | 
+        ((LearningResource.subject_code == None) & (LearningResource.skill_category == None))
     )
 
     if language and language != "All":

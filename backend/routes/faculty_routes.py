@@ -250,3 +250,226 @@ async def close_scheduled_quiz(
     db.commit()
     
     return {"status": "success", "message": "Quiz closed"}
+
+@router.put("/scheduled-quizzes/{quiz_id}")
+async def update_scheduled_quiz(
+    quiz_id: int,
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """Update a scheduled quiz's details."""
+    if current_user.role != models.RoleEnum.FACULTY:
+        raise HTTPException(status_code=403, detail="Only faculty can access this endpoint")
+    
+    quiz = db.query(models.ScheduledQuiz).filter(
+        models.ScheduledQuiz.id == quiz_id,
+        models.ScheduledQuiz.faculty_id == current_user.user_id
+    ).first()
+    
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Scheduled quiz not found")
+    
+    # Update fields
+    if "unit_number" in data:
+        quiz.unit_number = int(data["unit_number"])
+    if "assessment_type" in data:
+        quiz.assessment_type = data["assessment_type"]
+    
+    from datetime import datetime, timedelta
+    if "deadline" in data:
+        try:
+            deadline = datetime.fromisoformat(data["deadline"].replace('Z', ''))
+            if deadline.tzinfo is None:
+                deadline = deadline - timedelta(hours=5, minutes=30) # IST to UTC
+            quiz.deadline = deadline
+        except (TypeError, ValueError):
+            pass
+            
+    if "start_time" in data:
+        try:
+            if data["start_time"]:
+                st = datetime.fromisoformat(data["start_time"].replace('Z', ''))
+                if st.tzinfo is None:
+                    st = st - timedelta(hours=5, minutes=30) # IST to UTC
+                quiz.start_time = st
+            else:
+                quiz.start_time = None
+        except (TypeError, ValueError):
+            pass
+
+    db.commit()
+    return {"status": "success", "message": "Quiz updated successfully"}
+
+@router.delete("/scheduled-quizzes/{quiz_id}")
+async def delete_scheduled_quiz(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """Delete a scheduled quiz."""
+    if current_user.role != models.RoleEnum.FACULTY:
+        raise HTTPException(status_code=403, detail="Only faculty can access this endpoint")
+    
+    quiz = db.query(models.ScheduledQuiz).filter(
+        models.ScheduledQuiz.id == quiz_id,
+        models.ScheduledQuiz.faculty_id == current_user.user_id
+    ).first()
+    
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Scheduled quiz not found")
+    
+    db.delete(quiz)
+    db.commit()
+    
+    return {"status": "success", "message": "Quiz deleted successfully"}
+
+@router.get("/scheduled-quizzes/{quiz_id}/status", response_model=schemas.QuizStatusResponse)
+async def get_scheduled_quiz_status(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """Get the status of all students for a specific scheduled quiz."""
+    if current_user.role != models.RoleEnum.FACULTY:
+        raise HTTPException(status_code=403, detail="Only faculty can access this endpoint")
+    
+    quiz = db.query(models.ScheduledQuiz).filter(
+        models.ScheduledQuiz.id == quiz_id,
+        models.ScheduledQuiz.faculty_id == current_user.user_id
+    ).first()
+    
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Scheduled quiz not found")
+    
+    # Get the student model for the department
+    student_model = get_student_model(quiz.dept)
+    if not student_model:
+        raise HTTPException(status_code=404, detail=f"Department {quiz.dept} student table not found")
+    
+    # Fetch all students in this class
+    students_in_class = db.query(student_model).filter(
+        student_model.year == quiz.year,
+        student_model.section == quiz.section
+    ).all()
+    
+    # Fetch all attempts for this quiz
+    attempts = db.query(models.StudentQuizAttempt).filter(
+        models.StudentQuizAttempt.scheduled_quiz_id == quiz_id
+    ).all()
+    
+    # Map attempts by reg_no
+    attempts_map = {a.reg_no: a for a in attempts}
+    
+    student_statuses = []
+    completed_count = 0
+    
+    for s in students_in_class:
+        attempt = attempts_map.get(s.reg_no)
+        status = "Completed" if attempt else "Pending"
+        if attempt:
+            completed_count += 1
+            
+        student_statuses.append(schemas.StudentQuizStatus(
+            reg_no=s.reg_no,
+            name=s.name,
+            status=status,
+            score=attempt.score if attempt else None,
+            attempted_at=attempt.attempted_at if attempt else None
+        ))
+        
+    return schemas.QuizStatusResponse(
+        quiz_id=quiz_id,
+        subject_title=quiz.subject_title,
+        total_students=len(students_in_class),
+        completed_count=completed_count,
+        pending_count=len(students_in_class) - completed_count,
+        students=student_statuses
+    )
+
+@router.get("/class-quiz-scores", response_model=schemas.ClassQuizScoresResponse)
+async def get_class_quiz_scores(
+    dept: str,
+    year: int,
+    section: str,
+    subject_code: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """Get all student scores for a specific class and subject across all units."""
+    if current_user.role != models.RoleEnum.FACULTY:
+        raise HTTPException(status_code=403, detail="Only faculty can access scores")
+    
+    # Get faculty allocation to verify ownership and get subject title
+    alloc = db.query(models.FacultyAllocation).filter(
+        models.FacultyAllocation.faculty_id == current_user.user_id,
+        models.FacultyAllocation.dept == dept,
+        models.FacultyAllocation.year == year,
+        models.FacultyAllocation.section == section,
+        models.FacultyAllocation.subject_code == subject_code
+    ).first()
+    
+    if not alloc:
+        raise HTTPException(status_code=403, detail="You are not authorized for this class/subject")
+
+    # Get students
+    student_model = get_student_model(dept)
+    if not student_model:
+        raise HTTPException(status_code=400, detail="Invalid department")
+    
+    students = db.query(student_model).filter(
+        student_model.year == int(year),
+        student_model.section == section
+    ).all()
+    
+    reg_nos = [s.reg_no for s in students]
+    
+    # Get all attempts
+    # Subquery to find max date per student per unit
+    subquery = db.query(
+        models.StudentQuizAttempt.reg_no,
+        models.StudentQuizAttempt.unit,
+        func.max(models.StudentQuizAttempt.attempted_at).label('max_date')
+    ).filter(
+        models.StudentQuizAttempt.reg_no.in_(reg_nos),
+        models.StudentQuizAttempt.subject == subject_code
+    ).group_by(
+        models.StudentQuizAttempt.reg_no,
+        models.StudentQuizAttempt.unit
+    ).subquery()
+    
+    latest_attempts = db.query(models.StudentQuizAttempt).join(
+        subquery,
+        (models.StudentQuizAttempt.reg_no == subquery.c.reg_no) &
+        (models.StudentQuizAttempt.unit == subquery.c.unit) &
+        (models.StudentQuizAttempt.attempted_at == subquery.c.max_date)
+    ).all()
+    
+    # Map by reg_no -> unit -> score
+    scores_map = {}
+    for a in latest_attempts:
+        if a.reg_no not in scores_map:
+            scores_map[a.reg_no] = {}
+        scores_map[a.reg_no][str(a.unit)] = a.score
+    
+    result_students = []
+    for s in students:
+        student_scores = scores_map.get(s.reg_no, {})
+        # Ensure all units 1-5 exist (even if null)
+        final_scores = {str(u): student_scores.get(str(u)) for u in range(1, 6)}
+        
+        result_students.append(schemas.StudentUnitScore(
+            reg_no=s.reg_no,
+            name=s.name,
+            scores=final_scores
+        ))
+    
+    return schemas.ClassQuizScoresResponse(
+        dept=dept,
+        year=year,
+        section=section,
+        subject_code=subject_code,
+        subject_title=alloc.subject_title,
+        students=result_students
+    )
+

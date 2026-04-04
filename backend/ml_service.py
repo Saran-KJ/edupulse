@@ -318,8 +318,14 @@ class MLService:
         risk_level_map = {0: "Low", 1: "Medium", 2: "High"}
         risk_level = risk_level_map.get(prediction, "Medium")
         
-        # Calculate risk score (0-100)
-        risk_score = probability[prediction] * 100
+        # Calculate performance score (100 is best, 0 is worst)
+        # Low=0 (Good), Medium=1, High=2 (Risk)
+        if prediction == 0: # Low Risk
+            risk_score = 80 + (probability[0] * 19.9)
+        elif prediction == 1: # Medium Risk
+            risk_score = 60 + (probability[1] * 19.9)
+        else: # High Risk
+            risk_score = (1.0 - probability[2]) * 59.9
         
         # Generate reasons
         reasons = self._generate_reasons(features)
@@ -389,10 +395,13 @@ class MLService:
             elif quiz_avg < 70:
                 risk_score += 5
 
-        # Determine risk level
-        if risk_score >= 60:
+        # Determine risk level based on Performance Score (100 is best)
+        # We start with 100 and subtract for risk factors
+        performance_score = 100 - risk_score 
+        
+        if performance_score < 60:
             risk_level = "High"
-        elif risk_score >= 30:
+        elif performance_score < 80:
             risk_level = "Medium"
         else:
             risk_level = "Low"
@@ -401,7 +410,7 @@ class MLService:
         
         return {
             'risk_level': risk_level,
-            'risk_score': min(risk_score, 100),
+            'risk_score': max(0, performance_score), # Renamed internally but used as score
             'reasons': "; ".join(reasons) if reasons else "Good performance",
             'learning_path_preference': student_pref,
             **features
@@ -467,7 +476,13 @@ class MLService:
         ).first()
         
         if not mark:
-            return {'risk_level': 'Unknown', 'score': 0, 'basis': 'No Data'}
+            # Fallback to early risk if no marks found at all
+            early = self.predict_early_risk(db, reg_no, subject_code)
+            return {
+                'risk_level': early['risk_level'],
+                'score': early['probability'] * 100,
+                'basis': "Early Risk Logic (Logistic Regression)"
+            }
             
         # Check if it's a Lab paper
         subject = db.query(models.Subject).filter(
@@ -550,13 +565,13 @@ class MLService:
             early = self.predict_early_risk(db, reg_no, subject_code)
             return {
                 'risk_level': early['risk_level'],
-                'score': early['probability'] * 100,
+                'score': early['probability'] * 100, # This is now the performance score
                 'basis': "Early Risk Logic (Logistic Regression)"
             }
 
-        if final_rule_score < 50:
+        if final_rule_score < 60:
             rule_risk = "High"
-        elif final_rule_score < 65:
+        elif final_rule_score < 80:
             rule_risk = "Medium"
         else:
             rule_risk = "Low"
@@ -589,6 +604,9 @@ class MLService:
                     'basis': f"{basis_rule} (ML Overridden)"
                 }
                 
+            # Correct the ML score to be a "Performance Score"
+            # If the model predicts risk, inversion is needed. 
+            # But the Logistic Regression below is most important for the user right now.
             return {
                 'risk_level': ml_risk,
                 'score': ml_score,
@@ -645,19 +663,27 @@ class MLService:
         z = B0 + (B1 * x1_quiz_score) + (B2 * x2_attendance) + (B3 * x3_internal_marks) + (B4 * x4_backlog) + (B5 * x5_engagement)
         
         import math
-        # P(Y=1) = 1 / (1 + e^-Z)
-        probability = 1.0 / (1.0 + math.exp(-z))
+        # Sigmoid function to get risk probability (0 to 1)
+        # Higher Z means higher risk (due to B4 backlog weight)
+        probability = 1 / (1 + math.exp(-z))
         
-        # Risk Classification
-        if probability < 0.4:
-            risk_level = "Low"
-        elif probability < 0.7:
+        # Performance Score = (Safety Probability) * 100
+        # If risk probability is 0.2, performance score is 80%
+        performance_score = (1.0 - probability) * 100
+        
+        # Risk Classification (User-Defined Performance Score Thresholds)
+        # High Risk: 0-59% (Performance Score)
+        # Medium Risk: 60-79%
+        # Low Risk: 80-100%
+        if performance_score < 60:
+            risk_level = "High"
+        elif performance_score < 80:
             risk_level = "Medium"
         else:
-            risk_level = "High"
+            risk_level = "Low"
             
         return {
-            "probability": probability,
+            "probability": performance_score / 100, # Return as Performance Probability
             "risk_level": risk_level,
             "features_used": {
                 "quiz_score": x1_quiz_score,

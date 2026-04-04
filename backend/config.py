@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     youtube_api_key: str = ""
     nvidia_api_key: str = ""
+    fast2sms_api_key: str = ""
+    sms_mobile_api_key: str = ""
+    notification_driver: str = "fast2sms" # Options: fast2sms, smsmobileapi, email
     gemini_api_key: str = ""
     skill_gemini_api_key: str = Field(default="", validation_alias="skill_development")
     programming_api_key: str = Field(default="", validation_alias="Programming")
