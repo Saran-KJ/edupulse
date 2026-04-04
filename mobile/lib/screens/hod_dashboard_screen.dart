@@ -13,6 +13,8 @@ import 'attendance_entry_screen.dart';
 import 'faculty_allocation_screen.dart';
 import 'subject_selection_screen.dart';
 import 'project_batch_allocation_screen.dart';
+import '../config/app_theme.dart';
+import '../widgets/main_scaffold.dart';
 
 void _handleLogout(BuildContext context) async {
   final prefs = await SharedPreferences.getInstance();
@@ -38,7 +40,10 @@ class _HODDashboardScreenState extends State<HODDashboardScreen> {
       future: ApiService().getCurrentUser(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            backgroundColor: AppColors.surface,
+            body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          );
         }
         
         if (snapshot.hasError) {
@@ -51,130 +56,62 @@ class _HODDashboardScreenState extends State<HODDashboardScreen> {
         
         final user = snapshot.data;
         
-        // HOD Validation: Needs Dept only
         if (user == null || user.dept == null) {
           return _buildIncompleteAccountScreen();
         }
         
-        final isWideScreen = MediaQuery.of(context).size.width >= ResponsiveBreakpoints.tablet;
-
-        if (isWideScreen) {
-          return _buildWebLayout(user);
-        }
-        return _buildMobileLayout(user);
+        return MainScaffold(
+          title: 'HOD Dashboard',
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+          destinations: [
+            const NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+            const NavDestination(icon: Icons.people_rounded, label: 'Students'),
+            const NavDestination(icon: Icons.analytics_rounded, label: 'Analytics'),
+            const NavDestination(icon: Icons.verified_user_rounded, label: 'Approvals'),
+            const NavDestination(icon: Icons.school_rounded, label: 'Faculty'),
+            const NavDestination(icon: Icons.library_books_rounded, label: 'Subjects'),
+          ],
+          onLogout: () => _handleLogout(context),
+          body: _buildBody(user),
+        );
       },
     );
   }
 
-  Widget _buildIncompleteAccountScreen() {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('HOD Dashboard'),
-        backgroundColor: Colors.blue.shade800,
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.orange.shade700),
-              const SizedBox(height: 16),
-              const Text(
-                'Incomplete Account Setup',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Your account is missing required information (Department).',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Please contact the administrator to update your account.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWebLayout(User user) {
+  Widget _buildBody(User user) {
     final dept = user.dept!;
+    // Redirect if specific destination is selected (since this HOD dash uses separate screens for most items)
+    if (_selectedIndex == 1) {
+      Future.microtask(() => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentsListScreen(dept: dept, year: null, section: null))));
+      _selectedIndex = 0;
+    } else if (_selectedIndex == 2) {
+      Future.microtask(() => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen())));
+      _selectedIndex = 0;
+    } else if (_selectedIndex == 3) {
+      Future.microtask(() => Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityApprovalScreen(dept: dept, year: 1, section: 'A'))));
+      _selectedIndex = 0;
+    } else if (_selectedIndex == 4) {
+      Future.microtask(() => Navigator.push(context, MaterialPageRoute(builder: (_) => FacultyAllocationScreen(dept: dept))));
+      _selectedIndex = 0;
+    } else if (_selectedIndex == 5) {
+      Future.microtask(() => Navigator.push(context, MaterialPageRoute(builder: (_) => SubjectSelectionScreen(dept: dept))));
+      _selectedIndex = 0;
+    }
 
-    return WebScaffold(
-      title: 'HOD Dashboard',
-      subtitle: 'Department: $dept',
-      selectedIndex: _selectedIndex,
-      navigationItems: [
-        NavigationItem(
-          icon: Icons.dashboard,
-          label: 'Dashboard',
-          onTap: () => setState(() => _selectedIndex = 0),
-        ),
-        NavigationItem(
-          icon: Icons.list_alt,
-          label: 'All Students',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => StudentsListScreen(
-                dept: dept,
-                year: null, // View all years
-                section: null, // View all sections
-              ),
-            ),
-          ),
-        ),
-        NavigationItem(
-          icon: Icons.analytics,
-          label: 'Analytics',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen())),
-        ),
-        NavigationItem(
-          icon: Icons.approval,
-          label: 'Approvals',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityApprovalScreen(dept: dept, year: 1, section: 'A'))),
-        ),
-        NavigationItem(
-          icon: Icons.school,
-          label: 'Faculty Allocation',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FacultyAllocationScreen(dept: dept))),
-        ),
-        NavigationItem(
-          icon: Icons.library_books,
-          label: 'Subject Selection',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SubjectSelectionScreen(dept: dept))),
-        ),
-      ],
-      userHeader: _buildUserHeader(user),
-      onLogout: () => _handleLogout(context),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: ContentConstraints(
-          maxWidth: 1200,
-          padding: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildWelcomeHeader(user),
-              const SizedBox(height: 32),
-              _buildSummaryCards(),
-              const SizedBox(height: 32),
-              const Text(
-                'Department Actions',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              _buildQuickActions(context, user),
-            ],
-          ),
-        ),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildWelcomeHeader(user),
+          const SizedBox(height: 32),
+          _buildSummaryCards(),
+          const SizedBox(height: 32),
+          SectionHeader(title: 'Department Actions', icon: Icons.grid_view_rounded, color: AppColors.primary),
+          const SizedBox(height: 16),
+          _buildQuickActions(context, user),
+          const SizedBox(height: 40),
+        ],
       ),
     );
   }
@@ -489,6 +426,48 @@ class _HODDashboardScreenState extends State<HODDashboardScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildIncompleteAccountScreen() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Account Setup Required'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: () => _handleLogout(context),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.account_circle_outlined, size: 80, color: AppColors.textSecondary),
+              const SizedBox(height: 24),
+              Text(
+                'Department Not Assigned',
+                style: AppTextStyles.heading,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Your account has not been assigned to a department yet. Please contact the administrator.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => _handleLogout(context),
+                child: const Text('Logout'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

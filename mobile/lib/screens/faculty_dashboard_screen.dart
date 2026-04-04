@@ -4,8 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../config/app_theme.dart';
+import 'quiz_status_screen.dart';
+import 'class_quiz_scores_screen.dart';
+import '../widgets/main_scaffold.dart';
 import '../widgets/responsive_layout.dart';
-import '../widgets/web_scaffold.dart';
+import 'student_dashboard_screen.dart';
 import 'attendance_entry_screen.dart';
 import 'new_mark_entry_screen.dart';
 import 'project_roadmap_screen.dart';
@@ -37,15 +40,14 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
       future: ApiService().getCurrentUser(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            backgroundColor: AppColors.surface,
+            body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          );
         }
         
         if (snapshot.hasError) {
-          return Scaffold(
-            body: Center(
-              child: Text('Error loading user data: ${snapshot.error}'),
-            ),
-          );
+          return _buildErrorScreen('Error loading user data: ${snapshot.error}');
         }
         
         final user = snapshot.data;
@@ -53,159 +55,49 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           return _buildErrorScreen('User data not found');
         }
         
-        final isWideScreen = MediaQuery.of(context).size.width >= ResponsiveBreakpoints.tablet;
-
-        if (isWideScreen) {
-          return _buildWebLayout(user);
-        }
-        return _buildMobileLayout(user);
+        return MainScaffold(
+          title: 'Faculty Dashboard',
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+          destinations: [
+            const NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+            const NavDestination(icon: Icons.school_rounded, label: 'My Classes'),
+          ],
+          onLogout: () => _handleLogout(context),
+          body: _buildBody(user),
+        );
       },
     );
   }
 
-  Widget _buildErrorScreen(String message) {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        title: Text('Faculty Dashboard', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: AppColors.warning),
-              const SizedBox(height: 16),
-              Text(message, style: AppTextStyles.body, textAlign: TextAlign.center),
-            ],
+  Widget _buildBody(User user) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildWelcomeHeader(user),
+          const SizedBox(height: 32),
+          _buildSummaryCards(),
+          const SizedBox(height: 32),
+          SectionHeader(title: 'My Classes', icon: Icons.class_rounded, color: AppColors.info),
+          const SizedBox(height: 16),
+          _buildClassesList(),
+          const SizedBox(height: 32),
+          SectionHeader(
+            title: 'Scheduled Quizzes',
+            icon: Icons.assignment_turned_in_rounded,
+            color: Colors.purple.shade600,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWebLayout(User user) {
-    return WebScaffold(
-      title: 'Faculty Dashboard',
-      subtitle: user.dept != null ? '${user.dept} Department' : 'Faculty Member',
-      selectedIndex: _selectedIndex,
-      navigationItems: [
-        NavigationItem(
-          icon: Icons.dashboard,
-          label: 'Dashboard',
-          onTap: () => setState(() => _selectedIndex = 0),
-        ),
-        NavigationItem(
-          icon: Icons.class_,
-          label: 'My Classes',
-          onTap: () => setState(() => _selectedIndex = 0),
-        ),
-      ],
-      userHeader: _buildUserHeader(user),
-      onLogout: () => _handleLogout(context),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: ContentConstraints(
-          maxWidth: 1200,
-          padding: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildWelcomeHeader(user),
-              const SizedBox(height: 32),
-              _buildSummaryCards(),
-              const SizedBox(height: 32),
-              const Text(
-                'My Classes',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              _buildClassesList(),
-              const SizedBox(height: 32),
-              const SectionHeader(title: 'Project Guidance', icon: Icons.group_work_rounded, color: AppColors.info),
-              const SizedBox(height: 16),
-              _buildProjectBattchesList(user),
-              const SizedBox(height: 32),
-              _buildCoordinatorSection(user),
-
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-
-  Widget _buildMobileLayout(User user) {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        title: Text('Faculty Dashboard', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          PopupMenuButton<String>(
-            icon: CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white,
-              child: Text(
-                user.name[0].toUpperCase(),
-                style: GoogleFonts.poppins(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 14),
-              ),
-            ),
-            tooltip: 'Profile',
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            onSelected: (value) {
-              if (value == 'logout') _handleLogout(context);
-            },
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem<String>(
-                enabled: false,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(user.name, style: AppTextStyles.headingSmall.copyWith(fontSize: 15)),
-                    const SizedBox(height: 4),
-                    Text(user.email, style: AppTextStyles.bodySmall),
-                    const SizedBox(height: 4),
-                    Text('Role: ${user.role}', style: AppTextStyles.bodySmall),
-                    const Divider(),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'logout',
-                child: Row(children: [const Icon(Icons.logout_rounded, size: 18), const SizedBox(width: 12), Text('Logout', style: AppTextStyles.body)]),
-              ),
-            ],
-          ),
+          const SizedBox(height: 16),
+          _buildScheduledQuizzesList(),
+          const SizedBox(height: 32),
+          const SectionHeader(title: 'Project Guidance', icon: Icons.group_work_rounded, color: AppColors.info),
+          const SizedBox(height: 16),
+          _buildProjectBattchesList(user),
+          const SizedBox(height: 32),
+          _buildCoordinatorSection(user),
+          const SizedBox(height: 40),
         ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildWelcomeHeader(user),
-            const SizedBox(height: 24),
-            _buildSummaryCards(),
-            const SizedBox(height: 24),
-            SectionHeader(title: 'My Classes', icon: Icons.class_rounded, color: AppColors.info),
-            const SizedBox(height: 16),
-            _buildClassesList(),
-            const SizedBox(height: 24),
-            const SectionHeader(title: 'Project Guidance', icon: Icons.group_work_rounded, color: AppColors.info),
-            const SizedBox(height: 16),
-            _buildProjectBattchesList(user),
-            const SizedBox(height: 24),
-            _buildCoordinatorSection(user),
-            const SizedBox(height: 100), // Extra space to ensure scrollability
-          ],
-        ),
       ),
     );
   }
@@ -387,6 +279,19 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           desktop: 3,
         );
 
+        if (crossAxisCount == 1) {
+          // Mobile: Use a vertical list to prevent horizontal/aspect-ratio overflows
+          return Column(
+            children: classes.map((cls) => Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: SizedBox(
+                height: 180, // Fixed height or flexible depending on design
+                child: _buildClassCard(cls),
+              ),
+            )).toList(),
+          );
+        }
+
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -394,7 +299,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: crossAxisCount == 1 ? 2.5 : 1.3,
+            childAspectRatio: 1.3,
           ),
           itemCount: classes.length,
           itemBuilder: (context, index) {
@@ -407,16 +312,15 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
   }
 
   Widget _buildClassCard(FacultyAllocation cls) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppShadows.card,
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.06)),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => _showClassOptions(context, cls.dept, cls.year, cls.section, cls.subjectCode, cls.subjectTitle),
+    return HoverScaleEffect(
+      onTap: () => _showClassOptions(context, cls.dept, cls.year, cls.section, cls.subjectCode, cls.subjectTitle),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: AppShadows.card,
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.06)),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -550,6 +454,189 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showEditQuizDialog(BuildContext context, ScheduledQuiz quiz) {
+    int selectedUnit = quiz.unitNumber;
+    String selectedAssessment = quiz.assessmentType;
+    DateTime selectedDate = quiz.deadline != null ? DateTime.parse(quiz.deadline!) : DateTime.now().add(const Duration(days: 7));
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Edit Scheduled Quiz'),
+              content: isLoading 
+                ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()))
+                : SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${quiz.subjectTitle}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text('${quiz.dept} - Year ${quiz.year} ${quiz.section}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                        const SizedBox(height: 20),
+                        
+                        const Text('Target Assessment:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: selectedAssessment,
+                          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                          items: ['Slip Test', 'CIA', 'Model Exam'].map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) => setState(() => selectedAssessment = newValue!),
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        const Text('Syllabus Unit:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<int>(
+                          value: selectedUnit,
+                          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                          items: [1, 2, 3, 4, 5].map((int value) {
+                            return DropdownMenuItem<int>(
+                              value: value,
+                              child: Text('Unit $value'),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) => setState(() => selectedUnit = newValue!),
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        const Text('Deadline:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () async {
+                            final DateTime? picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate,
+                              firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                              lastDate: DateTime.now().add(const Duration(days: 90)),
+                            );
+                            if (picked != null) {
+                              if (!context.mounted) return;
+                              final TimeOfDay? pickedTime = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay.fromDateTime(selectedDate),
+                              );
+                              if (pickedTime != null) {
+                                setState(() {
+                                  selectedDate = DateTime(
+                                    picked.year,
+                                    picked.month,
+                                    picked.day,
+                                    pickedTime.hour,
+                                    pickedTime.minute,
+                                  );
+                                });
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_today, size: 16, color: Colors.blue),
+                                const SizedBox(width: 10),
+                                Text(
+                                  '${selectedDate.day}/${selectedDate.month}/${selectedDate.year} ${selectedDate.hour.toString().padLeft(2, '0')}:${selectedDate.minute.toString().padLeft(2, '0')}',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                  onPressed: () async {
+                    setState(() => isLoading = true);
+                    try {
+                      await ApiService().updateScheduledQuiz(quiz.id, {
+                        'unit_number': selectedUnit,
+                        'assessment_type': selectedAssessment,
+                        'deadline': selectedDate.toIso8601String(),
+                      });
+                      if (context.mounted) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Quiz updated successfully')),
+                        );
+                        this.setState(() {}); // Trigger refresh
+                      }
+                    } catch (e) {
+                      setState(() => isLoading = false);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to update quiz: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Update'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDeleteConfirmationDialog(BuildContext context, int quizId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Scheduled Quiz'),
+        content: const Text('Are you sure you want to delete this scheduled quiz? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await ApiService().deleteScheduledQuiz(quizId);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Quiz deleted successfully')),
+                  );
+                  this.setState(() {}); // Trigger refresh
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete quiz: $e')),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
@@ -976,6 +1063,178 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildScheduledQuizzesList() {
+    return FutureBuilder<List<ScheduledQuiz>>(
+      future: ApiService().getScheduledQuizzes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return _buildNoQuizzesState();
+        }
+
+        final quizzes = snapshot.data!;
+        return SizedBox(
+          height: 170,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: quizzes.length,
+            itemBuilder: (context, index) {
+              final quiz = quizzes[index];
+              return _buildQuizCard(quiz);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildQuizCard(ScheduledQuiz quiz) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => QuizStatusScreen(
+              quizId: quiz.id,
+              subjectTitle: quiz.subjectTitle,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 200,
+        margin: const EdgeInsets.only(right: 16, bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: AppShadows.card,
+          border: Border.all(color: Colors.purple.withOpacity(0.1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.quiz_rounded, color: Colors.purple, size: 18),
+                const Spacer(),
+                PopupMenuButton<String>(
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _showEditQuizDialog(context, quiz);
+                    } else if (value == 'delete') {
+                      _showDeleteConfirmationDialog(context, quiz.id);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 18),
+                          SizedBox(width: 8),
+                          Text('Edit'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 18, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Delete', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (quiz.isActive == 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text('Closed', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              quiz.subjectTitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+            ),
+            const Spacer(),
+            Text(
+              '${quiz.dept} - ${quiz.year}${quiz.section}',
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Unit ${quiz.unitNumber}',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple.shade700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoQuizzesState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppShadows.subtle,
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.quiz_outlined, color: Colors.grey.shade300, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            'No active quizzes scheduled',
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorScreen(String error) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+              const SizedBox(height: 16),
+              Text('Error Loading Data', style: AppTextStyles.headingSmall),
+              const SizedBox(height: 8),
+              Text(error, textAlign: TextAlign.center, style: AppTextStyles.bodySmall),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => setState(() {}),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

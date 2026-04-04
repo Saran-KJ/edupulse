@@ -237,6 +237,38 @@ class RiskPrediction {
   }
 }
 
+class SubjectRisk {
+  final String subjectCode;
+  final String subjectTitle;
+  final String riskLevel;
+  final double score;
+  final String basis;
+  final bool hasMarks;
+  final int? semester;
+
+  SubjectRisk({
+    required this.subjectCode,
+    required this.subjectTitle,
+    required this.riskLevel,
+    required this.score,
+    required this.basis,
+    required this.hasMarks,
+    this.semester,
+  });
+
+  factory SubjectRisk.fromJson(Map<String, dynamic> json) {
+    return SubjectRisk(
+      subjectCode: json['subject_code'] ?? '',
+      subjectTitle: json['subject_title'] ?? '',
+      riskLevel: json['risk_level'] ?? 'Low',
+      score: (json['score'] as num?)?.toDouble() ?? 0.0,
+      basis: json['basis'] ?? '',
+      hasMarks: json['has_marks'] ?? false,
+      semester: json['semester'],
+    );
+  }
+}
+
 class DashboardStats {
   final int totalStudents;
   final int totalActivities;
@@ -917,5 +949,157 @@ class EarlyRiskAssessment {
       default:
         return '❓';
     }
+  }
+}
+
+class ScheduledQuiz {
+  final int id;
+  final String dept;
+  final int year;
+  final String section;
+  final String subjectCode;
+  final String subjectTitle;
+  final int unitNumber;
+  final String assessmentType;
+  final String? deadline;
+  final int isActive;
+  final String? createdAt;
+
+  ScheduledQuiz({
+    required this.id,
+    required this.dept,
+    required this.year,
+    required this.section,
+    required this.subjectCode,
+    required this.subjectTitle,
+    required this.unitNumber,
+    required this.assessmentType,
+    this.deadline,
+    this.isActive = 1,
+    this.createdAt,
+  });
+
+  factory ScheduledQuiz.fromJson(Map<String, dynamic> json) {
+    return ScheduledQuiz(
+      id: json['id'],
+      dept: json['dept'],
+      year: (json['year'] is String) ? int.parse(json['year']) : (json['year'] as num).toInt(),
+      section: json['section'],
+      subjectCode: json['subject_code'],
+      subjectTitle: json['subject_title'],
+      unitNumber: json['unit_number'],
+      assessmentType: json['assessment_type'],
+      deadline: json['deadline'],
+      isActive: json['is_active'] ?? 1,
+      createdAt: json['created_at'],
+    );
+  }
+}
+
+class StudentQuizStatus {
+  final String regNo;
+  final String? name;
+  final String status;
+  final double? score;
+  final String? attemptedAt;
+
+  StudentQuizStatus({
+    required this.regNo,
+    this.name,
+    required this.status,
+    this.score,
+    this.attemptedAt,
+  });
+
+  factory StudentQuizStatus.fromJson(Map<String, dynamic> json) {
+    return StudentQuizStatus(
+      regNo: json['reg_no'],
+      name: json['name'],
+      status: json['status'],
+      score: json['score'] != null ? (json['score'] as num).toDouble() : null,
+      attemptedAt: json['attempted_at'],
+    );
+  }
+}
+
+class QuizStatusResponse {
+  final int quizId;
+  final String subjectTitle;
+  final int totalStudents;
+  final int completedCount;
+  final int pendingCount;
+  final List<StudentQuizStatus> students;
+
+  QuizStatusResponse({
+    required this.quizId,
+    required this.subjectTitle,
+    required this.totalStudents,
+    required this.completedCount,
+    required this.pendingCount,
+    required this.students,
+  });
+
+  factory QuizStatusResponse.fromJson(Map<String, dynamic> json) {
+    return QuizStatusResponse(
+      quizId: json['quiz_id'],
+      subjectTitle: json['subject_title'] ?? '',
+      totalStudents: json['total_students'] ?? 0,
+      completedCount: json['completed_count'] ?? 0,
+      pendingCount: json['pending_count'] ?? 0,
+      students: (json['students'] as List? ?? [])
+          .map((s) => StudentQuizStatus.fromJson(s))
+          .toList(),
+    );
+  }
+}
+
+class StudentUnitScore {
+  final String regNo;
+  final String? name;
+  final Map<String, dynamic> scores;
+
+  StudentUnitScore({
+    required this.regNo,
+    this.name,
+    required this.scores,
+  });
+
+  factory StudentUnitScore.fromJson(Map<String, dynamic> json) {
+    return StudentUnitScore(
+      regNo: json['reg_no'],
+      name: json['name'],
+      scores: json['scores'] as Map<String, dynamic>,
+    );
+  }
+}
+
+class ClassQuizScoresResponse {
+  final String dept;
+  final int year;
+  final String section;
+  final String subjectCode;
+  final String subjectTitle;
+  final List<StudentUnitScore> students;
+
+  ClassQuizScoresResponse({
+    required this.dept,
+    required this.year,
+    required this.section,
+    required this.subjectCode,
+    required this.subjectTitle,
+    required this.students,
+  });
+
+  factory ClassQuizScoresResponse.fromJson(Map<String, dynamic> json) {
+    return ClassQuizScoresResponse(
+      dept: json['dept'],
+      year: json['year'],
+      section: json['section'],
+      subjectCode: json['subject_code'],
+      subjectTitle: json['subject_title'],
+      students: (json['students'] as List)
+          .map((s) => StudentUnitScore.fromJson(s))
+          .toList(),
+    );
   }
 }

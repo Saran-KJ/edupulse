@@ -229,7 +229,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
     required Color color,
     bool isCompact = false,
   }) {
-    return GestureDetector(
+    return HoverScaleEffect(
       onTap: () {
         Navigator.push(
           context,
@@ -238,25 +238,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
           ),
         );
       },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: EdgeInsets.all(isCompact ? 16 : 18),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
-            child: isCompact
-                ? _buildCompactContent(role, icon, description, color)
-                : _buildFullContent(role, icon, description, color),
-          ),
-        ),
+      child: GlassmorphicCard(
+        borderRadius: 20,
+        opacity: 0.12,
+        padding: EdgeInsets.all(isCompact ? 16 : 24),
+        child: isCompact
+            ? _buildCompactContent(role, icon, description, color)
+            : _buildFullContent(role, icon, description, color),
       ),
     );
   }
@@ -266,28 +254,36 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
             ),
-            borderRadius: BorderRadius.circular(14),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Icon(icon, size: 26, color: Colors.white),
+          child: Icon(icon, size: 28, color: Colors.white),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Text(
           role,
           textAlign: TextAlign.center,
           style: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
             color: Colors.white,
+            letterSpacing: -0.2,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           description,
           textAlign: TextAlign.center,
@@ -296,6 +292,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
           style: GoogleFonts.inter(
             fontSize: 11,
             color: Colors.white60,
+            height: 1.4,
           ),
         ),
       ],
@@ -306,18 +303,25 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
             ),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Icon(icon, size: 28, color: Colors.white),
+          child: Icon(icon, size: 30, color: Colors.white),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 20),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,17 +330,19 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
               Text(
                 role,
                 style: GoogleFonts.poppins(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                   color: Colors.white,
+                  letterSpacing: -0.3,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 description,
                 style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: Colors.white60,
+                  fontSize: 13,
+                  color: Colors.white70,
+                  height: 1.4,
                 ),
               ),
             ],
@@ -344,8 +350,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
         ),
         Icon(
           Icons.arrow_forward_ios_rounded,
-          size: 16,
-          color: Colors.white.withValues(alpha: 0.4),
+          size: 18,
+          color: Colors.white.withValues(alpha: 0.5),
         ),
       ],
     );

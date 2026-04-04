@@ -397,23 +397,31 @@ class _QuizScreenState extends State<QuizScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20)],
-              ),
-              child: CircularPercentIndicator(
-                radius: 80.0,
-                lineWidth: 12.0,
-                percent: (score / 100).clamp(0.0, 1.0),
-                center: Text("${score.toInt()}%", 
-                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-                progressColor: isSuccess ? Colors.green : Colors.blue,
-                backgroundColor: Colors.grey.shade100,
-                circularStrokeCap: CircularStrokeCap.round,
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                double radius = MediaQuery.of(context).size.width * 0.25;
+                if (radius > 120) radius = 120; // Cap for tablets
+                if (radius < 60) radius = 60;   // Floor for very small phones
+                
+                return Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20)],
+                  ),
+                  child: CircularPercentIndicator(
+                    radius: radius,
+                    lineWidth: radius / 8,
+                    percent: (score / 100).clamp(0.0, 1.0),
+                    center: Text("${score.toInt()}%", 
+                      style: TextStyle(fontSize: radius * 0.4, fontWeight: FontWeight.bold)),
+                    progressColor: isSuccess ? Colors.green : Colors.blue,
+                    backgroundColor: Colors.grey.shade100,
+                    circularStrokeCap: CircularStrokeCap.round,
+                  ),
+                );
+              }
             ),
             const SizedBox(height: 40),
             Text(isSuccess ? "Excellent Work!" : "Good Attempt!", 

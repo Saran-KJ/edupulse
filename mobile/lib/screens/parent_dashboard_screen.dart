@@ -8,6 +8,7 @@ import 'student_attendance_screen.dart';
 import 'student_marks_screen.dart';
 import 'student_activity_screen.dart';
 import '../widgets/responsive_layout.dart';
+import '../widgets/main_scaffold.dart';
 
 void _handleLogout(BuildContext context) async {
   final prefs = await SharedPreferences.getInstance();
@@ -35,82 +36,82 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Parent Dashboard', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-        backgroundColor: const Color(0xFF00796B),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => setState(() { _dashboardFuture = ApiService().getParentDashboardStats(); }),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () => _handleLogout(context),
-          ),
-        ],
-      ),
+    return MainScaffold(
+      title: 'Parent Dashboard',
+      selectedIndex: 0,
+      onDestinationSelected: (index) {},
+      destinations: const [
+        NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+      ],
+      onLogout: () => _handleLogout(context),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh_rounded),
+          onPressed: () => setState(() { _dashboardFuture = ApiService().getParentDashboardStats(); }),
+        ),
+      ],
       body: FutureBuilder<Map<String, dynamic>>(
         future: _dashboardFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Error loading dashboard',
-                      style: TextStyle(fontSize: 18, color: Colors.grey.shade700),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      snapshot.error.toString(),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade600),
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return _buildErrorView(snapshot.error.toString());
           }
 
           final data = snapshot.data!;
           
-          // Check if child was found
           if (data.containsKey('error')) {
             return _buildChildNotFoundMessage(data);
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: ContentConstraints(
-              maxWidth: 1200,
-              padding: EdgeInsets.zero,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeHeader(data),
-                  const SizedBox(height: 16),
-                  _buildChildInfoCard(data),
-                  const SizedBox(height: 24),
-                  _buildSummaryCards(data),
-                  const SizedBox(height: 24),
-                  _buildQuickActions(context, data),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildWelcomeHeader(data),
+                const SizedBox(height: 32),
+                _buildChildInfoCard(data),
+                const SizedBox(height: 32),
+                SectionHeader(title: 'Academic Summary', icon: Icons.analytics_rounded, color: AppColors.primary),
+                const SizedBox(height: 16),
+                _buildSummaryCards(data),
+                const SizedBox(height: 32),
+                SectionHeader(title: 'Quick Actions', icon: Icons.bolt_rounded, color: AppColors.accent),
+                const SizedBox(height: 16),
+                _buildQuickActions(context, data),
+                const SizedBox(height: 40),
+              ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildErrorView(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColors.warning),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading dashboard',
+              style: AppTextStyles.headingSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall,
+            ),
+          ],
+        ),
       ),
     );
   }

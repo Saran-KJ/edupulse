@@ -3,6 +3,8 @@ import '../services/api_service.dart';
 import '../models/models.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/web_scaffold.dart';
+import '../config/app_theme.dart';
+import '../widgets/main_scaffold.dart';
 import 'role_selection_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -45,164 +47,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   @override
   Widget build(BuildContext context) {
-    final isWideScreen = MediaQuery.of(context).size.width >= ResponsiveBreakpoints.tablet;
-
-    final tabContent = TabBarView(
-      controller: _tabController,
-      children: [
-        _buildUserManagementTab(),
-        _buildApprovalsTab(),
-        _buildLogsTab(),
+    return MainScaffold(
+      title: 'Admin Dashboard',
+      selectedIndex: _tabController.index,
+      onDestinationSelected: (index) => setState(() => _tabController.animateTo(index)),
+      destinations: const [
+        NavDestination(icon: Icons.people_rounded, label: 'Users'),
+        NavDestination(icon: Icons.verified_user_rounded, label: 'Approvals'),
+        NavDestination(icon: Icons.security_rounded, label: 'Logs'),
       ],
-    );
-
-    if (isWideScreen) {
-      return Scaffold(
-        body: Row(
-          children: [
-            // Sidebar
-            Container(
-              width: 250,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.blue.shade800, Colors.blue.shade900],
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    height: 120,
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                          child: Icon(Icons.admin_panel_settings, size: 28, color: Colors.blue.shade800),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text('Admin Panel', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                  const Divider(color: Colors.white24),
-                  _buildSideNavItem(Icons.people, 'Users', 0),
-                  _buildSideNavItem(Icons.verified_user, 'Approvals', 1),
-                  _buildSideNavItem(Icons.security, 'Logs', 2),
-                  const Spacer(),
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.white70),
-                    title: const Text('Logout', style: TextStyle(color: Colors.white70)),
-                    onTap: _logout,
-                  ),
-                  const SizedBox(height: 16),
-                ],
+      onLogout: _logout,
+      actions: [
+        if (_tabController.index == 0)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            child: ElevatedButton.icon(
+              onPressed: _showCreateUserDialog,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add User'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
               ),
             ),
-            // Main content
-            Expanded(
-              child: ContentConstraints(
-                maxWidth: 1200,
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    Container(
-                      height: 64,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
-                      ),
-                      child: Row(
-                        children: [
-                          Text(_getTabTitle(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                          const Spacer(),
-                          if (_tabController.index == 0)
-                            ElevatedButton.icon(
-                              onPressed: _showCreateUserDialog,
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text('Add User'),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade800, foregroundColor: Colors.white),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Expanded(child: Container(color: Colors.grey.shade50, child: tabContent)),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Admin Dashboard'),
-        backgroundColor: Colors.blue.shade800,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
+          ),
+      ],
+      body: TabBarView(
+        controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(), // Managed by scaffold
+        children: [
+          _buildUserManagementTab(),
+          _buildApprovalsTab(),
+          _buildLogsTab(),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
-          tabs: const [
-            Tab(icon: Icon(Icons.people), text: 'Users'),
-            Tab(icon: Icon(Icons.verified_user), text: 'Approvals'),
-            Tab(icon: Icon(Icons.security), text: 'Logs'),
-          ],
-        ),
       ),
-      body: tabContent,
-      floatingActionButton: _tabController.index == 0
+      floatingActionButton: (MediaQuery.of(context).size.width <= 600 && _tabController.index == 0)
           ? FloatingActionButton(
               onPressed: _showCreateUserDialog,
-              backgroundColor: Colors.blue.shade800,
+              backgroundColor: AppColors.primary,
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
-    );
-  }
-
-  String _getTabTitle() {
-    switch (_tabController.index) {
-      case 0: return 'User Management';
-      case 1: return 'Pending Approvals';
-      case 2: return 'Login Logs';
-      default: return 'Admin Dashboard';
-    }
-  }
-
-  Widget _buildSideNavItem(IconData icon, String label, int index) {
-    final isSelected = _tabController.index == index;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: Material(
-        color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: () => setState(() => _tabController.animateTo(index)),
-          borderRadius: BorderRadius.circular(12),
-          hoverColor: Colors.white.withValues(alpha: 0.1),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(icon, color: isSelected ? Colors.white : Colors.white70, size: 22),
-                const SizedBox(width: 12),
-                Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 

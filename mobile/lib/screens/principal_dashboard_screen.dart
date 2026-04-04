@@ -3,6 +3,8 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/web_scaffold.dart';
+import '../config/app_theme.dart';
+import '../widgets/main_scaffold.dart';
 import 'role_selection_screen.dart';
 
 class PrincipalDashboardScreen extends StatefulWidget {
@@ -54,37 +56,30 @@ class _PrincipalDashboardScreenState extends State<PrincipalDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WebScaffold(
+    return MainScaffold(
       title: 'Principal Dashboard',
       selectedIndex: 0,
-      onLogout: _logout,
-      navigationItems: [
-        NavigationItem(
-          icon: Icons.dashboard,
-          label: 'Overview',
-          onTap: () {},
-        ),
+      onDestinationSelected: (index) {},
+      destinations: const [
+        NavDestination(icon: Icons.dashboard_rounded, label: 'Overview'),
       ],
+      onLogout: _logout,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : RefreshIndicator(
               onRefresh: _loadDashboardData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(24.0),
-                child: ContentConstraints(
-                  maxWidth: 1200,
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildWelcomeSection(),
-                      const SizedBox(height: 32),
-                      const Text('Institutional Overview (Read-Only)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
-                      _buildStatsGrid(),
-                    ],
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeSection(),
+                    const SizedBox(height: 32),
+                    SectionHeader(title: 'Institutional Overview', icon: Icons.insights_rounded, color: AppColors.primary),
+                    const SizedBox(height: 16),
+                    _buildStatsGrid(),
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
             ),

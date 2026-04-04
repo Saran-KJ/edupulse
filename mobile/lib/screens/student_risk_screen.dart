@@ -16,7 +16,7 @@ class StudentRiskScreen extends StatefulWidget {
 class _StudentRiskScreenState extends State<StudentRiskScreen> {
   bool _isLoading = true;
   RiskPrediction? _overallRisk;
-  List<Mark> _marks = [];
+  List<SubjectRisk> _subjectRisks = [];
   String? _error;
   int? _selectedSemester;
   List<int> _availableSemesters = [];
@@ -39,13 +39,17 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
         _overallRisk = await ApiService().predictRisk(user.regNo!);
       } catch (e) {
         print("Error fetching ML risk: $e");
-        // Fallback or ignore if ML service is down, effectively "Low" or "Unknown"
       }
 
-      // Fetch Marks for Subject-wise Analysis, excluding Lab Papers
-      final allMarks = await ApiService().getStudentMarks(user.regNo!, excludeLabs: true);
+      // Fetch Consolidated Subject-wise Risk Analysis
+      final risks = await ApiService().getSubjectRisks(user.regNo!);
       
-      final semesters = allMarks.map((m) => m.semester).toSet().toList()..sort();
+      final semesters = risks
+          .where((r) => r.semester != null)
+          .map((r) => r.semester!)
+          .toSet()
+          .toList()
+          ..sort();
       
       int? defaultSem;
       if (semesters.isNotEmpty) {
@@ -53,7 +57,7 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
       }
       
       setState(() {
-          _marks = allMarks;
+          _subjectRisks = risks;
           _availableSemesters = semesters;
           _selectedSemester = _selectedSemester ?? defaultSem;
       });
@@ -65,101 +69,6 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
     }
   }
 
-  // Calculate Risk for a single subject based on available marks
-  Map<String, dynamic> _calculateSubjectRisk(Mark mark) {
-    // Internal 1 Components
-    double st1 = (mark.slipTest1 ?? 0).toDouble();
-    double st2 = (mark.slipTest2 ?? 0).toDouble();
-    double a1 = (mark.assignment1 ?? 0).toDouble();
-    double a2 = (mark.assignment2 ?? 0).toDouble();
-    double cia1 = (mark.cia1 ?? 0).toDouble();
-    
-    // Check if Internal 1 has any data
-    List<double> st1Vals = [st1, st2].where((v) => v > 0).toList();
-    List<double> a1Vals = [a1, a2].where((v) => v > 0).toList();
-    bool hasInt1 = st1Vals.isNotEmpty || a1Vals.isNotEmpty || cia1 > 0;
-    
-    double internal1Norm = 0;
-
-    if (hasInt1) {
-      double stAvg1 = st1Vals.isEmpty ? 0 : st1Vals.reduce((a, b) => a + b) / st1Vals.length;
-      double assignAvg1 = a1Vals.isEmpty ? 0 : a1Vals.reduce((a, b) => a + b) / a1Vals.length;
-      
-      double internal1Raw = (0.3 * stAvg1) + (0.2 * assignAvg1) + (0.5 * cia1);
-      
-      // Dynamic max: ST=20, Assign=10, CIA=60 (scaled by coefficients)
-      double maxInt1 = (st1Vals.isEmpty ? 0 : 0.3 * 20) + (a1Vals.isEmpty ? 0 : 0.2 * 10) + (cia1 > 0 ? 0.5 * 60 : 0);
-      internal1Norm = maxInt1 > 0 ? (internal1Raw / maxInt1) * 100 : 0;
-    }
-    
-    // Internal 2 Components
-    double st3 = (mark.slipTest3 ?? 0).toDouble();
-    double st4 = (mark.slipTest4 ?? 0).toDouble();
-    double a3 = (mark.assignment3 ?? 0).toDouble();
-    double a4 = (mark.assignment4 ?? 0).toDouble();
-    double a5 = (mark.assignment5 ?? 0).toDouble();
-    double cia2 = (mark.cia2 ?? 0).toDouble();
-    double model = (mark.model ?? 0).toDouble();
-    
-    List<double> st2Vals = [st3, st4].where((v) => v > 0).toList();
-    List<double> a2Vals = [a3, a4, a5].where((v) => v > 0).toList();
-    bool hasInt2 = st2Vals.isNotEmpty || a2Vals.isNotEmpty || cia2 > 0 || model > 0;
-    
-    double internal2Norm = 0;
-
-    if (hasInt2) {
-      double stAvg2 = st2Vals.isEmpty ? 0 : st2Vals.reduce((a, b) => a + b) / st2Vals.length;
-      double assignAvg2 = a2Vals.isEmpty ? 0 : a2Vals.reduce((a, b) => a + b) / a2Vals.length;
-      
-      double internal2Raw = (0.25 * stAvg2) + (0.15 * assignAvg2) + (0.3 * cia2) + (0.3 * model);
-      
-      // Dynamic max: ST=20, Assign=10, CIA=60, Model=100
-      double maxInt2 = (st2Vals.isEmpty ? 0 : 0.25 * 20) + (a2Vals.isEmpty ? 0 : 0.15 * 10) + (cia2 > 0 ? 0.3 * 60 : 0) + (model > 0 ? 0.3 * 100 : 0);
-      internal2Norm = maxInt2 > 0 ? (internal2Raw / maxInt2) * 100 : 0;
-    }
-    
-    // Final Internal Calculation (Progressive)
-    double finalInternal = 0;
-    String basisText = "";
-
-    if (hasInt1 && hasInt2) {
-      finalInternal = (0.4 * internal1Norm) + (0.6 * internal2Norm);
-      basisText = "Based on Full Data";
-    } else if (hasInt1) {
-      finalInternal = internal1Norm;
-      basisText = "Based on Internal 1 only";
-    } else if (hasInt2) {
-      finalInternal = internal2Norm;
-      basisText = "Based on Internal 2 only";
-    } else {
-      finalInternal = 0;
-      basisText = "No Data";
-    }
-    
-    // Heuristic Risk Level
-    String status;
-    Color color;
-    
-    if (finalInternal < 50) {
-      status = "High Risk";
-      color = Colors.red;
-    } else if (finalInternal < 65) {
-      status = "Medium Risk";
-      color = Colors.orange;
-    } else {
-      status = "Low Risk";
-      color = Colors.green;
-    }
-    
-    return {
-      "score": finalInternal,
-      "status": status,
-      "color": color,
-      "basis": basisText,
-      "int1_available": hasInt1,
-      "int2_available": hasInt2
-    };
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +137,7 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  "Overall ML Risk Level",
+                  "Overall Performance Status",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Container(
@@ -387,26 +296,16 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
   }
 
   Widget _buildSubjectList() {
-    if (_marks.isEmpty) {
-      return const Center(child: Text("No marks data found."));
+    if (_subjectRisks.isEmpty) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(32.0),
+        child: Text("No subjects found with activity (quizzes or marks)."),
+      ));
     }
     
-    // Filter marks logic
-    List<Mark> filteredMarks = _marks;
+    List<SubjectRisk> filteredRisks = _subjectRisks;
     if (_selectedSemester != null) {
-        filteredMarks = _marks.where((m) {
-            // Include if it's the selected semester
-            if (m.semester == _selectedSemester) return true;
-            
-            // If viewing the LATEST semester, also include any previous backlog (U or AREAR)
-            bool isLatestSemester = _availableSemesters.isNotEmpty && _selectedSemester == _availableSemesters.last;
-            if (isLatestSemester) {
-                if (m.universityResultGrade == 'U' || m.universityResultGrade == 'AREAR' || m.universityResultGrade == 'F') {
-                    return true;
-                }
-            }
-            return false;
-        }).toList();
+      filteredRisks = _subjectRisks.where((r) => r.semester == _selectedSemester).toList();
     }
 
     return Column(
@@ -459,7 +358,7 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
             ),
           ),
           
-        if (filteredMarks.isEmpty)
+        if (filteredRisks.isEmpty)
            const Padding(
              padding: EdgeInsets.all(32.0),
              child: Center(child: Text("No subjects match this filter.")),
@@ -468,22 +367,21 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: filteredMarks.length,
+            itemCount: filteredRisks.length,
             itemBuilder: (context, index) {
-              final mark = filteredMarks[index];
-        final risk = _calculateSubjectRisk(mark);
+              final risk = filteredRisks[index];
         
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ExpansionTile(
             title: Text(
-              mark.subjectTitle, 
+              risk.subjectTitle, 
               style: const TextStyle(fontWeight: FontWeight.bold)
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(mark.subjectCode),
+                Text(risk.subjectCode),
                 const SizedBox(height: 4),
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -491,17 +389,18 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
                   runSpacing: 4,
                   children: [
                     Text(
-                      "Proj. Internal: ${(risk['score'] as double).toStringAsFixed(1)}%",
+                      "Performance Score: ${(risk.score).toStringAsFixed(1)}%",
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(4)
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.grey.shade300)
                       ),
                       child: Text(
-                        risk['basis'],
+                        risk.basis,
                         style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
                       ),
                     )
@@ -510,77 +409,69 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
               ],
             ),
             leading: CircleAvatar(
-              backgroundColor: boxColor(risk['status']),
+              backgroundColor: boxColor(risk.riskLevel),
               child: Text(
-                mark.subjectCode.substring(0, 2),
+                risk.subjectCode.substring(0, 2),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ),
-            trailing: Chip(
-              label: Text(
-                risk['status'],
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: boxColor(risk.riskLevel),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                risk.riskLevel,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
               ),
-              backgroundColor: (risk['color'] as Color),
             ),
             children: [
-              const Divider(),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildMarkSection("Internal 1", [
-                      _buildMarkRow("Slip Test 1", mark.slipTest1),
-                      _buildMarkRow("Slip Test 2", mark.slipTest2),
-                      _buildMarkRow("Assignment 1", mark.assignment1),
-                      _buildMarkRow("Assignment 2", mark.assignment2),
-                      _buildMarkRow("CIA 1", mark.cia1, max: 60),
-                    ]),
-                    const SizedBox(height: 16),
-                    _buildMarkSection("Internal 2", [
-                      _buildMarkRow("Slip Test 3", mark.slipTest3),
-                      _buildMarkRow("Slip Test 4", mark.slipTest4),
-                      _buildMarkRow("Assignment 3", mark.assignment3),
-                      _buildMarkRow("Assignment 4", mark.assignment4),
-                      _buildMarkRow("Assignment 5", mark.assignment5),
-                      _buildMarkRow("CIA 2", mark.cia2, max: 60),
-                      _buildMarkRow("Model", mark.model, max: 100),
-                    ]),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Wrap(
-                        spacing: 8,
-                        children: [
-                          TextButton.icon(
-                            icon: const Icon(Icons.menu_book),
-                            label: const Text("Study Materials"),
-                            onPressed: () {
-                              String subjectRiskLevel;
-                              switch (risk['status']) {
-                                case 'High Risk': subjectRiskLevel = 'High'; break;
-                                case 'Medium Risk': subjectRiskLevel = 'Medium'; break;
-                                default: subjectRiskLevel = 'Low';
-                              }
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LearningResourcesScreen(
-                                    subjectCode: mark.subjectCode,
-                                    subjectTitle: mark.subjectTitle,
-                                    riskLevel: subjectRiskLevel,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
+              if (!risk.hasMarks)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.blue, size: 40),
+                      const SizedBox(height: 12),
+                      const Text(
+                        "Internal marks are not yet available for this subject.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.w500),
                       ),
-                    ),
-                  ],
-                ),
-              )
+                      const SizedBox(height: 8),
+                      Text(
+                        "This risk analysis is ${risk.basis.toLowerCase()}.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.menu_book),
+                        label: const Text("View Learning Resources"),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LearningResourcesScreen(
+                                subjectCode: risk.subjectCode,
+                                subjectTitle: risk.subjectTitle,
+                                riskLevel: risk.riskLevel,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                )
+              else
+                 // For subjects with marks, we'd ideally fetch mark details.
+                 // For now, since mark details are in a different endpoint, we provide a placeholder or link back.
+                 const Padding(
+                   padding: EdgeInsets.all(16.0),
+                   child: Text("Detailed mark analysis available in progress reports section."),
+                 )
             ],
           ),
         );
@@ -625,8 +516,8 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
     );
   }  
   Color boxColor (String status){
-    if (status == "High Risk") return Colors.red;
-    if (status == "Medium Risk") return Colors.orange;
+    if (status == "High" || status == "High Risk") return Colors.red;
+    if (status == "Medium" || status == "Medium Risk") return Colors.orange;
     return Colors.green;
   }
 }

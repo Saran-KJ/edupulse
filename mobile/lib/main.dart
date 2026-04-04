@@ -2,8 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'config/app_config.dart';
 import 'config/app_theme.dart';
+import 'services/api_service.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/student_dashboard_screen.dart';
+import 'screens/faculty_dashboard_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
+import 'screens/parent_dashboard_screen.dart';
+import 'screens/class_advisor_dashboard_screen.dart';
+import 'screens/hod_dashboard_screen.dart';
+import 'screens/principal_dashboard_screen.dart';
 import 'screens/vice_principal_dashboard_screen.dart';
 
 void main() async {
@@ -165,17 +173,66 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateAfterDelay() async {
-    await Future.delayed(const Duration(seconds: 2));
+    // Wait for animation to settle
+    await Future.delayed(const Duration(milliseconds: 2200));
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const RoleSelectionScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 500),
-      ),
-    );
+
+    try {
+      final apiService = ApiService();
+      await apiService.loadToken();
+      
+      // Attempt to get user if token exists
+      final user = await apiService.getCurrentUser();
+      
+      if (!mounted) return;
+
+      // Determine target screen based on role (logic from login_screen.dart)
+      Widget targetScreen;
+      final role = user.role.toLowerCase();
+      if (role == 'student') {
+        targetScreen = const StudentDashboardScreen();
+      } else if (role == 'admin') {
+        targetScreen = const AdminDashboardScreen();
+      } else if (role == 'parent') {
+        targetScreen = const ParentDashboardScreen();
+      } else if (role == 'faculty') {
+        targetScreen = const FacultyDashboardScreen();
+      } else if (role == 'hod') {
+        targetScreen = const HODDashboardScreen();
+      } else if (role == 'principal') {
+        targetScreen = const PrincipalDashboardScreen();
+      } else if (role == 'vice_principal') {
+        targetScreen = const VicePrincipalDashboardScreen();
+      } else if (role.contains('advisor')) {
+        targetScreen = const ClassAdvisorDashboardScreen();
+      } else {
+        // Fallback to Role Selection if role is unrecognized
+        targetScreen = const RoleSelectionScreen();
+      }
+
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 600),
+        ),
+      );
+    } catch (e) {
+      // If error (no token, expired token, network error), go to Role Selection
+      debugPrint("Auto-login failed or no session: $e");
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const RoleSelectionScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 600),
+        ),
+      );
+    }
   }
 
   @override

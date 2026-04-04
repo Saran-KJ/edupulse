@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../models/models.dart';
 import '../config/app_theme.dart';
 import '../widgets/responsive_layout.dart';
+import '../widgets/main_scaffold.dart';
 import '../widgets/web_scaffold.dart';
 import 'student_attendance_screen.dart';
 import 'student_activity_screen.dart';
@@ -44,236 +45,79 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       future: ApiService().getCurrentUser(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
+          return const Scaffold(
             backgroundColor: AppColors.surface,
-            body: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+            body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
           );
         }
 
         final user = snapshot.data;
-        final isWideScreen = MediaQuery.of(context).size.width >= ResponsiveBreakpoints.tablet;
-
-        return PopScope(
-          canPop: false,
-          onPopInvoked: (didPop) async {
-            if (didPop) return;
-            await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                title: Text('Logout', style: AppTextStyles.heading),
-                content: Text('Are you sure you want to logout?', style: AppTextStyles.body),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Cancel'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(true);
-                      _handleLogout(context);
-                    },
-                    child: const Text('Logout'),
-                  ),
-                ],
+        
+        return MainScaffold(
+          title: 'Student Dashboard',
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+          destinations: [
+            const NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+            const NavDestination(icon: Icons.person_outline_rounded, label: 'Profile'),
+            const NavDestination(icon: Icons.assignment_outlined, label: 'View Marks'),
+            const NavDestination(icon: Icons.calendar_today_outlined, label: 'Attendance'),
+          ],
+          onLogout: () => _handleLogout(context),
+          actions: [
+            if (user?.role == 'student' && user?.regNo != null)
+              FutureBuilder<RiskPrediction>(
+                future: ApiService().predictRisk(user!.regNo!),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data!.riskLevel == 'Low') {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.auto_awesome_rounded, color: AppColors.accent),
+                        tooltip: 'Learning Plan',
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LearningHubScreen()),
+                        ),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
-            );
-          },
-          child: isWideScreen ? _buildWebLayout(user) : _buildMobileLayout(user),
+          ],
+          body: _buildBody(user),
         );
       },
     );
   }
 
-  Widget _buildWebLayout(User? user) {
-    return WebScaffold(
-      title: 'Student Dashboard',
-      subtitle: user?.name ?? 'Welcome',
-      selectedIndex: _selectedIndex,
-      actions: [
-        if (user?.role == 'student' && user?.regNo != null)
-          FutureBuilder<RiskPrediction>(
-            future: ApiService().predictRisk(user!.regNo!),
-            builder: (context, snapshot) {
-              if (snapshot.hasData && snapshot.data!.riskLevel == 'Low') {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LearningHubScreen()),
-                    ),
-                    icon: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
-                    label: const Text('Learning Plan'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
-            },
+  Widget _buildBody(User? user) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildWelcomeHeader(),
+          const SizedBox(height: 28),
+          _buildProjectBatch(),
+          const SizedBox(height: 28),
+          _buildPendingQuizzes(),
+          const SizedBox(height: 28),
+          _buildSummaryCards(),
+          const SizedBox(height: 28),
+          _buildAcademicAlerts(),
+          const SizedBox(height: 28),
+          _buildPersonalizedLearning(),
+          const SizedBox(height: 28),
+          SectionHeader(
+            title: 'Quick Actions',
+            icon: Icons.bolt_rounded,
+            color: AppColors.accentWarm,
           ),
-      ],
-      navigationItems: [
-        NavigationItem(
-          icon: Icons.dashboard_rounded,
-          label: 'Dashboard',
-          onTap: () => setState(() => _selectedIndex = 0),
-        ),
-        NavigationItem(
-          icon: Icons.person_outline_rounded,
-          label: 'Profile',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentProfileScreen())),
-        ),
-        NavigationItem(
-          icon: Icons.assignment_outlined,
-          label: 'View Marks',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentMarksScreen())),
-        ),
-        NavigationItem(
-          icon: Icons.calendar_today_outlined,
-          label: 'Attendance',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentAttendanceScreen())),
-        ),
-      ],
-      userHeader: _buildUserHeader(user),
-      onLogout: () => _handleLogout(context),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: ContentConstraints(
-          maxWidth: 1200,
-          padding: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildWelcomeHeader(),
-              const SizedBox(height: 28),
-              _buildProjectBatch(),
-              const SizedBox(height: 28),
-              _buildPendingQuizzes(),
-              const SizedBox(height: 28),
-              _buildSummaryCards(),
-              const SizedBox(height: 28),
-              _buildAcademicAlerts(),
-              const SizedBox(height: 28),
-              _buildPersonalizedLearning(),
-              const SizedBox(height: 28),
-              SectionHeader(
-                title: 'Quick Actions',
-                icon: Icons.bolt_rounded,
-                color: AppColors.accentWarm,
-              ),
-              const SizedBox(height: 16),
-              _buildActionButtons(context, user),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobileLayout(User? user) {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        title: Text('Student Dashboard', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (user?.role == 'student' && user?.regNo != null)
-            FutureBuilder<RiskPrediction>(
-              future: ApiService().predictRisk(user!.regNo!),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data!.riskLevel == 'Low') {
-                  return IconButton(
-                    icon: const Icon(Icons.auto_awesome_rounded, color: Colors.greenAccent),
-                    tooltip: 'Learning Plan',
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LearningHubScreen()),
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          FutureBuilder<User>(
-            future: ApiService().getCurrentUser(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const SizedBox.shrink();
-              final user = snapshot.data!;
-              return PopupMenuButton<String>(
-                icon: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Colors.white,
-                  child: Text(
-                    user.name[0].toUpperCase(),
-                    style: GoogleFonts.poppins(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                tooltip: 'Profile',
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                onSelected: (value) {
-                  if (value == 'logout') _handleLogout(context);
-                },
-                itemBuilder: (BuildContext context) => [
-                  PopupMenuItem<String>(
-                    enabled: false,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(user.name, style: AppTextStyles.headingSmall.copyWith(fontSize: 15)),
-                        const SizedBox(height: 4),
-                        Text(user.email, style: AppTextStyles.bodySmall),
-                        const SizedBox(height: 4),
-                        Text('Role: ${user.role}', style: AppTextStyles.bodySmall),
-                        const Divider(),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'logout',
-                    child: Row(children: [
-                      const Icon(Icons.logout_rounded, size: 18),
-                      const SizedBox(width: 12),
-                      Text('Logout', style: AppTextStyles.body),
-                    ]),
-                  ),
-                ],
-              );
-            },
-          ),
+          const SizedBox(height: 16),
+          _buildActionButtons(context, user),
+          const SizedBox(height: 40),
         ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildWelcomeHeader(),
-            const SizedBox(height: 20),
-            _buildProjectBatch(),
-            const SizedBox(height: 20),
-            _buildPendingQuizzes(),
-            const SizedBox(height: 20),
-            _buildSummaryCards(),
-            const SizedBox(height: 20),
-            _buildAcademicAlerts(),
-            const SizedBox(height: 20),
-            _buildPersonalizedLearning(),
-            const SizedBox(height: 20),
-            _buildActionButtons(context, user),
-          ],
-        ),
       ),
     );
   }
@@ -582,7 +426,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   Widget _buildActionButtons(BuildContext context, User? user) {
     final List<Map<String, dynamic>> actions = [
       {
-        'label': 'Risk Checker',
+        'label': 'Academic Status',
         'icon': Icons.shield_rounded,
         'color': AppColors.error,
         'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentRiskScreen())),
@@ -643,7 +487,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
-        childAspectRatio: 1.0,
+        childAspectRatio: crossAxisCount <= 2 ? 1.1 : 1.0,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {

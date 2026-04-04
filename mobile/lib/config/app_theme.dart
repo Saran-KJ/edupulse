@@ -137,6 +137,57 @@ class AppShadows {
   ];
 }
 
+/// A premium glassmorphic card with blur effect
+class GlassmorphicCard extends StatelessWidget {
+  final Widget child;
+  final double borderRadius;
+  final double blur;
+  final double opacity;
+  final Color? borderColor;
+  final EdgeInsetsGeometry padding;
+  final VoidCallback? onTap;
+
+  const GlassmorphicCard({
+    super.key,
+    required this.child,
+    this.borderRadius = 24,
+    this.blur = 15,
+    this.opacity = 0.6,
+    this.borderColor,
+    this.padding = const EdgeInsets.all(20),
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: BackdropFilter(
+          filter: ColorFilter.mode(
+            Colors.white.withValues(alpha: opacity),
+            BlendMode.srcOver,
+          ),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(
+                color: borderColor ?? Colors.white.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
+              boxShadow: AppShadows.card,
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AppTextStyles {
   static TextStyle get headingLarge => GoogleFonts.poppins(
     fontSize: 28,
@@ -150,6 +201,12 @@ class AppTextStyles {
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     letterSpacing: -0.3,
+  );
+
+  static TextStyle get headingMedium => GoogleFonts.poppins(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
   );
 
   static TextStyle get headingSmall => GoogleFonts.poppins(

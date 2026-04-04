@@ -598,6 +598,20 @@ class ApiService {
     }
   }
 
+  Future<List<SubjectRisk>> getSubjectRisks(String regNo) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.analyticsEndpoint}/student/$regNo/subject-risks'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => SubjectRisk.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load subject risks: ${response.body}');
+    }
+  }
+
   // Admin Methods
   Future<User> createUser(Map<String, dynamic> userData) async {
     final response = await http.post(
@@ -1513,7 +1527,7 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getScheduledQuizzes() async {
+  Future<List<ScheduledQuiz>> getScheduledQuizzes() async {
     final response = await http.get(
       Uri.parse('${AppConfig.baseUrl}/api/faculty/scheduled-quizzes'),
       headers: _getHeaders(),
@@ -1521,9 +1535,22 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
-      return data.cast<Map<String, dynamic>>();
+      return data.map((json) => ScheduledQuiz.fromJson(json)).toList();
     } else {
       throw Exception('Failed to load scheduled quizzes: ${response.body}');
+    }
+  }
+
+  Future<QuizStatusResponse> getQuizStatus(int quizId) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/faculty/scheduled-quizzes/$quizId/status'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return QuizStatusResponse.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load quiz status: ${response.body}');
     }
   }
 
@@ -1535,6 +1562,29 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to close quiz: ${response.body}');
+    }
+  }
+
+  Future<void> updateScheduledQuiz(int quizId, Map<String, dynamic> data) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.baseUrl}/api/faculty/scheduled-quizzes/$quizId'),
+      headers: _getHeaders(),
+      body: json.encode(data),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update scheduled quiz: ${response.body}');
+    }
+  }
+
+  Future<void> deleteScheduledQuiz(int quizId) async {
+    final response = await http.delete(
+      Uri.parse('${AppConfig.baseUrl}/api/faculty/scheduled-quizzes/$quizId'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete scheduled quiz: ${response.body}');
     }
   }
 
@@ -1673,6 +1723,24 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to generate early risk quiz: ${response.body}');
+    }
+  }
+
+  Future<ClassQuizScoresResponse> getClassQuizScores({
+    required String dept,
+    required int year,
+    required String section,
+    required String subjectCode,
+  }) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}/api/faculty/class-quiz-scores?dept=$dept&year=$year&section=$section&subject_code=$subjectCode'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return ClassQuizScoresResponse.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load class quiz scores: ${response.body}');
     }
   }
 }

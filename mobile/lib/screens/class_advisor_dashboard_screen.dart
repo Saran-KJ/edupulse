@@ -4,6 +4,8 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/web_scaffold.dart';
+import '../config/app_theme.dart';
+import '../widgets/main_scaffold.dart';
 import 'students_list_screen.dart';
 import 'students_mark_management_screen.dart';
 import 'attendance_entry_screen.dart';
@@ -36,7 +38,10 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
       future: ApiService().getCurrentUser(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            backgroundColor: AppColors.surface,
+            body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          );
         }
         
         if (snapshot.hasError) {
@@ -48,158 +53,61 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
         }
         
         final user = snapshot.data;
-        
-        // Validate that user has required Class Advisor data
-        // HODs only need department, not year/section
         final isHOD = user?.role == 'hod';
         if (user == null || user.dept == null || (!isHOD && (user.year == null || user.section == null))) {
           return _buildIncompleteAccountScreen();
         }
         
-        final isWideScreen = MediaQuery.of(context).size.width >= ResponsiveBreakpoints.tablet;
-
-        if (isWideScreen) {
-          return _buildWebLayout(user);
-        }
-        return _buildMobileLayout(user);
+        return MainScaffold(
+          title: isHOD ? 'HOD Dashboard' : 'Class Advisor Dashboard',
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+          destinations: [
+            const NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+            const NavDestination(icon: Icons.people_rounded, label: 'Students'),
+            const NavDestination(icon: Icons.grade_rounded, label: 'Marks'),
+            const NavDestination(icon: Icons.calendar_today_rounded, label: 'Attendance'),
+            const NavDestination(icon: Icons.local_activity_rounded, label: 'Activities'),
+            const NavDestination(icon: Icons.analytics_rounded, label: 'Analytics'),
+          ],
+          onLogout: () => _handleLogout(context),
+          body: _buildBody(user),
+        );
       },
     );
   }
 
-  Widget _buildIncompleteAccountScreen() {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Class Advisor Dashboard'),
-        backgroundColor: Colors.blue.shade800,
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.orange.shade700),
-              const SizedBox(height: 16),
-              const Text(
-                'Incomplete Account Setup',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Your account is missing required information (Department, Year, or Section).',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Please contact the administrator to update your account.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _buildBody(User user) {
+    if (_selectedIndex == 1) {
+      Future.microtask(() => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentsListScreen(dept: user.dept ?? '', year: int.tryParse(user.year ?? ''), section: user.section))));
+      _selectedIndex = 0;
+    } else if (_selectedIndex == 2) {
+      Future.microtask(() => _navigateToMarks(user));
+      _selectedIndex = 0;
+    } else if (_selectedIndex == 3) {
+      Future.microtask(() => Navigator.push(context, MaterialPageRoute(builder: (_) => AttendanceEntryScreen(dept: user.dept!, year: int.tryParse(user.year ?? '') ?? 1, section: user.section ?? 'A'))));
+      _selectedIndex = 0;
+    } else if (_selectedIndex == 4) {
+      Future.microtask(() => Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityManagementScreen(dept: user.dept!, year: int.tryParse(user.year ?? '') ?? 1, section: user.section ?? ''))));
+      _selectedIndex = 0;
+    } else if (_selectedIndex == 5) {
+      Future.microtask(() => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen())));
+      _selectedIndex = 0;
+    }
 
-  Widget _buildWebLayout(User user) {
-    final dept = user.dept!;
-    final year = user.year ?? 'All';
-    final section = user.section ?? 'All';
-
-    final isHOD = user.role == 'hod';
-    final subtitle = isHOD 
-        ? 'Department: $dept' 
-        : '$dept - $year Year $section Section';
-
-    return WebScaffold(
-      title: isHOD ? 'HOD Dashboard' : 'Class Advisor Dashboard',
-      subtitle: subtitle,
-      selectedIndex: _selectedIndex,
-      navigationItems: [
-        NavigationItem(
-          icon: Icons.dashboard,
-          label: 'Dashboard',
-          onTap: () => setState(() => _selectedIndex = 0),
-        ),
-        NavigationItem(
-          icon: Icons.list_alt,
-          label: 'Student List',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => StudentsListScreen(
-                dept: user.dept ?? '',
-                year: int.tryParse(user.year ?? ''),
-                section: user.section,
-              ),
-            ),
-          ),
-        ),
-        NavigationItem(
-          icon: Icons.grade,
-          label: 'Enter Marks',
-          onTap: () => _navigateToMarks(user),
-        ),
-        NavigationItem(
-          icon: Icons.calendar_today,
-          label: 'Attendance',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AttendanceEntryScreen(
-                dept: dept,
-                year: int.tryParse(year) ?? 1,
-                section: section,
-              ),
-            ),
-          ),
-        ),
-        NavigationItem(
-          icon: Icons.local_activity,
-          label: 'Activities',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ActivityManagementScreen(
-                dept: user.dept!,
-                year: int.tryParse(user.year ?? '') ?? 1,
-                section: user.section ?? '',
-              ),
-            ),
-          ),
-        ),
-        NavigationItem(
-          icon: Icons.analytics,
-          label: 'Analytics',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen())),
-        ),
-      ],
-      userHeader: _buildUserHeader(user),
-      onLogout: () => _handleLogout(context),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: ContentConstraints(
-          maxWidth: 1200,
-          padding: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildWelcomeHeader(user),
-              const SizedBox(height: 32),
-              _buildSummaryCards(),
-              const SizedBox(height: 32),
-              const Text(
-                'Quick Actions',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              _buildQuickActions(context, user),
-            ],
-          ),
-        ),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildWelcomeHeader(user),
+          const SizedBox(height: 32),
+          _buildSummaryCards(),
+          const SizedBox(height: 32),
+          SectionHeader(title: 'Quick Actions', icon: Icons.bolt_rounded, color: AppColors.accent),
+          const SizedBox(height: 16),
+          _buildQuickActions(context, user),
+          const SizedBox(height: 40),
+        ],
       ),
     );
   }
@@ -603,6 +511,48 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
           ),
         );
       },
+    );
+  }
+
+  Widget _buildIncompleteAccountScreen() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Account Setup Required'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: () => _handleLogout(context),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.account_circle_outlined, size: 80, color: AppColors.textSecondary),
+              const SizedBox(height: 24),
+              Text(
+                'Class Not Assigned',
+                style: AppTextStyles.heading,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Your account has not been assigned as an advisor for a class yet. Please contact the department HOD or Administrator.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => _handleLogout(context),
+                child: const Text('Logout'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

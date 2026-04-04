@@ -527,44 +527,52 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
             SizedBox(height: 32),
             // Result Card
             Center(
-              child: Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isPassed ? Colors.green.shade100 : Colors.red.shade100,
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isPassed ? Colors.green : Colors.red).withOpacity(0.3),
-                      spreadRadius: 8,
-                      blurRadius: 16,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double size = MediaQuery.of(context).size.width * 0.4;
+                  if (size > 220) size = 220;
+                  if (size < 160) size = 160;
+
+                  return Container(
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isPassed ? Colors.green.shade100 : Colors.red.shade100,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isPassed ? Colors.green : Colors.red).withOpacity(0.3),
+                          spreadRadius: 8,
+                          blurRadius: 16,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$percentage%',
-                        style: TextStyle(
-                          fontSize: 64,
-                          fontWeight: FontWeight.bold,
-                          color: isPassed ? Colors.green.shade800 : Colors.red.shade800,
-                        ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '$percentage%',
+                            style: TextStyle(
+                              fontSize: size * 0.3,
+                              fontWeight: FontWeight.bold,
+                              color: isPassed ? Colors.green.shade800 : Colors.red.shade800,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            isPassed ? 'Passed!' : 'Try Again',
+                            style: TextStyle(
+                              fontSize: size * 0.1,
+                              fontWeight: FontWeight.bold,
+                              color: isPassed ? Colors.green.shade800 : Colors.red.shade800,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        isPassed ? 'Passed!' : 'Try Again',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: isPassed ? Colors.green.shade800 : Colors.red.shade800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                }
               ),
             ),
             SizedBox(height: 32),
