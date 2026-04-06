@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     skill_gemini_api_key: str = Field(default="", validation_alias="skill_development")
     programming_api_key: str = Field(default="", validation_alias="Programming")
+    skillhub_api_key: str = Field(default="", validation_alias="SKILLHUB_API_KEY")
     ollama_model: str = Field(default="qwen2.5:3b", validation_alias="OLLAMA_MODEL")
     ollama_base_url: str = Field(default="http://localhost:11434", validation_alias="OLLAMA_BASE_URL")
     opencode_base_url: str = Field(default="http://localhost:25725/v1", validation_alias="OPENCODE_BASE_URL")

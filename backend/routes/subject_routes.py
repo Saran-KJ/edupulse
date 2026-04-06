@@ -23,7 +23,22 @@ async def get_subjects(
     query = db.query(models.Subject)
 
     if semester:
-        query = query.filter(models.Subject.semester == semester)
+        # Normalize: accept both roman ("VII") and numeric ("7") by checking both forms
+        roman_to_num = {
+            "I": "1", "II": "2", "III": "3", "IV": "4",
+            "V": "5", "VI": "6", "VII": "7", "VIII": "8"
+        }
+        num_to_roman = {v: k for k, v in roman_to_num.items()}
+        
+        # Build list of equivalent values to match against
+        sem_variants = {semester}
+        if semester in roman_to_num:
+            sem_variants.add(roman_to_num[semester])
+        elif semester in num_to_roman:
+            sem_variants.add(num_to_roman[semester])
+        
+        query = query.filter(models.Subject.semester.in_(sem_variants))
+
     if category:
         query = query.filter(models.Subject.category == category.upper())
 

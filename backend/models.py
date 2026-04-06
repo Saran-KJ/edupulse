@@ -75,7 +75,7 @@ class StudentBase(Base):
     address = Column(Text)
     blood_group = Column(String(20), nullable=True)
     religion = Column(String(50), nullable=True)
-    caste = Column(String(50), nullable=True)
+    community = Column(String(50), nullable=True)
     abc_id = Column(String(50), nullable=True)
     aadhar_no = Column(String(50), nullable=True)
     father_name = Column(String(100), nullable=True)
@@ -88,9 +88,12 @@ class StudentBase(Base):
     guardian_occupation = Column(String(100), nullable=True)
     guardian_phone = Column(String(20), nullable=True)
     preferred_learning_type = Column(String(50), default="text")  # video_tamil, pdf, visual, text
-    learning_path_preference = Column(String(50), nullable=True)   # Academic Enhancement / Skill Development
+    learning_path_preference = Column(String(50), nullable=True)   # Academic Recovery, Academic Enhancement
     learning_sub_preference = Column(String(50), nullable=True)    # Aptitude, Programming, etc.
     overall_study_strategy = Column(Text, nullable=True)         # JSON cache of AI-generated strategy
+    placement_readiness_score = Column(Float, default=0.0)
+    skill_streak = Column(Integer, default=0)
+    last_skill_activity = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 # Department-specific Student Tables
@@ -177,13 +180,15 @@ class Attendance(Base):
     student_name = Column(String(100), nullable=False)
     date = Column(Date, nullable=False)
     period = Column(Integer, nullable=False, server_default='1')
-    subject_code = Column(String(20), nullable=True)
+    time = Column(String(20), nullable=True) # Added for specific time entry
+    subject_code = Column(String(100), nullable=True)
     status = Column(String(10), nullable=False) # 'Present', 'Absent'
     
     # Class details for easier querying
     dept = Column(String(10), nullable=False) # Changed from dept_id to dept (CSE, ECE, etc.)
     year = Column(Integer, nullable=False)
     section = Column(String(5), nullable=False)
+    semester = Column(Integer, nullable=False, server_default='1')
     reason = Column(String(200), nullable=True) # Added reason for OD/Leave
     
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -308,7 +313,7 @@ class LearningResource(Base):
     tags = Column(String(200), nullable=True) # comma-separated tags
     language = Column(String(50), default="English") # Added for multilingual support
     dept = Column(String(10), nullable=True)  # specific to dept or null for all
-    subject_code = Column(String(20), nullable=True)  # subject-specific resource (null = general)
+    subject_code = Column(String(100), nullable=True)  # subject-specific resource (null = general)
     min_risk_level = Column(String(20), nullable=True) # Show only if risk level is at least this (Low, Medium, High)
     unit = Column(String(20), nullable=True) # e.g. "1", "1,2", "1,2,3,4,5" or null for skill resources
     resource_level = Column(String(20), nullable=True) # Basic, Intermediate, Advanced
@@ -324,6 +329,19 @@ class StudentLearningProgress(Base):
     resource_id = Column(BigInteger, ForeignKey("learning_resources.resource_id"), nullable=False)
     completed = Column(Integer, default=0) # 0 = false, 1 = true
     completed_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    resource = relationship("LearningResource")
+
+class LearningResourceInteraction(Base):
+    """Tracks every time a student opens/interacts with a resource."""
+    __tablename__ = "learning_resource_interactions"
+    
+    id = Column(BigInteger, primary_key=True, index=True)
+    reg_no = Column(String(50), nullable=False, index=True)
+    resource_id = Column(BigInteger, ForeignKey("learning_resources.resource_id"), nullable=False)
+    interaction_type = Column(String(50), default="view") # view, start, finish
+    interacted_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationship
     resource = relationship("LearningResource")
@@ -468,19 +486,33 @@ class ProjectBatch(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     guide_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
-    reviewer_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    reviewer_id = Column(Integer, ForeignKey("users.user_id"), nullable=True) # General reviewer (Reviewer 1)
+    reviewer_2_id = Column(Integer, ForeignKey("users.user_id"), nullable=True) # Reviewer 2
     dept = Column(String(50), nullable=True) # E.g., CSE, ECE
     year = Column(Integer, nullable=True)     # E.g., 4
     section = Column(String(10), nullable=True) # E.g., A
+    
+    project_title = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    zeroth_review_status = Column(String(20), default="Pending") # Pending, Approved, Rejected
+    coordinator_remarks = Column(Text, nullable=True)
+    start_date = Column(Date, nullable=True)
+    completion_status = Column(String(20), default="In Progress") # In Progress, Completed
+    final_demo_url = Column(String(500), nullable=True)
+    final_report_url = Column(String(500), nullable=True)
+    
     created_by = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     guide = relationship("User", foreign_keys=[guide_id])
     reviewer = relationship("User", foreign_keys=[reviewer_id])
+    reviewer_2 = relationship("User", foreign_keys=[reviewer_2_id])
     creator = relationship("User", foreign_keys=[created_by])
     students = relationship("ProjectBatchStudent", back_populates="batch", cascade="all, delete-orphan")
     reviews = relationship("ProjectReview", back_populates="batch", cascade="all, delete-orphan")
     tasks = relationship("ProjectTask", back_populates="batch", cascade="all, delete-orphan")
+    base_papers = relationship("ProjectBasePaper", back_populates="batch", cascade="all, delete-orphan")
+    ppts = relationship("ProjectPPT", back_populates="batch", cascade="all, delete-orphan")
 
 
 class ProjectBatchStudent(Base):
@@ -502,12 +534,52 @@ class ProjectReview(Base):
     batch_id = Column(Integer, ForeignKey("batches.id"), nullable=False)
     reviewer_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     review_number = Column(Integer, nullable=False) # 1, 2, or 3
-    marks = Column(Float, default=0.0)
     feedback = Column(Text, nullable=True)
     reviewed_at = Column(DateTime, default=datetime.utcnow)
     
     batch = relationship("ProjectBatch", back_populates="reviews")
     reviewer = relationship("User", foreign_keys=[reviewer_id])
+    student_marks = relationship("ProjectStudentMark", back_populates="review", cascade="all, delete-orphan")
+
+class ProjectStudentMark(Base):
+    """Stores marks for individual students for a specific review."""
+    __tablename__ = "project_student_marks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    review_id = Column(Integer, ForeignKey("project_reviews.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    marks = Column(Float, default=0.0)
+    feedback = Column(Text, nullable=True)
+    
+    review = relationship("ProjectReview", back_populates="student_marks")
+    student = relationship("User")
+
+class ProjectBasePaper(Base):
+    """Base papers submitted by teams for approval."""
+    __tablename__ = "project_base_papers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=False)
+    title = Column(String(255), nullable=False)
+    file_url = Column(String(500), nullable=True)
+    guide_feedback = Column(Text, nullable=True)
+    is_selected = Column(Integer, default=0) # 0 = not selected, 1 = selected
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    
+    batch = relationship("ProjectBatch", back_populates="base_papers")
+
+class ProjectPPT(Base):
+    """PPT presentations uploaded for reviews."""
+    __tablename__ = "project_ppts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=False)
+    review_number = Column(Integer, nullable=False) # 0 for Zeroth, 1, 2, 3, 4 for Final
+    file_url = Column(String(500), nullable=True)
+    guide_approved = Column(Integer, default=0) # 0 = Pending, 1 = Approved
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    
+    batch = relationship("ProjectBatch", back_populates="ppts")
 
 
 class ProjectTask(Base):
@@ -522,3 +594,13 @@ class ProjectTask(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     batch = relationship("ProjectBatch", back_populates="tasks")
+
+class EarnedBadge(Base):
+    __tablename__ = "earned_badges"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    reg_no = Column(String(50), nullable=False, index=True)
+    badge_name = Column(String(100), nullable=False)
+    badge_type = Column(String(50), nullable=False) # Bronze, Silver, Gold
+    skill_category = Column(String(50), nullable=False)
+    earned_at = Column(DateTime, default=datetime.utcnow)

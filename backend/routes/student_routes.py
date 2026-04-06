@@ -345,7 +345,7 @@ async def update_my_profile(
     
     # Update allowed fields dynamically
     allowed_fields = [
-        'phone', 'address', 'email', 'blood_group', 'religion', 'caste', 
+        'phone', 'address', 'email', 'blood_group', 'religion', 'community', 
         'abc_id', 'aadhar_no', 'father_name', 'father_occupation', 'father_phone',
         'mother_name', 'mother_occupation', 'mother_phone', 'guardian_name', 
         'guardian_occupation', 'guardian_phone', 'dob'

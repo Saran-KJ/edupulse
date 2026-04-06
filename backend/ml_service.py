@@ -1,4 +1,5 @@
 import joblib
+import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Dict, Any
@@ -78,22 +79,24 @@ class MLService:
         # reg_no is already available
 
 
-        # Get attendance percentage
+        # Get attendance percentage for the current semester
         total_days = db.query(models.Attendance).filter(
-            models.Attendance.reg_no == reg_no
+            models.Attendance.reg_no == reg_no,
+            models.Attendance.semester == student.semester
         ).count()
         
         present_days = db.query(models.Attendance).filter(
             models.Attendance.reg_no == reg_no,
+            models.Attendance.semester == student.semester,
             models.Attendance.status.in_(['Present', 'P', 'OD'])
         ).count()
         
         avg_attendance = (present_days / total_days * 100) if total_days > 0 else 0
         
-        # Get internal marks average (Using all available components)
-        # Calculate subject-wise internal marks and then average them
+        # Get internal marks average for the current semester
         marks = db.query(models.Mark).filter(
-            models.Mark.reg_no == reg_no
+            models.Mark.reg_no == reg_no,
+            models.Mark.semester == student.semester
         ).all()
         
         total_internal_percentage = 0
@@ -308,7 +311,9 @@ class MLService:
             return self._rule_based_prediction(features, student_pref)
         
         # Scale features
-        feature_scaled = self.scaler.transform(feature_array)
+        cols = ["attendance_percentage", "internal_avg", "external_gpa", "activity_count", "backlog_count"]
+        feature_df = pd.DataFrame(feature_array, columns=cols)
+        feature_scaled = self.scaler.transform(feature_df)
         
         # Predict
         prediction = self.model.predict(feature_scaled)[0]
@@ -331,11 +336,18 @@ class MLService:
         reasons = self._generate_reasons(features)
         
         return {
-            'risk_level': risk_level,
-            'risk_score': risk_score,
-            'reasons': reasons,
+            'risk_level': str(risk_level),
+            'risk_score': float(risk_score),
+            'reasons': str(reasons),
             'learning_path_preference': student_pref,
-            **features
+            'attendance_percentage': float(features['attendance_percentage']),
+            'internal_avg': float(features['internal_avg']),
+            'external_gpa': float(features['external_gpa']),
+            'activity_count': int(features['activity_count']),
+            'backlog_count': int(features['backlog_count']),
+            'credit_weighted_internal_avg': float(features.get('credit_weighted_internal_avg', features['internal_avg'])),
+            'high_credit_low_score_count': int(features.get('high_credit_low_score_count', 0)),
+            'quiz_score_avg': float(features.get('quiz_score_avg', 0))
         }
     
     def _rule_based_prediction(self, features: Dict[str, float], student_pref: str = None) -> Dict[str, Any]:
@@ -446,21 +458,30 @@ class MLService:
     def save_prediction(self, db: Session, reg_no: str, prediction_result: Dict[str, Any]):
         """Save prediction result to database"""
         try:
+            risk_level = str(prediction_result['risk_level'])
+            risk_score = float(prediction_result['risk_score'])
+            attendance = float(prediction_result['attendance_percentage'])
+            internal = float(prediction_result['internal_avg'])
+            external = float(prediction_result['external_gpa'])
+            activity = int(prediction_result['activity_count'])
+            backlog = int(prediction_result['backlog_count'])
+            reasons = str(prediction_result['reasons'])
+
             db_prediction = models.RiskPrediction(
                 reg_no=reg_no,
-                risk_level=prediction_result['risk_level'],
-                risk_score=prediction_result['risk_score'],
-                attendance_percentage=prediction_result['attendance_percentage'],
-                internal_avg=prediction_result['internal_avg'],
-                external_gpa=prediction_result['external_gpa'],
-                activity_count=prediction_result['activity_count'],
-                backlog_count=prediction_result['backlog_count'],
-                reasons=prediction_result['reasons']
+                risk_level=risk_level,
+                risk_score=risk_score,
+                attendance_percentage=attendance,
+                internal_avg=internal,
+                external_gpa=external,
+                activity_count=activity,
+                backlog_count=backlog,
+                reasons=reasons
             )
             db.add(db_prediction)
             db.commit()
             db.refresh(db_prediction)
-            print(f"Saved risk prediction for {reg_no}: {prediction_result['risk_level']} ({prediction_result['risk_score']:.1f}%)")
+            print(f"Saved risk prediction for {reg_no}: {risk_level} ({risk_score:.1f}%)")
             return db_prediction
         except Exception as e:
             print(f"Error saving prediction for {reg_no}: {e}")
@@ -505,10 +526,18 @@ class MLService:
         cia2 = float(mark.cia_2 or 0)
         model = float(mark.model or 0)
         
-        # Attendance 
-        # For simplicity in this demo, calculate an aggregate matching the student's overall attendance
-        total_days = db.query(models.Attendance).filter(models.Attendance.reg_no == reg_no).count()
-        present_days = db.query(models.Attendance).filter(models.Attendance.reg_no == reg_no, models.Attendance.status.in_(['Present', 'P', 'OD'])).count()
+        # Attendance (per semester)
+        total_days = db.query(models.Attendance).filter(
+            models.Attendance.reg_no == reg_no,
+            models.Attendance.semester == mark.semester
+        ).count()
+        
+        present_days = db.query(models.Attendance).filter(
+            models.Attendance.reg_no == reg_no,
+            models.Attendance.semester == mark.semester,
+            models.Attendance.status.in_(['Present', 'P', 'OD'])
+        ).count()
+        
         attendance = (present_days / total_days * 100) if total_days > 0 else 0
             
         # Get specific subject quiz score
@@ -588,7 +617,9 @@ class MLService:
         # ML Model Path (Subject-specific Logistic Regression)
         if self.subject_model and self.subject_scaler and has_int1 and has_int2:
             # Only use ML if both internals have data, otherwise it's too biased by zeros
-            scaled = self.subject_scaler.transform(feature_array)
+            cols = ["st1", "st2", "a1", "a2", "cia1", "st3", "st4", "a3", "a4", "a5", "cia2", "model_exam", "attendance"]
+            feature_df = pd.DataFrame(feature_array, columns=cols)
+            scaled = self.subject_scaler.transform(feature_df)
             pred = self.subject_model.predict(scaled)[0]
             probability = self.subject_model.predict_proba(scaled)[0]
             
@@ -642,11 +673,15 @@ class MLService:
         x3_internal_marks = features['credit_weighted_internal_avg']
         x4_backlog = features['backlog_count']
         
-        # x5_learning_engagement (derived from completed learning progress)
-        engagement_count = db.query(models.StudentLearningProgress).filter(
-            models.StudentLearningProgress.reg_no == reg_no,
-            models.StudentLearningProgress.completed == 1
-        ).count()
+        # x5_learning_engagement (derived from resource interactions)
+        try:
+            engagement_count = db.query(models.LearningResourceInteraction).filter(
+                models.LearningResourceInteraction.reg_no == reg_no
+            ).count()
+        except:
+            db.rollback()
+            engagement_count = 0
+            
         # Normalize engagement (e.g., max 10 for full engagement)
         x5_engagement = min(engagement_count, 10) * 10 # Scale to 0-100 logic
 

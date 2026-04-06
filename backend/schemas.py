@@ -127,7 +127,7 @@ class StudentBase(BaseModel):
     address: Optional[str] = None
     blood_group: Optional[str] = None
     religion: Optional[str] = None
-    caste: Optional[str] = None
+    community: Optional[str] = None
     abc_id: Optional[str] = None
     aadhar_no: Optional[str] = None
     father_name: Optional[str] = None
@@ -154,7 +154,7 @@ class StudentUpdate(BaseModel):
     dob: Optional[date] = None
     blood_group: Optional[str] = None
     religion: Optional[str] = None
-    caste: Optional[str] = None
+    community: Optional[str] = None
     abc_id: Optional[str] = None
     aadhar_no: Optional[str] = None
     father_name: Optional[str] = None
@@ -169,6 +169,9 @@ class StudentUpdate(BaseModel):
 
 class StudentResponse(StudentBase):
     student_id: int
+    placement_readiness_score: float = 0.0
+    skill_streak: int = 0
+    last_skill_activity: Optional[datetime] = None
     created_at: datetime
     
     class Config:
@@ -257,9 +260,11 @@ class AttendanceBase(BaseModel):
     student_name: str
     date: date
     period: int = 1
+    time: Optional[str] = None
     subject_code: Optional[str] = None
     status: str
     year: int
+    semester: int = 1
     section: str
     dept: str
     reason: Optional[str] = None
@@ -283,8 +288,10 @@ class StudentAttendanceInput(BaseModel):
 class BulkAttendanceCreate(BaseModel):
     date: date
     period: int = 1
+    time: Optional[str] = None
     subject_code: Optional[str] = None
     year: int
+    semester: int = 1
     section: str
     dept: str
     attendance_list: List[StudentAttendanceInput]
@@ -424,6 +431,33 @@ class DashboardStats(BaseModel):
     at_risk_count: int
     high_performers: int
 
+class DepartmentSummary(BaseModel):
+    dept_code: str
+    student_count: int
+    avg_attendance: float
+    at_risk_count: int
+    high_performer_count: int
+
+class SubjectRiskSummary(BaseModel):
+    subject_code: str
+    subject_title: str
+    high_risk_count: int
+    medium_risk_count: int
+
+class HODReportSummary(BaseModel):
+    at_risk_by_subject: List[SubjectRiskSummary]
+    critical_students: List[RiskPredictionResponse]
+    faculty_count: int
+    total_subjects: int
+
+class CollegeSummaryResponse(BaseModel):
+    total_students: int
+    total_activities: int
+    avg_college_attendance: float
+    total_at_risk: int
+    total_high_performers: int
+    department_summaries: List[DepartmentSummary]
+
 class StudentProfile360(BaseModel):
     student: StudentResponse
     marks: List[MarkResponse]
@@ -551,12 +585,26 @@ class SubjectLearningStatus(BaseModel):
     practice_schedule: Optional[str] = None
     weekly_goals: Optional[str] = None
 
+class EarnedBadgeResponse(BaseModel):
+    badge_name: str
+    badge_type: str
+    skill_category: str
+    earned_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class OverallLearningViewResponse(BaseModel):
     overall_risk: str
     priority_subjects: List[SubjectLearningStatus]
     study_strategy: dict
     total_progress: float
     preferred_learning_type: str
+    placement_readiness_score: float = 0.0
+    skill_streak: int = 0
+    earned_badges: List[EarnedBadgeResponse] = []
+    learning_path_preference: Optional[str] = None
+    learning_sub_preference: Optional[str] = None
 
 class StudentLearningStatusResponse(BaseModel):
     reg_no: str
@@ -674,25 +722,71 @@ class ProjectCoordinatorResponse(ProjectCoordinatorBase):
 
 # Project Review Schemas
 
-class ProjectReviewBase(BaseModel):
-    batch_id: int
-    review_number: int
+class ProjectStudentMarkBase(BaseModel):
+    student_id: int
     marks: float
     feedback: Optional[str] = None
 
-class ProjectReviewCreate(ProjectReviewBase):
+class ProjectStudentMarkCreate(ProjectStudentMarkBase):
     pass
+
+class ProjectStudentMarkResponse(ProjectStudentMarkBase):
+    id: int
+    student_name: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class ProjectReviewBase(BaseModel):
+    batch_id: int
+    review_number: int
+    feedback: Optional[str] = None
+
+class ProjectReviewCreate(ProjectReviewBase):
+    student_marks: List[ProjectStudentMarkCreate]
 
 class ProjectReviewResponse(ProjectReviewBase):
     id: int
     reviewer_id: Optional[int] = None
     reviewer_name: Optional[str] = None
     reviewed_at: datetime
+    student_marks: List[ProjectStudentMarkResponse] = []
+    
+    class Config:
+        from_attributes = True
+# Project Phase Specific Schemas
+class ProjectBasePaperBase(BaseModel):
+    title: str
+    file_url: Optional[str] = None
+
+class ProjectBasePaperCreate(ProjectBasePaperBase):
+    pass
+
+class ProjectBasePaperResponse(ProjectBasePaperBase):
+    id: int
+    batch_id: int
+    guide_feedback: Optional[str] = None
+    is_selected: int
+    uploaded_at: datetime
     
     class Config:
         from_attributes = True
 
-# Project Task Schemas
+class ProjectPPTBase(BaseModel):
+    review_number: int
+    file_url: Optional[str] = None
+
+class ProjectPPTCreate(ProjectPPTBase):
+    pass
+
+class ProjectPPTResponse(ProjectPPTBase):
+    id: int
+    batch_id: int
+    guide_approved: int
+    uploaded_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 class ProjectTaskBase(BaseModel):
     batch_id: int
@@ -734,16 +828,40 @@ class ProjectBatchResponse(BaseModel):
     guide_name: str
     reviewer_id: Optional[int] = None
     reviewer_name: Optional[str] = None
+    reviewer_2_id: Optional[int] = None
+    reviewer_2_name: Optional[str] = None
     dept: Optional[str] = None
     year: Optional[int] = None
     section: Optional[str] = None
+    
+    project_title: Optional[str] = None
+    description: Optional[str] = None
+    zeroth_review_status: str = "Pending"
+    coordinator_remarks: Optional[str] = None
+    start_date: Optional[date] = None
+    completion_status: str = "In Progress"
+    final_demo_url: Optional[str] = None
+    final_report_url: Optional[str] = None
+    
     students: List[ProjectBatchStudentResponse]
     reviews: List[ProjectReviewResponse] = []
     tasks: List[ProjectTaskResponse] = []
+    base_papers: List[ProjectBasePaperResponse] = []
+    ppts: List[ProjectPPTResponse] = []
     created_at: datetime
     
     class Config:
         from_attributes = True
+
+class ProjectBatchUpdate(BaseModel):
+    project_title: Optional[str] = None
+    description: Optional[str] = None
+    zeroth_review_status: Optional[str] = None
+    coordinator_remarks: Optional[str] = None
+    start_date: Optional[date] = None
+    completion_status: Optional[str] = None
+    final_demo_url: Optional[str] = None
+    final_report_url: Optional[str] = None
 
 class ProjectBatchReviewerUpdate(BaseModel):
     reviewer_id: int

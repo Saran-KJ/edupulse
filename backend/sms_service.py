@@ -48,13 +48,28 @@ class SMSService:
     def send_bilingual_sms(self, phone_number: str, english_text: str, tamil_text: str):
         """
         Sends a bilingual (English + Tamil) SMS via the selected driver.
+        Ensures India country code (+91) if not present.
         """
+        if not phone_number:
+            print("WARNING: No phone number provided. Skipping SMS.")
+            return False
+
+        # Clean phone number (removing spaces, dashes, etc.)
+        num_str = str(phone_number).strip().replace(" ", "").replace("-", "")
+        clean_number = "".join(c for c in num_str if c.isdigit() or c == "+")
+        
+        # If it's 10 digits, prepend +91
+        if len(clean_number) == 10:
+            clean_number = f"+91{clean_number}"
+        elif len(clean_number) == 12 and clean_number.startswith("91"):
+            clean_number = f"+{clean_number}"
+        
         full_message = f"{english_text}\n\n{tamil_text}"
 
         # 1. SMSMobileAPI Driver
         if self.driver == "smsmobileapi":
             from sms_mobile_driver import sms_mobile_driver
-            return sms_mobile_driver.send_sms(phone_number, full_message)
+            return sms_mobile_driver.send_sms(clean_number, full_message)
 
         # 2. Email Driver (Optional addition later)
         # elif self.driver == "email":
@@ -101,14 +116,29 @@ class SMSService:
     def notify_mark_update(self, phone_number: str, student_name: str, subject: str, marks_dict: dict):
         """
         Alerts parent when marks are updated.
-        marks_dict can contain cia_1, cia_2, model, etc.
+        Strictly includes ONLY non-zero, non-null numerical marks.
         """
-        cia1 = marks_dict.get('cia_1', '-')
-        cia2 = marks_dict.get('cia_2', '-')
-        model = marks_dict.get('model', '-')
-
-        en = f"EduPulse: {student_name}'s marks updated for {subject}. CIA1: {cia1}, CIA2: {cia2}, Model: {model}. Check app for details."
-        ta = f"எடியுபல்ஸ் தகவல்: {student_name}-ன் {subject} மதிப்பெண்கள் புதுப்பிக்கப்பட்டுள்ளன. CIA1: {cia1}, CIA2: {cia2}, Model: {model}. கூடுதல் விவரங்களுக்கு செயலியைப் பார்க்கவும்."
+        active_marks = []
+        for key, label in [
+            ('st1', 'ST1'), ('st2', 'ST2'), ('st3', 'ST3'), ('st4', 'ST4'),
+            ('a1', 'A1'), ('a2', 'A2'), ('a3', 'A3'), ('a4', 'A4'), ('a5', 'A5'),
+            ('cia_1', 'CIA1'), ('cia_2', 'CIA2'), ('model', 'Model')
+        ]:
+            val = marks_dict.get(key)
+            try:
+                # Only include if it's a positive number (ignoring 0/None/empty)
+                if val is not None and float(val) > 0:
+                    active_marks.append(f"{label}:{val}")
+            except (ValueError, TypeError):
+                continue
+        
+        if not active_marks:
+            # If nothing is entered yet, don't send a confusing SMS
+            return True
+            
+        marks_str = ", ".join(active_marks)
+        en = f"EduPulse: {student_name}'s {subject} marks updated. {marks_str}."
+        ta = f"மதிப்பெண்: {student_name}-ன் {subject} மதிப்பெண்கள்: {marks_str}."
         
         return self.send_bilingual_sms(phone_number, en, ta)
 
@@ -118,6 +148,24 @@ class SMSService:
         """
         en = f"EduPulse: {student_name} scored {score}% in {subject} Unit {unit} early risk quiz. Guidance recommended."
         ta = f"எடியுபல்ஸ்: {student_name} {subject} பாடம் யூனிட் {unit} ஆரம்பகட்ட வினாடி வினாவில் {score}% மதிபெண் பெற்றுள்ளார்."
+
+        return self.send_bilingual_sms(phone_number, en, ta)
+
+    def notify_low_attendance(self, phone_number: str, student_name: str, percentage: float):
+        """
+        Alerts parent when student's attendance falls below 75%.
+        """
+        en = f"EduPulse: {student_name}'s attendance is {percentage:.1f}%, which is below the threshold (75%). Please ensure consistency."
+        ta = f"எடியுபல்ஸ் தகவல்: {student_name}-ன் வருகைப்பதிவு {percentage:.1f}% ஆக உள்ளது (75% க்கும் குறைவு). மாணவர் தொடர்ந்து கல்லூரிக்கு வருவதை உறுதி செய்யவும்."
+
+        return self.send_bilingual_sms(phone_number, en, ta)
+
+    def notify_risk_alert(self, phone_number: str, student_name: str, risk_level: str, score: float):
+        """
+        Alerts parent when student is flagged as Medium or High Risk.
+        """
+        en = f"EduPulse: {student_name} is flagged as {risk_level} Risk. Performance score: {score:.1f}%. Check app for recovery plan."
+        ta = f"எடியுபல்ஸ்: {student_name} {risk_level} அபாய நிலையில் (Risk) உள்ளார். செயல்திறன் மதிப்பெண்: {score:.1f}%. மீண்டெழும் திட்டத்தை செயலியில் பார்க்கவும்."
 
         return self.send_bilingual_sms(phone_number, en, ta)
 

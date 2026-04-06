@@ -20,7 +20,7 @@ def main():
     new_columns = {
         "blood_group": "VARCHAR(20)",
         "religion": "VARCHAR(50)",
-        "caste": "VARCHAR(50)",
+        "community": "VARCHAR(50)",
         "abc_id": "VARCHAR(50)",
         "aadhar_no": "VARCHAR(50)",
         "father_name": "VARCHAR(100)",

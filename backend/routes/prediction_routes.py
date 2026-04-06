@@ -6,7 +6,7 @@ import models
 import schemas
 import auth
 from ml_service import ml_service
-from gemini_service import generate_quiz_questions
+from sms_service import sms_service
 
 router = APIRouter(prefix="/api/predict", tags=["ML Prediction"])
 
@@ -43,6 +43,26 @@ async def predict_student_risk(
                 break # Found and cleared
         except:
             continue
+
+    # Trigger risk alert SMS to parent if risk is high
+    if db_prediction.risk_level == models.RiskLevelEnum.HIGH:
+        try:
+            # Query student record to get department (needed for parent lookup)
+            from routes.learning_routes import STUDENT_MODEL_MAP
+            student = None
+            for dept, model in STUDENT_MODEL_MAP.items():
+                student = db.query(model).filter(model.reg_no == request.reg_no).first()
+                if student: break
+            
+            if student:
+                phone, name = sms_service.get_parent_phone(db, request.reg_no, student.dept)
+                if phone:
+                    background_tasks.add_task(
+                        sms_service.notify_risk_alert, 
+                        phone, name, "High", db_prediction.risk_score
+                    )
+        except Exception as e:
+            print(f"Error triggering risk SMS for {request.reg_no}: {e}")
 
     # Trigger personalized learning plan regeneration in background
     background_tasks.add_task(generate_plans_for_student_task, request.reg_no)
@@ -84,6 +104,25 @@ async def predict_student_risk_get(
                 break
         except:
             continue
+
+    # Trigger risk alert SMS to parent if risk is high
+    if db_prediction.risk_level == models.RiskLevelEnum.HIGH:
+        try:
+            from routes.learning_routes import STUDENT_MODEL_MAP
+            student = None
+            for dept, model in STUDENT_MODEL_MAP.items():
+                student = db.query(model).filter(model.reg_no == reg_no).first()
+                if student: break
+            
+            if student:
+                phone, name = sms_service.get_parent_phone(db, reg_no, student.dept)
+                if phone:
+                    background_tasks.add_task(
+                        sms_service.notify_risk_alert, 
+                        phone, name, "High", db_prediction.risk_score
+                    )
+        except Exception as e:
+            print(f"Error triggering risk SMS for {reg_no}: {e}")
 
     # Trigger personalized learning plan regeneration in background
     background_tasks.add_task(generate_plans_for_student_task, reg_no)

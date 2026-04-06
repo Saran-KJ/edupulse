@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import requests
 import google.generativeai as genai
 import config as cfg
@@ -199,21 +200,16 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
     """
     settings = cfg.get_settings()
     
-    # Priority: nvidia_api_key -> global gemini_api_key (especially if 'ollama') -> override_api_key -> secondary global
+    # Priority: override_api_key -> nvidia_api_key -> global gemini_api_key (especially if 'ollama') -> secondary global
     keys_to_try = []
-    
-    # If NVIDIA key is present, it becomes Top Priority
-    if settings.nvidia_api_key:
-        keys_to_try.append(settings.nvidia_api_key)
 
-    # If the user explicitly set 'ollama' or 'opencode' as the global key, force it to be priority
-    if settings.gemini_api_key:
-        lower_key = settings.gemini_api_key.lower()
-        if lower_key == "ollama" or lower_key == "opencode":
-             keys_to_try.append(settings.gemini_api_key)
-        
-    if override_api_key and override_api_key not in keys_to_try:
+    # If an override key is explicitly passed (e.g. SkillHub key), it becomes Top Priority
+    if override_api_key:
         keys_to_try.append(override_api_key)
+    
+    # If NVIDIA key is present, it becomes next priority if not already added
+    if settings.nvidia_api_key and settings.nvidia_api_key not in keys_to_try:
+        keys_to_try.append(settings.nvidia_api_key)
         
     if settings.gemini_api_key and settings.gemini_api_key not in keys_to_try:
         keys_to_try.append(settings.gemini_api_key)
@@ -311,10 +307,42 @@ def _call_ai_service(prompt: str, is_json: bool = True, override_api_key: str = 
                 continue
     
     return None
+
+def _get_syllabus_context(subject_code: str, unit_number: int):
+    """
+    Helper to fetch syllabus topics from the pre-extracted JSON.
+    """
+    try:
+        data_path = os.path.join(os.path.dirname(__file__), "data", "r2021_syllabus.json")
+        if not os.path.exists(data_path):
+            print(f"DEBUG: Syllabus data not found at {data_path}")
+            return None
+        
+        with open(data_path, 'r', encoding='utf-8') as f:
+            syllabus_data = json.load(f)
+        
+        # Try exact match or code contained in prompt
+        # Subject code might be passed as 'CS3491 - AI' or just 'CS3491'
+        match = re.search(r'[A-Z]{2,3}\d{4}', subject_code.upper())
+        code = match.group(0) if match else subject_code.upper()
+        
+        if code in syllabus_data:
+            subject_info = syllabus_data[code]
+            unit_key = str(unit_number)
+            if unit_key in subject_info["units"]:
+                return {
+                    "title": subject_info["title"],
+                    "topics": subject_info["units"][unit_key]
+                }
+    except Exception as e:
+        print(f"DEBUG: Error loading syllabus context: {e}")
+    return None
+
 def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str):
     from dynamic_quiz_generator import DynamicQuizGenerator
     risk_level_upper = risk_level.upper()
-    num, diff = (20, "Basic") if risk_level_upper == "HIGH" else (25, "Moderate") if risk_level_upper == "MEDIUM" else (30, "Advanced")
+    # Elevate difficulty to College / Placement level as requested
+    num, diff = (20, "College Foundation") if risk_level_upper == "HIGH" else (25, "University Standard") if risk_level_upper == "MEDIUM" else (30, "Complex Placement Difficulty")
         
     seen_questions = set()
     final_questions = []
@@ -342,6 +370,15 @@ def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str
     Follow the same JSON schema as Batch 1. Do not repeat any basics.
     """
 
+    # Fetch syllabus context if available
+    syllabus_ctx = _get_syllabus_context(subject_name, unit_number)
+    context_instruction = ""
+    if syllabus_ctx:
+        print(f"DEBUG: Found syllabus context for {subject_name} Unit {unit_number}")
+        context_instruction = f"\nSyllabus Topics for this unit: {syllabus_ctx['topics']}\nEnsure questions cover these specific topics."
+    else:
+        print(f"DEBUG: No syllabus context found for {subject_name}")
+
     # Optimize batching to prevent timeouts (8 questions per batch instead of 15)
     batches = [
         ("Core", "Core concepts, definitions, and foundational principles"),
@@ -352,6 +389,7 @@ def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str
     for prompt_title, focus in batches:
         prompt = f"""
         Generate 8 UNIQUE MCQ questions in JSON format for "{subject_name}" Unit {unit_number}.
+        {context_instruction}
         Focus: {focus}.
         Difficulty: {diff}. Return exactly 8 objects in a flat JSON array.
         Schema: {{"question": "...", "option_a": "...", ..., "correct_answer": "A", "question_type": "MCQ"}}
@@ -434,22 +472,32 @@ def generate_subject_plan(subject_title: str, risk_level: str, focus_type: str):
     data = _call_ai_service(prompt, is_json=True)
     return (data.get("practice_schedule"), data.get("weekly_goals")) if data else (None, None)
 
-def generate_skill_content(skill_category: str, sub_category: str = None, level: str = "Beginner") -> dict:
+def generate_skill_content(skill_category: str, sub_category: str = None, level: str = "Beginner", year: int = 1) -> dict:
     level_instruction = ""
     topic = sub_category or skill_category
     skill_lower = skill_category.lower()
 
+    # Determine progression based on Year
+    if year == 1:
+        progression_context = f"Year 1 Student: Focus on foundational logic, introductory syntax, and competitive coding basics. Avoid overwhelming complex architectural patterns."
+    elif year == 2:
+        progression_context = f"Year 2 Student: Focus on Core Implementation, solid Data Structures, and basic OOP principles applied to real scenarios."
+    elif year == 3:
+        progression_context = f"Year 3 Student: Focus on Mini-Projects, standard libraries, API usage, design patterns, and intermediate algorithms."
+    else: # Year 4 or unknown
+        progression_context = f"Year 4 Final Year Student: Focus on Elite Placement Preparation, FAANG/MAANG interview complexity, Advanced Architectural Patterns, Concurrency, and System Design."
+
     if skill_lower == "programming":
         if level == "Beginner":
-            level_instruction = f"Target: {topic}. LEVEL: BEGINNER. Focus ONLY on basic syntax, variables, basic loops, and primitive types. Do not include advanced concepts like decorators or concurrency."
+            level_instruction = f"Target: {topic}. LEVEL: ELITE COLLEGE FOUNDATION. Focus on professional syntax, memory management basics, standard library usage, and best coding practices. Avoid primary-level explanations. {progression_context}"
         elif level == "Intermediate":
-            level_instruction = f"Target: {topic}. LEVEL: INTERMEDIATE. Focus on OOP, file I/O, standard libraries, exception handling, and modular programming. Include design patterns."
+            level_instruction = f"Target: {topic}. LEVEL: UNIVERSITY INTERMEDIATE. Focus on OOP, file I/O, advanced standard libraries, exception handling, and modular programming. Include design patterns."
         else:
-            level_instruction = f"Target: {topic}. LEVEL: ADVANCED. Focus on architectural patterns, memory management, performance optimisation, concurrency, metaprogramming, and advanced language-specific features."
+            level_instruction = f"Target: {topic}. LEVEL: PROFESSIONAL ADVANCED. Focus on architectural patterns, performance optimisation, concurrency, metaprogramming, and advanced language-specific features."
 
     elif skill_lower == "aptitude":
         if level == "Beginner":
-            level_instruction = f"Target: {topic}. LEVEL: BEGINNER. Cover foundational topics only: basic arithmetic, percentages, ratios, simple time & work, and basic data interpretation. Use step-by-step explanations with examples."
+            level_instruction = f"Target: {topic}. LEVEL: COLLEGE PLACEMENT FOUNDATION. Cover competitive exam fundamentals: fast calculation tricks (Vedic maths/Shortcuts), LCM/HCF applications, percentage variations in corporate exams, and basic number theory. Use college-level examples."
         elif level == "Intermediate":
             level_instruction = f"Target: {topic}. LEVEL: INTERMEDIATE. Cover permutations & combinations, probability, profit & loss, time-speed-distance, and series completion. Include shortcut techniques."
         else:
@@ -480,61 +528,112 @@ def generate_skill_content(skill_category: str, sub_category: str = None, level:
             level_instruction = f"Target: {topic}. LEVEL: ADVANCED. Cover systems thinking, Socratic method, complex ethical dilemmas, adversarial thinking, and applying critical thinking to engineering and business decisions at scale."
 
     prompt = f"""
-    Generate an elite technical learning guide for "{topic}".
-    Audience: Senior Engineering Students. Level: {level}.
+    Generate a highly comprehensive, elite technical learning guide for "{topic}". 
+    The content MUST be broad, accurate, and structured perfectly for a student in Year {year}.
+    Audience: University Engineering Students. Level: {level}.
     {level_instruction}
-    Return JSON format:
+    
+    STRICT CONTENT REVOLUTION REQUIREMENTS (NO EXCEPTIONS):
+    1. Generate between 4 to 6 COMPREHENSIVE sections.
+    2. Skip "Hello World" basics. Assume they are engineering students. Use professional/university-level elite terminology.
+    3. Every section MUST include these exactly named nested keys:
+       - "concept_breakdown": Deep technical explanation.
+       - "industry_context": Real-world application in modern MNCs/Tech-stacks.
+       - "code_lab": A highly advanced, production-ready code snippet. NO toy examples. Put the raw code directly as a string here.
+       - "interview_focus": Top FAANG/MAANG level interview expectations and common pitfalls.
+    
+    Return JSON format EXACTLY like this:
     {{
-      "summary": "string",
-      "sections": [{{"title": "string", "body": "string"}}],
-      "roadmap": ["string"],
-      "project": {{"title": "string", "objective": "string", "description": "string", "tech_stack": ["string"]}}
+      "summary": "High level paragraph.",
+      "sections": [
+        {{
+          "title": "Topic Name",
+          "concept_breakdown": "detailed explanation...",
+          "industry_context": "How Uber uses this...",
+          "code_lab": "def complex_algo():...",
+          "interview_focus": "Watch out for O(N^2) complexity here..."
+        }}
+      ],
+      "roadmap": ["Step 1", "Step 2"],
+      "project": {{
+        "title": "Build an Enterprise System", 
+        "objective": "string", 
+        "description": "string", 
+        "milestones": ["Milestone 1", "Milestone 2", "Milestone 3", "Milestone 4", "Milestone 5"],
+        "tech_stack": ["string"],
+        "estimated_duration": "x Hours"
+      }}
     }}
-    Return ONLY the raw JSON.
+    Return ONLY the raw JSON. No markdown backticks.
     """
     settings = cfg.get_settings()
-    override_key = settings.programming_api_key if skill_category.lower() == "programming" and settings.programming_api_key else settings.skill_gemini_api_key
+    # Prioritize SkillHub key, then Nvidia if available, otherwise category-specific or skill-global Gemini key
+    override_key = (
+        settings.skillhub_api_key if settings.skillhub_api_key else
+        (settings.nvidia_api_key if settings.nvidia_api_key else
+        (settings.programming_api_key if skill_category.lower() == "programming" and settings.programming_api_key else settings.skill_gemini_api_key))
+    )
     
     data = _call_ai_service(prompt, is_json=True, override_api_key=override_key)
     
     if not data:
         # Dynamic Fallback
         return {
-            "summary": f"Mastering {topic} at {level} level.",
+            "summary": f"Mastering {topic} at {level} level for Year {year} students.",
             "sections": [
-                {"title": f"Introduction to {topic} ({level})", "body": f"This section covers the core technical aspects of {topic} at the {level} level, intended for senior engineering students..."},
-                {"title": f"The Engineering Perspective on {topic}", "body": f"Focusing on real-world industrial implementation of {topic} concepts with {level} complexity..."}
+                {
+                    "title": f"The Engineering Perspective on {topic}",
+                    "concept_breakdown": f"This section covers the core technical aspects of {topic} at the {level} level.",
+                    "industry_context": f"Focusing on real-world industrial implementation of {topic} concepts with {level} complexity.",
+                    "code_lab": f"// Simulated code for {topic}\nvoid execute() {{\n  // implementation\n}}",
+                    "interview_focus": "Common questions asked during tech rounds."
+                }
             ],
             "roadmap": [f"Deep dive into {topic} {level} documentation"],
             "project": {
                 "title": f"{topic} {level} Capstone",
                 "objective": f"Apply {level} {topic} principles to build a functional prototype.",
                 "description": f"A comprehensive project covering {level} concepts.",
-                "tech_stack": [topic, "Standard Library"]
+                "milestones": ["Set up environment", "Implement core logic", "Write unit tests", "Optimize for scale"],
+                "tech_stack": [topic, "Standard Library"],
+                "estimated_duration": "10 Hours"
             }
         }
     return data
 
 def generate_skill_quiz(skill_category: str, difficulty: str = "Intermediate", sub_category: str = None) -> list:
     topic = sub_category or skill_category
-    prompt = f"""Generate exactly 20 multiple-choice quiz questions for "{topic}" at {difficulty} level.
+    
+    # Elevate difficulty to Elite College / Placement level as requested
+    effective_difficulty = "Elite Placement Preparation (Placement/GATE/GRE level)"
+        
+    prompt = f"""Generate exactly 20 ELITE multiple-choice quiz questions for "{topic}" at {effective_difficulty} level.
+    Target Audience: Senior Engineering Students (Age 20-22).
+    Language: English ONLY.
 
 STRICT RULES:
 - Every question MUST have exactly 4 answer options labeled A, B, C, D.
-- ALL questions must be type "MCQ". Do NOT generate open-ended or numerical-only questions.
-- For math/aptitude questions, always provide 4 numerical choices to pick from.
+- ALL questions must be type "MCQ".
+- CONTENT MIX: 40% Conceptual, 40% Application-based scenarios, 20% Advanced Logic/Edge cases.
+- AVOID trivial, elementary, or obvious questions. Every question should require analytical thought.
 - "correct_answers" must be a list with exactly one letter: ["A"], ["B"], ["C"], or ["D"].
+- "explanation" MUST be a detailed, step-by-step logical reasoning (minimum 40 words) justifying the answer.
 
 Return a JSON list of exactly 20 objects. Each object must have:
 - "question": string
 - "type": "MCQ"
 - "options": list of exactly 4 strings [optionA, optionB, optionC, optionD]
 - "correct_answers": ["A"] or ["B"] or ["C"] or ["D"]
-- "explanation": brief explanation string
+- "explanation": "Detailed Step-by-step reasoning justifying the correct option."
 
 Return ONLY the raw JSON list, no markdown, no extra text."""
     settings = cfg.get_settings()
-    override_key = settings.programming_api_key if skill_category.lower() == "programming" and settings.programming_api_key else settings.skill_gemini_api_key
+    # Prioritise SkillHub key, then Nvidia if available, otherwise category-specific or skill-global Gemini key
+    override_key = (
+        settings.skillhub_api_key if settings.skillhub_api_key else
+        (settings.nvidia_api_key if settings.nvidia_api_key else
+        (settings.programming_api_key if skill_category.lower() == "programming" and settings.programming_api_key else settings.skill_gemini_api_key))
+    )
     
     data = _call_ai_service(prompt, is_json=True, override_api_key=override_key)
     return data if isinstance(data, list) else []

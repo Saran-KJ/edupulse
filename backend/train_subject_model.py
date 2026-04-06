@@ -115,7 +115,7 @@ def train_subject_model():
     
     # Train Logistic Regression
     print("\nTraining Logistic Regression...")
-    model = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000, random_state=42)
+    model = LogisticRegression(solver='lbfgs', max_iter=1000, random_state=42)
     model.fit(X_train_scaled, y_train)
     
     y_pred = model.predict(X_test_scaled)

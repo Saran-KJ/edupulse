@@ -58,50 +58,55 @@ async def create_bulk_marks(
     for mark in created_marks:
         db.refresh(mark)
         
-    # Trigger risk prediction for all affected students
-    # Use a set to avoid duplicate predictions for the same student
+    # Trigger background processing for risk and learning plans
     affected_students = set(mark.reg_no for mark in created_marks)
-    
-    from ml_service import ml_service
-    
-    for reg_no in affected_students:
-        try:
-            print(f"Triggering risk update for {reg_no} after bulk upload")
-            prediction = ml_service.predict_risk(db, reg_no)
-            ml_service.save_prediction(db, reg_no, prediction)
-        except Exception as e:
-            print(f"Error updating risk for {reg_no}: {e}")
-    
-    # Trigger personalized learning plan generation
-    from routes.learning_routes import generate_plan_for_subject
     affected_pairs = set((mark.reg_no, mark.subject_code) for mark in created_marks)
-    for reg_no, subject_code in affected_pairs:
-        try:
-            print(f"Generating learning plan for {reg_no}/{subject_code}")
-            generate_plan_for_subject(db, reg_no, subject_code)
-        except Exception as e:
-            print(f"Error generating plan for {reg_no}/{subject_code}: {e}")
+    
+    background_tasks.add_task(process_post_mark_update, affected_students, affected_pairs)
             
     # Trigger SMS notification to parent
-    # For bulk upload, we send a summary SMS per student
     for reg_no in affected_students:
         try:
-            # Find any mark from created_marks for this student to get details
             m = next(mark for mark in created_marks if mark.reg_no == reg_no)
             phone, name = sms_service.get_parent_phone(db, reg_no, m.dept)
             if phone:
                 marks_data = {
-                    "cia_1": m.cia_1,
-                    "cia_2": m.cia_2,
-                    "model": m.model_exam
+                    "st1": m.slip_test_1, "st2": m.slip_test_2, "st3": m.slip_test_3, "st4": m.slip_test_4,
+                    "a1": m.assignment_1, "a2": m.assignment_2, "a3": m.assignment_3, "a4": m.assignment_4, "a5": m.assignment_5,
+                    "cia_1": m.cia_1, "cia_2": m.cia_2, "model": m.model
                 }
-                background_tasks.add_task(
-                    sms_service.notify_mark_update, phone, name, m.subject_title, marks_data
-                )
+                background_tasks.add_task(sms_service.notify_mark_update, phone, name, m.subject_title, marks_data)
         except Exception as e:
             print(f"Error triggering SMS for {reg_no}: {e}")
             
     return created_marks
+
+def process_post_mark_update(reg_nos: set, subject_pairs: set):
+    """Background task to handle ML and AI processing after marks are updated."""
+    from database import SessionLocal
+    from ml_service import ml_service
+    from routes.learning_routes import generate_plan_for_subject
+    
+    db = SessionLocal()
+    try:
+        # 1. Update overall risk for all students
+        for reg_no in reg_nos:
+            try:
+                print(f"Background: Updating risk for {reg_no}")
+                prediction = ml_service.predict_risk(db, reg_no)
+                ml_service.save_prediction(db, reg_no, prediction)
+            except Exception as e:
+                print(f"Background Error (Risk): {e}")
+        
+        # 2. Update learning plans for affected subjects
+        for reg_no, subject_code in subject_pairs:
+            try:
+                print(f"Background: Generating plan for {reg_no}/{subject_code}")
+                generate_plan_for_subject(db, reg_no, subject_code)
+            except Exception as e:
+                print(f"Background Error (AI Plan): {e}")
+    finally:
+        db.close()
 
 @router.get("/class/{dept}/{year}/{section}", response_model=List[schemas.MarkResponse])
 async def get_class_marks(
@@ -169,34 +174,19 @@ async def update_mark(
     db.commit()
     db.refresh(db_mark)
     
-    # Trigger risk prediction
-    from ml_service import ml_service
-    try:
-        print(f"Triggering risk update for {db_mark.reg_no} after mark update")
-        prediction = ml_service.predict_risk(db, db_mark.reg_no)
-        ml_service.save_prediction(db, db_mark.reg_no, prediction)
-    except Exception as e:
-        print(f"Error updating risk for {db_mark.reg_no}: {e}")
-    
-    # Trigger personalized learning plan
-    from routes.learning_routes import generate_plan_for_subject
-    try:
-        generate_plan_for_subject(db, db_mark.reg_no, db_mark.subject_code)
-    except Exception as e:
-        print(f"Error generating plan for {db_mark.reg_no}/{db_mark.subject_code}: {e}")
+    # Trigger background processing for risk and learning plans
+    background_tasks.add_task(process_post_mark_update, {db_mark.reg_no}, {(db_mark.reg_no, db_mark.subject_code)})
         
     # Trigger SMS notification
     try:
         phone, name = sms_service.get_parent_phone(db, db_mark.reg_no, db_mark.dept)
         if phone:
             marks_data = {
-                "cia_1": db_mark.cia_1,
-                "cia_2": db_mark.cia_2,
-                "model": db_mark.model_exam
+                "st1": db_mark.slip_test_1, "st2": db_mark.slip_test_2, "st3": db_mark.slip_test_3, "st4": db_mark.slip_test_4,
+                "a1": db_mark.assignment_1, "a2": db_mark.assignment_2, "a3": db_mark.assignment_3, "a4": db_mark.assignment_4, "a5": db_mark.assignment_5,
+                "cia_1": db_mark.cia_1, "cia_2": db_mark.cia_2, "model": db_mark.model
             }
-            background_tasks.add_task(
-                sms_service.notify_mark_update, phone, name, db_mark.subject_title, marks_data
-            )
+            background_tasks.add_task(sms_service.notify_mark_update, phone, name, db_mark.subject_title, marks_data)
     except Exception as e:
         print(f"Error triggering SMS for {db_mark.reg_no}: {e}")
         

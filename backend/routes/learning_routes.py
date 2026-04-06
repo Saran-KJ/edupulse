@@ -388,43 +388,40 @@ def fetch_youtube_recommendations(
             print(f"DEBUG: Found {len(cached)} cached YouTube recommendations for {subject_code} Unit {single_unit}")
             continue
 
-        # 2. Build Query for this unit
-        # Wrapping subject_title in quotes helps exact matching
-        query = f'"{subject_title}" Unit {single_unit} engineering lecture university syllabus -experience -warning -shorts -vlog -update -notice -nptel_experience'
-        
-        if risk_level == "High":
-            query += " basic concepts and introduction"
-        elif risk_level == "Medium":
-            query += " detailed explanation and examples"
-        else:
-            query += " advanced topics and applications"
-
+        # 2. Build Query(ies) for this unit
+        queries = []
         if language == "Tamil":
-            query += " in Tamil"
+            queries.append(f'"{subject_title}" Unit {single_unit} engineering lecture Tamil -hindi -telugu')
         elif language == "English":
-            query += " in English"
+            queries.append(f'"{subject_title}" Unit {single_unit} engineering university lecture -hindi -tamil')
+        else:
+            # Language "All" -> Fetch both English and Tamil specifically
+            queries.append(f'"{subject_title}" Unit {single_unit} engineering university lecture English')
+            queries.append(f'"{subject_title}" Unit {single_unit} engineering lecture Tamil')
 
         # 3. Call YouTube API
         if not YOUTUBE_API_KEY:
             continue
 
+        all_items = []
         try:
-            params = {
-                "part": "snippet",
-                "q": query,
-                "key": YOUTUBE_API_KEY,
-                "maxResults": 5, # Fetch more to allow filtering
-                "type": "video",
-                "videoEmbeddable": "true",
-                "relevanceLanguage": "ta" if language == "Tamil" else "en"
-            }
-            print(f"DEBUG: Calling YouTube API for query: {query}")
-            resp = requests.get(YOUTUBE_SEARCH_URL, params=params)
-            resp.raise_for_status()
-            data = resp.json()
+            for q in queries:
+                params = {
+                    "part": "snippet",
+                    "q": q + " -experience -warning -shorts -vlog -update -notice -nptel_experience",
+                    "key": YOUTUBE_API_KEY,
+                    "maxResults": 8 if language == "All" else 15,
+                    "type": "video",
+                    "videoEmbeddable": "true",
+                }
+                print(f"DEBUG: Calling YouTube API for query: {params['q']}")
+                resp = requests.get(YOUTUBE_SEARCH_URL, params=params)
+                resp.raise_for_status()
+                data = resp.json()
+                all_items.extend(data.get("items", []))
 
             count_saved = 0
-            for item in data.get("items", []):
+            for item in all_items:
                 if count_saved >= 2: break # Limit to 2 filtered results per unit
 
                 video_id = item["id"]["videoId"]
@@ -432,12 +429,31 @@ def fetch_youtube_recommendations(
                 thumb = item["snippet"]["thumbnails"]["default"]["url"]
                 video_url = f"https://www.youtube.com/watch?v={video_id}"
 
-                # Post-fetch filtering to catch common irrelevant educational "meta" content
+                # Strict language and content filter to remove regional noise
                 title_lower = title.lower()
-                irrelevant_keywords = ["don't watch", "warning", "notice", "update", "experience", "vlog", "shorts", "news", "wrong"]
-                if any(kw in title_lower for kw in irrelevant_keywords):
-                    print(f"DEBUG: Skipping irrelevant video: {title}")
-                    continue
+                desc_lower = item["snippet"].get("description", "").lower()
+                
+                irrelevant_keywords = [
+                    "don't watch", "warning", "notice", "update", "experience", 
+                    "vlog", "shorts", "news", "wrong", "fake", "scam",
+                    "hindi", "telugu", "malayalam", "kannada", "marathi", "bengali",
+                    "punjabi", "gujarati", "urdu", "script", "hindenburg", "reaction",
+                    "roast", "comedy", "movie", "trailer", "song", "bhajan", "devotional"
+                ]
+                
+                # Check title and description for unwanted regional markers or non-educational noise
+                if any(kw in title_lower or kw in desc_lower for kw in irrelevant_keywords):
+                    # Special check: If title specifically says "Tamil" or "English", we might keep it 
+                    # unless it's a known bad keyword.
+                    is_safe = False
+                    if "tamil" in title_lower or "english" in title_lower:
+                        # Even if it says Tamil/English, if it has 'hindi' it's probably a comparison or multi-lang
+                        if not any(lang_kw in title_lower for lang_kw in ["hindi", "telugu", "malayalam", "kannada"]):
+                            is_safe = True
+                    
+                    if not is_safe:
+                        print(f"DEBUG: Skipping irrelevant/non-educational video: {title}")
+                        continue
 
                 # Save to Cache
                 rec_entry = YouTubeRecommendation(
@@ -1537,9 +1553,19 @@ def get_learning_recommendations(
             }
             filtered_resources.append(res_dict)
 
-    total_recommended = len(filtered_resources)
-    total_completed = sum(1 for r in filtered_resources if r['is_completed'])
-    progress_percentage = (total_completed / total_recommended * 100) if total_recommended > 0 else 0
+    # Split into study materials vs quizzes
+    study_materials = [r for r in filtered_resources if r['type'].lower() != 'quiz']
+    quizzes = [r for r in filtered_resources if r['type'].lower() == 'quiz']
+    
+    total_study = len(study_materials)
+    completed_study = sum(1 for r in study_materials if r['is_completed'])
+    progress_percentage = (completed_study / total_study * 100) if total_study > 0 else 100.0
+    
+    can_attempt_quiz = progress_percentage >= 100.0
+
+    # Apply locking to quizzes
+    for q in quizzes:
+        q['is_locked'] = not can_attempt_quiz
 
     if risk_level == "High":
         filtered_resources.sort(key=lambda x: x['type'] != 'quiz')
@@ -1552,9 +1578,10 @@ def get_learning_recommendations(
             "score": risk_score
         },
         "progress": {
-            "total": total_recommended,
-            "completed": total_completed,
-            "percentage": progress_percentage
+            "total": total_study,
+            "completed": completed_study,
+            "percentage": progress_percentage,
+            "can_attempt_quiz": can_attempt_quiz
         }
     }
 
@@ -1595,6 +1622,28 @@ def update_progress(
     return {"status": "success"}
 
 
+@router.post("/interaction")
+def track_interaction(
+    update: ProgressUpdate, # Reuse ProgressUpdate schema for simplicity (id + type)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Log an interaction (view/start) with a learning resource."""
+    if current_user.role != "student":
+        return {"status": "ignored"}
+
+    student = _get_student(db, current_user)
+    
+    # Check if we already logged this interaction recently (optional rate limit)
+    interaction = LearningResourceInteraction(
+        reg_no=student.reg_no,
+        resource_id=update.resource_id,
+        interaction_type="view" if not update.completed else "finish"
+    )
+    db.add(interaction)
+    db.commit()
+    return {"status": "success"}
+
 # ─── YouTube Data API Integration ──────────────────────────────────────
 
 def fetch_youtube_videos(query: str, max_results: int = 5) -> List[Dict[str, Any]]:
@@ -1617,7 +1666,10 @@ def fetch_youtube_videos(query: str, max_results: int = 5) -> List[Dict[str, Any
         data = response.json()
         
         videos = []
-        irrelevant_keywords = ["don't watch", "warning", "notice", "update", "experience", "vlog", "shorts", "news", "wrong"]
+        irrelevant_keywords = [
+            "don't watch", "warning", "notice", "update", "experience", "vlog", "shorts", "news", "wrong",
+            "hindi", "telugu", "malayalam", "kannada", "urdu", "punjabi"
+        ]
         
         for item in data.get("items", []):
             if len(videos) >= max_results: break
@@ -1625,14 +1677,17 @@ def fetch_youtube_videos(query: str, max_results: int = 5) -> List[Dict[str, Any
             video_id = item["id"]["videoId"]
             snippet = item["snippet"]
             title = snippet["title"]
+            description = snippet.get("description", "").lower()
             
             # Post-fetch filtering
-            if any(kw in title.lower() for kw in irrelevant_keywords):
+            title_lower = title.lower()
+            if any(kw in title_lower or kw in description for kw in irrelevant_keywords):
                 continue
 
             videos.append({
                 "video_id": video_id,
                 "title": title,
+                "description": snippet["description"],
                 "description": snippet["description"],
                 "thumbnail": snippet["thumbnails"]["high"]["url"],
                 "video_url": f"{WATCH_URL_BASE}{video_id}",
@@ -1934,7 +1989,19 @@ def get_skill_content(
         db.commit()
         db.refresh(resource)
 
-    # ── 1. Check Cache ────────────────────────────────────────────────────────
+    # ── 1. Get Student Year for Progression ───────────────────────────────────
+    student_year = 1
+    try:
+        if current_user.dept:
+            s_model = STUDENT_MODEL_MAP.get(current_user.dept)
+            if s_model:
+                st = db.query(s_model).filter(s_model.reg_no == current_user.reg_no).first()
+                if st and st.year:
+                    student_year = int(st.year)
+    except Exception as e:
+        print(f"DEBUG: Could not parse student year: {e}")
+
+    # ── 2. Check Cache ────────────────────────────────────────────────────────
     if resource.content:
         try:
             cached_data = json.loads(resource.content)
@@ -1962,22 +2029,22 @@ def get_skill_content(
             print(f"DEBUG: Cache corrupted for {resource_url}, regenerating... Error: {e}")
             pass
 
-    # ── 2. Generate Gemini Content ────────────────────────────────────────────
-    content_data = gemini_service.generate_skill_content(skill, sub_category=sub_category, level=level)
+    # ── 3. Generate Gemini Content ────────────────────────────────────────────
+    content_data = gemini_service.generate_skill_content(skill, sub_category=sub_category, level=level, year=student_year)
     summary = content_data.get("summary", "")
     sections = content_data.get("sections", [])
     project = content_data.get("project", {})
 
-    # ── 3. YouTube Videos (language and level aware) ───────────────────────────
+    # ── 4. YouTube Videos (language and level aware) ───────────────────────────
     video_query = f"{skill} {level}"
     if sub_category: 
         video_query = f"{skill} {sub_category} {level}"
     youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
 
-    # ── 4. Generate Quiz ──────────────────────────────────────────────────────
+    # ── 5. Generate Quiz ──────────────────────────────────────────────────────
     quiz_questions = gemini_service.generate_skill_quiz(skill, difficulty=level, sub_category=sub_category)
 
-    # ── 5. Save to Cache ──────────────────────────────────────────────────────
+    # ── 6. Save to Cache ──────────────────────────────────────────────────────
     final_response = {
         "resource_id": resource.resource_id,
         "skill": skill,
