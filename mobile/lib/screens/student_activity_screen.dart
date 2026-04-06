@@ -111,7 +111,7 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
                 children: [
                   Icon(Icons.add_circle, color: Colors.blue.shade800),
                   const SizedBox(width: 8),
-                  const Text('Submit Activity'),
+                  const Text('Submit Co/Extra-curricular'),
                 ],
               ),
               content: SizedBox(
@@ -124,7 +124,7 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
                       children: [
                         TextFormField(
                           decoration: InputDecoration(
-                            labelText: 'Activity Name *',
+                            labelText: 'Event/Activity Name *',
                             prefixIcon: const Icon(Icons.event),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -135,7 +135,7 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
                         DropdownButtonFormField<String>(
                           value: activityType,
                           decoration: InputDecoration(
-                            labelText: 'Activity Type *',
+                            labelText: 'Category *',
                             prefixIcon: const Icon(Icons.category),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -168,7 +168,7 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
                           },
                           child: InputDecorator(
                             decoration: InputDecoration(
-                              labelText: 'Activity Date *',
+                              labelText: 'Event Date *',
                               prefixIcon: const Icon(Icons.calendar_today),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             ),
@@ -269,7 +269,7 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.regNo != null ? 'Student Activities' : 'My Activities'),
+        title: Text(widget.regNo != null ? 'Co-curricular & Extra-curricular' : 'My Co/Extra-curricular'),
         backgroundColor: Colors.blue.shade800,
         foregroundColor: Colors.white,
       ),
@@ -279,7 +279,7 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
               backgroundColor: Colors.blue.shade800,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add),
-              label: const Text('Submit Activity'),
+              label: const Text('Submit Co/Extra-curricular'),
             )
           : null,
       body: _isLoading
@@ -292,12 +292,12 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
                       Icon(Icons.local_activity_outlined, size: 80, color: Colors.grey.shade300),
                       const SizedBox(height: 16),
                       Text(
-                        'No activities submitted yet',
+                        'No co/extra-curricular records found',
                         style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Tap the button below to submit your first activity',
+                        'Tap the button below to submit your first record',
                         style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
                       ),
                     ],

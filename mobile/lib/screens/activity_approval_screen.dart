@@ -71,7 +71,7 @@ class _ActivityApprovalScreenState extends State<ActivityApprovalScreen> with Si
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Activity ${status == "approved" ? "approved" : "rejected"} successfully!'),
+            content: Text('Submission ${status == "approved" ? "approved" : "rejected"} successfully!'),
             backgroundColor: status == "approved" ? Colors.green : Colors.red,
           ),
         );
@@ -99,7 +99,7 @@ class _ActivityApprovalScreenState extends State<ActivityApprovalScreen> with Si
                 color: action == 'approved' ? Colors.green : Colors.red,
               ),
               const SizedBox(width: 8),
-              Text('${action == "approved" ? "Approve" : "Reject"} Activity'),
+              Text('${action == "approved" ? "Approve" : "Reject"} Submission'),
             ],
           ),
           content: Column(
@@ -365,7 +365,7 @@ class _ActivityApprovalScreenState extends State<ActivityApprovalScreen> with Si
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Activity Approvals - ${widget.dept} Year ${widget.year} ${widget.section}'),
+        title: Text('Co/Extra-curricular Approvals - ${widget.dept} Yr ${widget.year} ${widget.section}'),
         backgroundColor: Colors.purple.shade800,
         foregroundColor: Colors.white,
         bottom: TabBar(

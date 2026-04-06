@@ -185,7 +185,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
-        childAspectRatio: crossAxisCount == 1 ? 3.5 : 1.4,
+        childAspectRatio: crossAxisCount == 1 ? 2.8 : 1.4,
       ),
       itemCount: roles.length,
       itemBuilder: (context, index) {
@@ -241,7 +241,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
       child: GlassmorphicCard(
         borderRadius: 20,
         opacity: 0.12,
-        padding: EdgeInsets.all(isCompact ? 16 : 24),
+        padding: EdgeInsets.symmetric(horizontal: isCompact ? 16 : 20, vertical: isCompact ? 16 : 14),
         child: isCompact
             ? _buildCompactContent(role, icon, description, color)
             : _buildFullContent(role, icon, description, color),

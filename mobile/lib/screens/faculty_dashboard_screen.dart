@@ -12,6 +12,7 @@ import 'student_dashboard_screen.dart';
 import 'attendance_entry_screen.dart';
 import 'new_mark_entry_screen.dart';
 import 'project_roadmap_screen.dart';
+import 'project_hub_screen.dart';
 import 'project_batch_allocation_screen.dart';
 import 'project_coordinator_management_screen.dart';
 import '../widgets/project_dialogs.dart';
@@ -64,6 +65,8 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
             const NavDestination(icon: Icons.school_rounded, label: 'My Classes'),
           ],
           onLogout: () => _handleLogout(context),
+          userName: user.name,
+          userRole: user.role,
           body: _buildBody(user),
         );
       },
@@ -938,7 +941,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => ProjectRoadmapScreen(batch: batch)),
+                    MaterialPageRoute(builder: (_) => ProjectHubScreen(batch: batch)),
                   );
                 },
                 borderRadius: BorderRadius.circular(16),

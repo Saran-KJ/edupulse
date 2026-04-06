@@ -30,6 +30,10 @@ class MainScaffold extends StatefulWidget {
   final List<Widget>? actions;
   final FloatingActionButton? floatingActionButton;
 
+  final String? userName;
+  final String? userRole;
+  final VoidCallback? onProfileTap;
+
   const MainScaffold({
     super.key,
     required this.title,
@@ -41,6 +45,9 @@ class MainScaffold extends StatefulWidget {
     this.onLogout,
     this.actions,
     this.floatingActionButton,
+    this.userName,
+    this.userRole,
+    this.onProfileTap,
   });
 
   @override
@@ -160,11 +167,14 @@ class _MainScaffoldState extends State<MainScaffold> {
               icon: const Icon(Icons.menu_open_rounded),
               onPressed: () => setState(() => _isSidebarExpanded = true),
             ),
-          Text(
-            widget.title,
-            style: AppTextStyles.heading.copyWith(fontSize: 20),
+          Expanded(
+            child: Text(
+              widget.title,
+              style: AppTextStyles.heading.copyWith(fontSize: 20),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          const Spacer(),
           if (widget.actions != null) ...widget.actions!,
           const SizedBox(width: 16),
           // User Profile Dropdown Placeholder
@@ -175,8 +185,56 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   Widget _buildTopBarProfile() {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
+    return PopupMenuButton<int>(
+      offset: const Offset(0, 50),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 8,
+      onSelected: (value) {
+        if (value == 0 && widget.onProfileTap != null) {
+          widget.onProfileTap!();
+        } else if (value == 1 && widget.onLogout != null) {
+          widget.onLogout!();
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          enabled: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.userName ?? 'User Name',
+                style: AppTextStyles.headingSmall.copyWith(fontSize: 14),
+              ),
+              Text(
+                widget.userRole?.replaceAll('_', ' ').toUpperCase() ?? 'ROLE',
+                style: AppTextStyles.label.copyWith(fontSize: 10, color: AppColors.primary),
+              ),
+              const Divider(),
+            ],
+          ),
+        ),
+        PopupMenuItem<int>(
+          value: 0,
+          child: Row(
+            children: [
+              Icon(Icons.person_outline_rounded, size: 18, color: AppColors.textSecondary),
+              const SizedBox(width: 12),
+              Text('My Profile', style: AppTextStyles.body),
+            ],
+          ),
+        ),
+        PopupMenuItem<int>(
+          value: 1,
+          child: Row(
+            children: [
+              Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+              const SizedBox(width: 12),
+              Text('Sign Out', style: AppTextStyles.body.copyWith(color: AppColors.error)),
+            ],
+          ),
+        ),
+      ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -185,10 +243,13 @@ class _MainScaffoldState extends State<MainScaffold> {
         ),
         child: Row(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 14,
               backgroundColor: AppColors.primary,
-              child: Icon(Icons.person_outline, size: 16, color: Colors.white),
+              child: Text(
+                (widget.userName?.isNotEmpty == true) ? widget.userName![0].toUpperCase() : 'U',
+                style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+              ),
             ),
             const SizedBox(width: 8),
             const Icon(Icons.keyboard_arrow_down, size: 18, color: AppColors.textSecondary),
@@ -262,16 +323,19 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
           if (_isSidebarExpanded) ...[
             const SizedBox(width: 14),
-            Text(
-              'EduPulse',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.5,
+            Expanded(
+              child: Text(
+                'EduPulse',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Spacer(),
             IconButton(
               icon: const Icon(Icons.keyboard_double_arrow_left, color: Colors.white54, size: 20),
               onPressed: () => setState(() => _isSidebarExpanded = false),

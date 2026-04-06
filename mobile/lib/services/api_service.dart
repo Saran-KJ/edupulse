@@ -308,9 +308,13 @@ class ApiService {
 
 
   // Attendance
-  Future<List<Attendance>> getClassAttendance(String dept, int year, String section, String date, {int period = 1}) async {
+  Future<List<Attendance>> getClassAttendance(String dept, int year, String section, String date, {int period = 1, int? semester}) async {
+    var url = '${AppConfig.baseUrl}${AppConfig.attendanceEndpoint}/class/$dept/$year/$section/$date?period=$period';
+    if (semester != null) {
+      url += '&semester=$semester';
+    }
     final response = await http.get(
-      Uri.parse('${AppConfig.baseUrl}${AppConfig.attendanceEndpoint}/class/$dept/$year/$section/$date?period=$period'),
+      Uri.parse(url),
       headers: _getHeaders(),
     );
 
@@ -329,14 +333,18 @@ class ApiService {
     required String dept,
     required List<AttendanceInput> attendanceList,
     int period = 1,
+    String? time,
+    int semester = 1,
     String? subjectCode,
   }) async {
     final bodyData = <String, dynamic>{
       'date': date,
       'year': year,
+      'semester': semester,
       'section': section,
       'dept': dept,
       'period': period,
+      'time': time,
       'attendance_list': attendanceList.map((a) => a.toJson()).toList(),
     };
     if (subjectCode != null) {
@@ -357,9 +365,13 @@ class ApiService {
     }
   }
 
-  Future<List<Attendance>> getStudentAttendance(String regNo) async {
+  Future<List<Attendance>> getStudentAttendance(String regNo, {int? semester}) async {
+    var url = '${AppConfig.baseUrl}${AppConfig.attendanceEndpoint}/student/$regNo';
+    if (semester != null) {
+      url += '?semester=$semester';
+    }
     final response = await http.get(
-      Uri.parse('${AppConfig.baseUrl}${AppConfig.attendanceEndpoint}/student/$regNo'),
+      Uri.parse(url),
       headers: _getHeaders(),
     );
 
@@ -484,6 +496,32 @@ class ApiService {
     }
   }
 
+  Future<CollegeSummaryResponse> getCollegeSummary() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.analyticsEndpoint}/college-summary'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return CollegeSummaryResponse.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load college summary: ${response.body}');
+    }
+  }
+
+  Future<HodReportSummary> getHODReportSummary() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.hodReportSummaryEndpoint}'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return HodReportSummary.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load HOD report summary: ${response.body}');
+    }
+  }
+
   Future<Map<String, dynamic>> getStudentDashboardStats() async {
     final response = await http.get(
       Uri.parse('${AppConfig.baseUrl}${AppConfig.studentsEndpoint}/me/dashboard-stats'),
@@ -584,20 +622,6 @@ class ApiService {
     }
   }
 
-  Future<List<RiskPrediction>> getAtRiskStudents() async {
-    final response = await http.get(
-      Uri.parse('${AppConfig.baseUrl}${AppConfig.predictEndpoint}/at-risk-students'),
-      headers: _getHeaders(),
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => RiskPrediction.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load at-risk students');
-    }
-  }
-
   Future<List<SubjectRisk>> getSubjectRisks(String regNo) async {
     final response = await http.get(
       Uri.parse('${AppConfig.baseUrl}${AppConfig.analyticsEndpoint}/student/$regNo/subject-risks'),
@@ -612,7 +636,20 @@ class ApiService {
     }
   }
 
-  // Admin Methods
+  Future<List<RiskPrediction>> getAtRiskStudents() async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.baseUrl}${AppConfig.predictEndpoint}/at-risk-students'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => RiskPrediction.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load at-risk students');
+    }
+  }
+   // Admin Methods
   Future<User> createUser(Map<String, dynamic> userData) async {
     final response = await http.post(
       Uri.parse('${AppConfig.baseUrl}${AppConfig.adminEndpoint}/users'),
@@ -941,6 +978,21 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to update progress: ${response.body}');
+    }
+  }
+
+  Future<void> logInteraction(int resourceId, {bool completed = false}) async {
+    try {
+      await http.post(
+        Uri.parse('${AppConfig.baseUrl}/api/learning/interaction'),
+        headers: _getHeaders(),
+        body: json.encode({
+          'resource_id': resourceId,
+          'completed': completed,
+        }),
+      );
+    } catch (_) {
+      // Background logging failures should not interrupt UI
     }
   }
 
@@ -1346,21 +1398,74 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> recordProjectReview({
-    required int batchId,
-    required int reviewNumber,
-    required double marks,
-    String? feedback,
-  }) async {
+  Future<Map<String, dynamic>> updateProjectBatch(int batchId, Map<String, dynamic> data) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/batches/$batchId'),
+      headers: _getHeaders(),
+      body: json.encode(data),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to update project batch: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> submitBasePaper(int batchId, String title, String? fileUrl) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/batches/$batchId/papers'),
+      headers: _getHeaders(),
+      body: json.encode({'title': title, 'file_url': fileUrl}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to submit base paper: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> selectBasePaper(int paperId, {String? feedback}) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/papers/$paperId/select${feedback != null ? '?feedback=${Uri.encodeComponent(feedback)}' : ''}'),
+      headers: _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to select base paper: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadReviewPPT(int batchId, int reviewNumber, String? fileUrl) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/batches/$batchId/ppts'),
+      headers: _getHeaders(),
+      body: json.encode({'review_number': reviewNumber, 'file_url': fileUrl}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to upload PPT: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> approveReviewPPT(int pptId) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.baseUrl}/api/projects/ppts/$pptId/approve'),
+      headers: _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to approve PPT: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> recordProjectReview(Map<String, dynamic> data) async {
     final response = await http.post(
       Uri.parse('${AppConfig.baseUrl}/api/projects/reviews'),
       headers: _getHeaders(),
-      body: json.encode({
-        'batch_id': batchId,
-        'review_number': reviewNumber,
-        'marks': marks,
-        'feedback': feedback,
-      }),
+      body: json.encode(data),
     );
 
     if (response.statusCode == 200) {

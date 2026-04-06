@@ -158,7 +158,7 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Loading assessment...'),
+                  Text('Loading...'),
                 ],
               ),
             )
@@ -365,7 +365,7 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                     )
                   : Icon(Icons.quiz),
               label: Text(isLoading
-                  ? 'Generating Quiz...'
+                  ? 'Loading...'
                   : 'Take ${riskAssessment!.riskLevel} Risk Assessment Quiz'),
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(vertical: 16),

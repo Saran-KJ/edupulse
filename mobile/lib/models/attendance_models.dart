@@ -4,9 +4,11 @@ class Attendance {
   final String studentName;
   final String date;
   final int period;
+  final String? time;
   final String? subjectCode;
   final String status;
   final int year;
+  final int semester;
   final String section;
   final String? reason;
 
@@ -16,9 +18,11 @@ class Attendance {
     required this.studentName,
     required this.date,
     required this.period,
+    this.time,
     this.subjectCode,
     required this.status,
     required this.year,
+    required this.semester,
     required this.section,
     this.reason,
   });
@@ -30,9 +34,11 @@ class Attendance {
       studentName: json['student_name'],
       date: json['date'],
       period: json['period'] ?? 1,
+      time: json['time'],
       subjectCode: json['subject_code'],
       status: json['status'],
       year: json['year'],
+      semester: json['semester'] ?? 1,
       section: json['section'],
       reason: json['reason'],
     );

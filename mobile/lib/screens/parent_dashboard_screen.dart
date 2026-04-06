@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../config/app_theme.dart';
+import '../models/models.dart';
 import 'login_screen.dart';
 import 'student_attendance_screen.dart';
 import 'student_marks_screen.dart';
@@ -36,58 +37,66 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MainScaffold(
-      title: 'Parent Dashboard',
-      selectedIndex: 0,
-      onDestinationSelected: (index) {},
-      destinations: const [
-        NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
-      ],
-      onLogout: () => _handleLogout(context),
-      actions: [
+    return FutureBuilder<User>(
+      future: ApiService().getCurrentUser(),
+      builder: (context, userSnapshot) {
+        final user = userSnapshot.data;
+        return MainScaffold(
+          title: 'Parent Dashboard',
+          selectedIndex: 0,
+          onDestinationSelected: (index) {},
+          destinations: const [
+            NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+          ],
+          onLogout: () => _handleLogout(context),
+          userName: user?.name,
+          userRole: user?.role,
+          actions: [
         IconButton(
           icon: const Icon(Icons.refresh_rounded),
           onPressed: () => setState(() { _dashboardFuture = ApiService().getParentDashboardStats(); }),
         ),
       ],
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _dashboardFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-          }
+          body: FutureBuilder<Map<String, dynamic>>(
+            future: _dashboardFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+              }
 
-          if (snapshot.hasError) {
-            return _buildErrorView(snapshot.error.toString());
-          }
+              if (snapshot.hasError) {
+                return _buildErrorView(snapshot.error.toString());
+              }
 
-          final data = snapshot.data!;
-          
-          if (data.containsKey('error')) {
-            return _buildChildNotFoundMessage(data);
-          }
+              final data = snapshot.data!;
+              
+              if (data.containsKey('error')) {
+                return _buildChildNotFoundMessage(data);
+              }
 
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildWelcomeHeader(data),
-                const SizedBox(height: 32),
-                _buildChildInfoCard(data),
-                const SizedBox(height: 32),
-                SectionHeader(title: 'Academic Summary', icon: Icons.analytics_rounded, color: AppColors.primary),
-                const SizedBox(height: 16),
-                _buildSummaryCards(data),
-                const SizedBox(height: 32),
-                SectionHeader(title: 'Quick Actions', icon: Icons.bolt_rounded, color: AppColors.accent),
-                const SizedBox(height: 16),
-                _buildQuickActions(context, data),
-                const SizedBox(height: 40),
-              ],
-            ),
-          );
-        },
-      ),
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeHeader(data),
+                    const SizedBox(height: 32),
+                    _buildChildInfoCard(data),
+                    const SizedBox(height: 32),
+                    SectionHeader(title: 'Academic Summary', icon: Icons.analytics_rounded, color: AppColors.primary),
+                    const SizedBox(height: 16),
+                    _buildSummaryCards(data),
+                    const SizedBox(height: 32),
+                    SectionHeader(title: 'Quick Actions', icon: Icons.bolt_rounded, color: AppColors.accent),
+                    const SizedBox(height: 16),
+                    _buildQuickActions(context, data),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -428,7 +437,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         'color': Colors.blue,
       },
       {
-        'title': 'Activities',
+        'title': 'Co/Extra-curricular',
         'value': '${data['activities_count'] ?? 0}',
         'icon': Icons.emoji_events,
         'color': Colors.orange,
@@ -603,7 +612,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             Expanded(
               child: _buildActionButton(
                 context,
-                'Activities',
+                'Co/Extra-curricular',
                 Icons.emoji_events_outlined,
                 Colors.purple,
                 () => Navigator.push(

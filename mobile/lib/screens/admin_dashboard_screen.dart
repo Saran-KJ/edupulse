@@ -47,17 +47,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   @override
   Widget build(BuildContext context) {
-    return MainScaffold(
-      title: 'Admin Dashboard',
-      selectedIndex: _tabController.index,
-      onDestinationSelected: (index) => setState(() => _tabController.animateTo(index)),
-      destinations: const [
-        NavDestination(icon: Icons.people_rounded, label: 'Users'),
-        NavDestination(icon: Icons.verified_user_rounded, label: 'Approvals'),
-        NavDestination(icon: Icons.security_rounded, label: 'Logs'),
-      ],
-      onLogout: _logout,
-      actions: [
+    return FutureBuilder<User>(
+      future: _apiService.getCurrentUser(),
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+        return MainScaffold(
+          title: 'Admin Dashboard',
+          selectedIndex: _tabController.index,
+          onDestinationSelected: (index) => setState(() => _tabController.animateTo(index)),
+          destinations: const [
+            NavDestination(icon: Icons.people_rounded, label: 'Users'),
+            NavDestination(icon: Icons.verified_user_rounded, label: 'Approvals'),
+            NavDestination(icon: Icons.security_rounded, label: 'Logs'),
+          ],
+          onLogout: _logout,
+          userName: user?.name,
+          userRole: user?.role,
+          actions: [
         if (_tabController.index == 0)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -72,22 +78,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             ),
           ),
       ],
-      body: TabBarView(
-        controller: _tabController,
-        physics: const NeverScrollableScrollPhysics(), // Managed by scaffold
-        children: [
-          _buildUserManagementTab(),
-          _buildApprovalsTab(),
-          _buildLogsTab(),
-        ],
-      ),
-      floatingActionButton: (MediaQuery.of(context).size.width <= 600 && _tabController.index == 0)
-          ? FloatingActionButton(
-              onPressed: _showCreateUserDialog,
-              backgroundColor: AppColors.primary,
-              child: const Icon(Icons.add, color: Colors.white),
-            )
-          : null,
+          body: TabBarView(
+            controller: _tabController,
+            physics: const NeverScrollableScrollPhysics(), // Managed by scaffold
+            children: [
+              _buildUserManagementTab(),
+              _buildApprovalsTab(),
+              _buildLogsTab(),
+            ],
+          ),
+          floatingActionButton: (MediaQuery.of(context).size.width <= 600 && _tabController.index == 0)
+              ? FloatingActionButton(
+                  onPressed: _showCreateUserDialog,
+                  backgroundColor: AppColors.primary,
+                  child: const Icon(Icons.add, color: Colors.white),
+                )
+              : null,
+        );
+      },
     );
   }
 

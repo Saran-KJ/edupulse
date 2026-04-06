@@ -126,7 +126,7 @@ class _QuizScreenState extends State<QuizScreen> {
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 20),
-              Text("Generating your personalized quiz...", 
+              Text("Generating your quiz...", 
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
               const SizedBox(height: 8),
               const Text("AI is crafting questions based on your risk level", 

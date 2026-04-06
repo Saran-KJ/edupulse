@@ -638,29 +638,6 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => LearningResourcesScreen(
-                              subjectCode: widget.subjectCode,
-                              subjectTitle: widget.subjectTitle,
-                            ),
-                          ),
-                        );
-                      },
-                      icon: Icon(Icons.school),
-                      label: Text('View My Personalized Resources'),
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
                   SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,

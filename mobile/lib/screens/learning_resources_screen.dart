@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt;
 import 'quiz_screen.dart';
 import 'skill_content_screen.dart';
 import 'youtube_player_screen.dart';
@@ -29,9 +29,10 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
   List<LearningResource> _resources = [];
   Map<String, dynamic>? _planData;
   String? _error;
-  String _selectedLanguage = "English";
+  String _selectedLanguage = "All"; // Use integrated All (accurate English/Tamil only)
   int? _playingResourceId;
-  YoutubePlayerController? _ytController;
+  yt.YoutubePlayerController? _ytController;
+  Map<String, dynamic>? _progressData;
 
   @override
   void initState() {
@@ -56,6 +57,12 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
       setState(() {
         _resources = list.map((json) => LearningResource.fromJson(json)).toList();
         _planData = data['plan'] is Map<String, dynamic> ? data['plan'] : null;
+        
+        // Extract mastery progress from backend
+        if (data['progress'] != null) {
+          _progressData = data['progress'];
+        }
+        
         _error = null;
       });
 
@@ -80,22 +87,47 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
       return;
     }
 
-    final videoId = YoutubePlayerController.convertUrlToId(resource.url);
+    final videoId = yt.YoutubePlayerController.convertUrlToId(resource.url);
     if (videoId != null) {
       setState(() {
         _playingResourceId = resource.resourceId;
         _ytController?.close();
-        _ytController = YoutubePlayerController.fromVideoId(
+        _ytController = yt.YoutubePlayerController.fromVideoId(
           videoId: videoId,
-          params: const YoutubePlayerParams(
+          params: const yt.YoutubePlayerParams(
             showControls: true,
             showFullscreenButton: true,
             mute: false,
           ),
         );
       });
+    } else if (resource.url.contains('youtube.com') || resource.url.contains('youtu.be')) {
+      // Fallback: If it's a YouTube link but conversion failed, try pushing directly to our full-screen player
+      final fallbackId = _manualExtractId(resource.url);
+      if (fallbackId != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => YoutubePlayerScreen.fromId(videoId: fallbackId, title: resource.title),
+          ),
+        );
+      } else {
+        _launchUrl(resource.url);
+      }
     } else {
       _launchUrl(resource.url);
+    }
+  }
+
+  String? _manualExtractId(String url) {
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host.contains('youtu.be')) {
+        return uri.pathSegments.first;
+      }
+      return uri.queryParameters['v'];
+    } catch (_) {
+      return null;
     }
   }
 
@@ -257,6 +289,21 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
 
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
+    
+    // STRICT REDIRECT PROTECTION: Never launch YouTube externally if we can help it
+    if (url.contains('youtube.com') || url.contains('youtu.be')) {
+      final vidId = yt.YoutubePlayerController.convertUrlToId(url) ?? _manualExtractId(url);
+      if (vidId != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => YoutubePlayerScreen.fromId(videoId: vidId, title: "Video Lesson"),
+          ),
+        );
+        return;
+      }
+    }
+
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
@@ -273,6 +320,8 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
       final newStatus = !resource.isCompleted;
       await ApiService().updateResourceProgress(resource.resourceId, newStatus);
       setState(() => resource.isCompleted = newStatus);
+      // Immediately reload to update the Mastery Bar and Quiz Lock status
+      _loadPlanAndResources();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -302,80 +351,118 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
               ? Center(child: Text('Error: $_error', style: const TextStyle(color: Colors.red)))
               : RefreshIndicator(
                   onRefresh: _loadPlanAndResources,
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildFilterSection(),
-                              const SizedBox(height: 16),
-                              if (_planData != null) _buildPlanHeader(),
-                              const SizedBox(height: 16),
-                              if (_planData != null && _planData!['practice_schedule'] != null)
-                                _buildPracticeScheduleSection(),
-                              const SizedBox(height: 24),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    _isSkillDevelopmentPlan ? "Skill Development" : "Assigned Resources",
-                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    trackVisibility: true,
+                    thickness: 8,
+                    radius: const Radius.circular(10),
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 16),
+                                if (_planData != null) _buildPlanHeader(),
+                                const SizedBox(height: 16),
+                                if (_planData != null && _planData!['practice_schedule'] != null)
+                                  _buildPracticeScheduleSection(),
+                                const SizedBox(height: 24),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _isSkillDevelopmentPlan ? "Skill Development" : "Assigned Resources",
+                                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                    ),
+                                    // Overall mastery percentage text
+                                    if (_progressData != null)
+                                      Text(
+                                        "${(_progressData!['percentage'] as num).toInt()}% Mastery",
+                                        style: TextStyle(
+                                          color: (_progressData!['percentage'] as num) >= 100 
+                                              ? Colors.green.shade700 
+                                              : Colors.blue.shade700,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
                                         ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                // PREMIUM MASTERY PROGRESS BAR
+                                if (_progressData != null)
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: LinearPercentIndicator(
+                                      lineHeight: 12.0,
+                                      percent: (_progressData!['percentage'] as num) / 100.0,
+                                      padding: EdgeInsets.zero,
+                                      backgroundColor: Colors.grey.shade200,
+                                      barRadius: const Radius.circular(10),
+                                      animation: true,
+                                      animationDuration: 1000,
+                                      linearGradient: LinearGradient(
+                                        colors: [
+                                          Colors.blue.shade400,
+                                          (_progressData!['percentage'] as num) >= 100 
+                                              ? Colors.green.shade400 
+                                              : Colors.blue.shade700,
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                  if (_error == null && !_isLoading && _resources.isNotEmpty) _buildOverallProgress(),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                            ],
+                                const SizedBox(height: 16),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      if (_resources.isEmpty)
-                        SliverToBoxAdapter(child: _buildEmptyState())
-                      else if (_isSkillDevelopmentPlan)
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final items = _buildSkillGroupedItems();
-                              final item = items[index];
-                              if (item is String) {
-                                return _buildSkillCategoryHeader(item);
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-                                child: _buildResourceCard(item as LearningResource),
-                              );
-                            },
-                            childCount: _buildSkillGroupedItems().length,
-                          ),
-                        )
-                      else
-                        Builder(builder: (context) {
-                          final items = _buildTypeGroupedItems();
-                          return SliverList(
+                        if (_resources.isEmpty)
+                          SliverToBoxAdapter(child: _buildEmptyState())
+                        else if (_isSkillDevelopmentPlan)
+                          SliverList(
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
+                                final items = _buildSkillGroupedItems();
                                 final item = items[index];
                                 if (item is String) {
-                                  return _buildTypeCategoryHeader(item);
+                                  return _buildSkillCategoryHeader(item);
                                 }
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
                                   child: _buildResourceCard(item as LearningResource),
                                 );
                               },
-                              childCount: items.length,
+                              childCount: _buildSkillGroupedItems().length,
                             ),
-                          );
-                        }),
-                      const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
-                    ],
+                          )
+                        else
+                          Builder(builder: (context) {
+                            final items = _buildTypeGroupedItems();
+                            return SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final item = items[index];
+                                  if (item is String) {
+                                    return _buildTypeCategoryHeader(item);
+                                  }
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                                    child: _buildResourceCard(item as LearningResource),
+                                  );
+                                },
+                                childCount: items.length,
+                              ),
+                            );
+                          }),
+                        const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
+                      ],
+                    ),
                   ),
                 ),
     );
@@ -444,7 +531,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
       case 'video': return '🎬 Videos';
       case 'pdf':
       case 'article':
-      case 'document': return '📄 PDF / Articles';
+      case 'document': return '📄 PDF';
       case 'quiz': return '📝 Quizzes';
       case 'course': return '🎓 Courses';
       default: return '🔗 Other Resources';
@@ -453,7 +540,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
 
   // Build flat list of String (headers) + LearningResource (cards) grouped by type
   List<dynamic> _buildTypeGroupedItems() {
-    const order = ['🎬 Videos', '📄 PDF / Articles', '📝 Quizzes', '🎓 Courses', '🔗 Other Resources'];
+    const order = ['🎬 Videos', '📄 PDF', '📝 Quizzes', '🎓 Courses', '🔗 Other Resources'];
     final Map<String, List<LearningResource>> grouped = {};
     for (final r in _resources) {
       final cat = _typeCategory(r.type);
@@ -511,40 +598,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
     );
   }
 
-  Widget _buildFilterSection() {
-    return Row(
-      children: [
-        const Text("Language:", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-        const SizedBox(width: 12),
-        Wrap(
-          spacing: 8,
-          children: ['English', 'Tamil'].map((lang) {
-            final isSelected = _selectedLanguage == lang;
-            return ChoiceChip(
-              label: Text(lang),
-              selected: isSelected,
-              onSelected: (selected) {
-                if (selected && _selectedLanguage != lang) {
-                  setState(() => _selectedLanguage = lang);
-                  _loadPlanAndResources();
-                }
-              },
-              selectedColor: Colors.blue.shade100,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.blue.shade900 : Colors.black87,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: isSelected ? Colors.blue.shade200 : Colors.grey.shade300),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
+
 
   Widget _buildPlanHeader() {
     final plan = _planData!;
@@ -632,36 +686,65 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            // Extract the first unit if multiple are given, or use a default
-                            int unitNum = 1;
-                            if (units != null && units.isNotEmpty) {
-                              try {
-                                unitNum = int.parse(units.split(',').first.trim());
-                              } catch (_) {}
-                            }
-                            
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => QuizScreen(
-                                  subjectCode: widget.subjectCode,
-                                  subjectTitle: widget.subjectTitle,
-                                  unitNumber: unitNum,
-                                  riskLevel: riskLevel,
-                                ),
-                              ),
-                            ).then((_) => _loadPlanAndResources()); // Refresh after quiz
-                          },
-                          icon: const Icon(Icons.quiz, size: 18),
-                          label: const Text("Take AI-Generated Quiz"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: riskColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                                child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: (_progressData != null && (_progressData!['can_attempt_quiz'] == true))
+                                ? riskColor
+                                : Colors.grey.shade300,
+                          ),
+                          child: MaterialButton(
+                            onPressed: (_progressData != null && (_progressData!['can_attempt_quiz'] == true))
+                                ? () {
+                                    int unitNum = 1;
+                                    if (units != null && units.isNotEmpty) {
+                                      try {
+                                        unitNum = int.parse(units.split(',').first.trim());
+                                      } catch (_) {}
+                                    }
+                                    
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => QuizScreen(
+                                          subjectCode: widget.subjectCode,
+                                          subjectTitle: widget.subjectTitle,
+                                          unitNumber: unitNum,
+                                          riskLevel: riskLevel,
+                                        ),
+                                      ),
+                                    ).then((_) => _loadPlanAndResources());
+                                  }
+                                : null,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  (_progressData != null && (_progressData!['can_attempt_quiz'] == true))
+                                      ? Icons.quiz
+                                      : Icons.lock_outline,
+                                  color: (_progressData != null && (_progressData!['can_attempt_quiz'] == true))
+                                      ? Colors.white
+                                      : Colors.grey.shade600,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  (_progressData != null && (_progressData!['can_attempt_quiz'] == true))
+                                      ? "Start Final Mastery Quiz"
+                                      : "Complete All Resources to Unlock Quiz",
+                                  style: TextStyle(
+                                    color: (_progressData != null && (_progressData!['can_attempt_quiz'] == true))
+                                        ? Colors.white
+                                        : Colors.grey.shade600,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -1027,7 +1110,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
                   const SizedBox(height: 16),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: YoutubePlayer(
+                    child: yt.YoutubePlayer(
                       controller: _ytController!,
                       aspectRatio: 16 / 9,
                     ),

@@ -3,7 +3,7 @@ import '../models/models.dart';
 import '../models/mark_models.dart';
 import '../services/api_service.dart';
 import 'learning_resources_screen.dart';
-import 'learning_hub_screen.dart';
+
 // import 'overall_learning_screen.dart';
 
 class StudentRiskScreen extends StatefulWidget {
@@ -17,10 +17,10 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
   bool _isLoading = true;
   RiskPrediction? _overallRisk;
   List<SubjectRisk> _subjectRisks = [];
+  List<Mark> _allMarks = [];
   String? _error;
   int? _selectedSemester;
   List<int> _availableSemesters = [];
-  String? _isSelectingChoice;
   
   @override
   void initState() {
@@ -41,8 +41,14 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
         print("Error fetching ML risk: $e");
       }
 
-      // Fetch Consolidated Subject-wise Risk Analysis
-      final risks = await ApiService().getSubjectRisks(user.regNo!);
+      // Fetch Consolidated Subject-wise Risk Analysis & Raw Marks
+      final results = await Future.wait([
+        ApiService().getSubjectRisks(user.regNo!),
+        ApiService().getStudentMarks(user.regNo!),
+      ]);
+      
+      final risks = results[0] as List<SubjectRisk>;
+      _allMarks = results[1] as List<Mark>;
       
       final semesters = risks
           .where((r) => r.semester != null)
@@ -137,7 +143,7 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  "Overall Performance Status",
+                  "Academic Risk Level",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Container(
@@ -166,8 +172,8 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Risk Score: ${_overallRisk!.riskScore.toStringAsFixed(1)}%",
-              style: TextStyle(color: Colors.grey.shade600),
+              "Performance Score: ${_overallRisk!.riskScore.toStringAsFixed(1)} / 100",
+              style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.bold, fontSize: 16),
             ),
             if (_overallRisk!.reasons != null && _overallRisk!.reasons!.isNotEmpty) ...[
               const Divider(height: 24),
@@ -190,109 +196,84 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
                 ),
               )).toList(),
             ],
-            
-              // Global Learning Path Selection for LOW Risk students
-              if (_overallRisk!.riskLevel == "Low") ...[
-                const Divider(height: 32),
-                const Text(
-                  "Set Your Global Learning Path",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Focus on building professional skills and industry readiness.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 16),
-                Center(
-                  child: SizedBox(
-                    width: 200,
-                    child: _buildPathOption(
-                      "Skill Development",
-                      Icons.psychology,
-                      "Skill building",
-                      _overallRisk!.learningPathPreference == "Skill Development",
-                    ),
-                  ),
-                ),
-              ]
+
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPathOption(String title, IconData icon, String subtitle, bool isSelected) {
-    return InkWell(
-      onTap: () => _handleGlobalPathSelection(title),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.shade50 : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Colors.blue : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: Colors.blue.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            )
-          ] : null,
+
+  Widget _buildSubjectMarksDetail(SubjectRisk risk) {
+    final marks = _allMarks.where((m) => m.subjectCode == risk.subjectCode).toList();
+    if (marks.isEmpty) {
+      return const Column(
+        children: [
+          Icon(Icons.assignment_late_outlined, color: Colors.orange, size: 32),
+          SizedBox(height: 8),
+          Text("Detailed mark records not found for this code."),
+        ],
+      );
+    }
+    final mark = marks.first;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Current Academic Status:",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
-        child: _isSelectingChoice == title 
-          ? const Center(child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: CircularProgressIndicator(strokeWidth: 3),
-            ))
-          : Column(
-              children: [
-                Icon(icon, color: isSelected ? Colors.blue : Colors.grey, size: 28),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? Colors.blue.shade700 : Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-                ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            children: [
+              _buildMarkGroup("Assignments", [
+                _buildMarkRow("Assignment 1", mark.assignment1),
+                _buildMarkRow("Assignment 2", mark.assignment2),
+                _buildMarkRow("Assignment 3", mark.assignment3),
+                _buildMarkRow("Assignment 4", mark.assignment4),
+                _buildMarkRow("Assignment 5", mark.assignment5),
+              ]),
+              const Divider(height: 24),
+              _buildMarkGroup("Slip Tests", [
+                _buildMarkRow("Slip Test 1", mark.slipTest1),
+                _buildMarkRow("Slip Test 2", mark.slipTest2),
+                _buildMarkRow("Slip Test 3", mark.slipTest3),
+                _buildMarkRow("Slip Test 4", mark.slipTest4),
+              ]),
+              const Divider(height: 24),
+              _buildMarkGroup("Internal Assessments", [
+                _buildMarkRow("CIA 1", mark.cia1),
+                _buildMarkRow("CIA 2", mark.cia2),
+                _buildMarkRow("Model Exam", mark.model),
+              ]),
+              if (mark.universityResultGrade != null && mark.universityResultGrade!.isNotEmpty) ...[
+                const Divider(height: 24),
+                _buildMarkRow("University Grade", null, customValue: mark.universityResultGrade),
               ],
-            ),
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  Future<void> _handleGlobalPathSelection(String choice) async {
-    if (_isSelectingChoice != null) return;
-    setState(() => _isSelectingChoice = choice);
-    try {
-      await ApiService().submitGlobalPathPreference(choice);
-      await _loadRiskData();
-      
-      // Redirect to Learning Hub
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const LearningHubScreen()),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
-    } finally {
-      if (mounted) setState(() => _isSelectingChoice = null);
-    }
+  Widget _buildMarkGroup(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: TextStyle(color: Colors.blue.shade800, fontWeight: FontWeight.bold, fontSize: 12)),
+        const SizedBox(height: 8),
+        ...children,
+      ],
+    );
   }
 
   Widget _buildSubjectList() {
@@ -427,11 +408,11 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
               ),
             ),
             children: [
-              if (!risk.hasMarks)
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    if (!risk.hasMarks) ...[
                       const Icon(Icons.info_outline, color: Colors.blue, size: 40),
                       const SizedBox(height: 12),
                       const Text(
@@ -445,10 +426,19 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
+                    ] else
+                      _buildSubjectMarksDetail(risk),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
                         icon: const Icon(Icons.menu_book),
                         label: const Text("View Learning Resources"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade800,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -462,16 +452,10 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
                           );
                         },
                       ),
-                    ],
-                  ),
-                )
-              else
-                 // For subjects with marks, we'd ideally fetch mark details.
-                 // For now, since mark details are in a different endpoint, we provide a placeholder or link back.
-                 const Padding(
-                   padding: EdgeInsets.all(16.0),
-                   child: Text("Detailed mark analysis available in progress reports section."),
-                 )
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         );
@@ -492,9 +476,9 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
     );
   }
 
-  Widget _buildMarkRow(String label, int? value, {int max = 0}) {
+  Widget _buildMarkRow(String label, int? value, {int max = 0, String? customValue}) {
     // If value is 0 or null, we can treat it as pending/not entered for display
-    bool isEntered = value != null && value > 0;
+    bool isEntered = (value != null && value >= 0) || (customValue != null && customValue.isNotEmpty);
     
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -502,12 +486,18 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontSize: 13)),
-          isEntered 
-            ? Text(
+          if (customValue != null)
+             Text(
+                customValue, 
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)
+              )
+          else if (isEntered) 
+            Text(
                 value.toString(), 
                 style: const TextStyle(fontWeight: FontWeight.w500)
               )
-            : const Text(
+          else 
+            const Text(
                 "-",
                 style: TextStyle(color: Colors.grey)
               ),

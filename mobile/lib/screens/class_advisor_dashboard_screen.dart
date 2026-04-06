@@ -67,10 +67,12 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
             const NavDestination(icon: Icons.people_rounded, label: 'Students'),
             const NavDestination(icon: Icons.grade_rounded, label: 'Marks'),
             const NavDestination(icon: Icons.calendar_today_rounded, label: 'Attendance'),
-            const NavDestination(icon: Icons.local_activity_rounded, label: 'Activities'),
+            const NavDestination(icon: Icons.local_activity_rounded, label: 'Co/Extra-curricular'),
             const NavDestination(icon: Icons.analytics_rounded, label: 'Analytics'),
           ],
           onLogout: () => _handleLogout(context),
+          userName: user?.name,
+          userRole: user?.role,
           body: _buildBody(user),
         );
       },
@@ -351,9 +353,9 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
         
         final List<Map<String, dynamic>> summaryData = [
           {'title': 'Total Students', 'value': stats?.totalStudents.toString() ?? '0', 'icon': Icons.group, 'color': Colors.blue},
-          {'title': 'Average Attendance', 'value': '${stats?.avgAttendance.toStringAsFixed(1) ?? '0'}%', 'icon': Icons.check_circle, 'color': Colors.green},
-          {'title': 'At-Risk Students', 'value': stats?.atRiskCount.toString() ?? '0', 'icon': Icons.warning_amber, 'color': Colors.redAccent},
-          {'title': 'Active in Activities', 'value': stats?.totalActivities.toString() ?? '0', 'icon': Icons.emoji_events, 'color': Colors.orange},
+          {'title': 'Attendance', 'value': '${stats?.avgAttendance.toStringAsFixed(1) ?? '0'}%', 'icon': Icons.check_circle, 'color': AppColors.success},
+          {'title': 'Co/Extra-curricular', 'value': stats?.totalActivities.toString() ?? '0', 'icon': Icons.emoji_events, 'color': AppColors.accentWarm},
+          {'title': 'At-Risk Students', 'value': stats?.atRiskCount.toString() ?? '0', 'icon': Icons.warning_amber, 'color': AppColors.error},
         ];
 
         final crossAxisCount = ResponsiveBreakpoints.getCrossAxisCount(
@@ -425,14 +427,14 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
           year: int.tryParse(user?.year ?? '') ?? 1,
           section: user?.section ?? 'A',
       )))},
-      {'label': 'Entry/View Activity', 'icon': Icons.local_activity, 'color': Colors.purple, 'onTap': () {
+      {'label': 'Co/Extra-curricular', 'icon': Icons.local_activity, 'color': Colors.purple, 'onTap': () {
         if (user?.dept == null) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid department')));
           return;
         }
         Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityManagementScreen(dept: user!.dept!, year: int.tryParse(user.year ?? '') ?? 1, section: user.section ?? '')));
       }},
-      {'label': 'Activity Approvals', 'icon': Icons.approval, 'color': Colors.deepOrange, 'onTap': () {
+      {'label': 'Approvals (Co/Extra)', 'icon': Icons.approval, 'color': Colors.deepOrange, 'onTap': () {
       if (user?.dept == null) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid department')));
         return;

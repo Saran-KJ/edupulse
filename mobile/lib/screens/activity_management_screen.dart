@@ -69,7 +69,7 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: const Text('Are you sure you want to delete this activity?'),
+        content: const Text('Are you sure you want to delete this record?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
@@ -82,7 +82,7 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
         await _apiService.deleteParticipation(participationId);
         _fetchData();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Activity deleted')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted')));
         }
       } catch (e) {
         if (mounted) {
@@ -106,14 +106,14 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activity Management'),
+        title: const Text('Co/Extra-curricular Management'),
         backgroundColor: Colors.blue.shade800,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: _showAddActivityDialog,
-            tooltip: 'Entry Activity',
+            tooltip: 'Entry Record',
           ),
         ],
       ),
@@ -153,7 +153,7 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
                           if (activities.isEmpty)
                             const Padding(
                               padding: EdgeInsets.all(16.0),
-                              child: Text('No activities recorded'),
+                              child: Text('No records found'),
                             )
                           else
                             ...activities.map((participation) {
@@ -333,7 +333,7 @@ class _AddActivityDialogState extends State<AddActivityDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Entry Activity'),
+      title: const Text('Entry Co/Extra-curricular'),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -501,7 +501,7 @@ class _AddActivityDialogState extends State<AddActivityDialog> {
         Navigator.pop(context);
         widget.onSuccess();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Activity added successfully')),
+          const SnackBar(content: Text('Record added successfully')),
         );
       }
     } catch (e) {
@@ -577,7 +577,7 @@ class _EditActivityDialogState extends State<EditActivityDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Edit Activity'),
+      title: const Text('Edit Co/Extra-curricular'),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -683,7 +683,7 @@ class _EditActivityDialogState extends State<EditActivityDialog> {
         Navigator.pop(context);
         widget.onSuccess();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Activity updated successfully')),
+          const SnackBar(content: Text('Record updated successfully')),
         );
       }
     } catch (e) {

@@ -134,17 +134,45 @@ class _ProjectCoordinatorManagementScreenState extends State<ProjectCoordinatorM
                                   const SizedBox(height: 8),
                                   ...students.map((s) => Text('${s['reg_no']} - ${s['name']}')),
                                   const SizedBox(height: 12),
-                                  const Divider(),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text('Reviewer:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
-                                          Text(batch['reviewer_name'] ?? 'Not Assigned', style: TextStyle(color: batch['reviewer_name'] == null ? Colors.orange : Colors.black)),
-                                        ],
-                                      ),
+                                    const Divider(),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text('Project Topic:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+                                              Text(batch['project_title'] ?? 'Not Set', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: _getStatusColor(batch['zeroth_review_status'] ?? 'Pending').withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: _getStatusColor(batch['zeroth_review_status'] ?? 'Pending')),
+                                          ),
+                                          child: Text(
+                                            (batch['zeroth_review_status'] ?? 'Pending').toUpperCase(),
+                                            style: TextStyle(color: _getStatusColor(batch['zeroth_review_status'] ?? 'Pending'), fontSize: 10, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Divider(),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('Reviewer:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+                                            Text(batch['reviewer_name'] ?? 'Not Assigned', style: TextStyle(color: batch['reviewer_name'] == null ? Colors.orange : Colors.black)),
+                                          ],
+                                        ),
                                       Wrap(
                                         spacing: 8,
                                         runSpacing: 8,
@@ -159,15 +187,24 @@ class _ProjectCoordinatorManagementScreenState extends State<ProjectCoordinatorM
                                               foregroundColor: Colors.white,
                                             ),
                                           ),
-                                          OutlinedButton.icon(
-                                            onPressed: () => _openAddReviewDialog(batch),
-                                            icon: const Icon(Icons.rate_review, size: 18),
-                                            style: OutlinedButton.styleFrom(
-                                              foregroundColor: AppColors.primary,
-                                              side: BorderSide(color: AppColors.primary),
+                                            ElevatedButton.icon(
+                                              onPressed: () => _openApprovalDialog(batch),
+                                              icon: const Icon(Icons.verified_user_rounded, size: 18),
+                                              label: const Text('Zeroth Review'),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.orange,
+                                                foregroundColor: Colors.white,
+                                              ),
                                             ),
-                                            label: const Text('Add Review'),
-                                          ),
+                                            OutlinedButton.icon(
+                                              onPressed: () => _openAddReviewDialog(batch),
+                                              icon: const Icon(Icons.rate_review, size: 18),
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: AppColors.primary,
+                                                side: BorderSide(color: AppColors.primary),
+                                              ),
+                                              label: const Text('Add Review'),
+                                            ),
                                         ],
                                       ),
                                     ],
@@ -253,5 +290,23 @@ class _ProjectCoordinatorManagementScreenState extends State<ProjectCoordinatorM
         onReviewAdded: _loadBatches,
       ),
     );
+  }
+
+  void _openApprovalDialog(Map<String, dynamic> batch) {
+    showDialog(
+      context: context,
+      builder: (ctx) => ProjectApprovalDialog(
+        batch: batch,
+        onUpdated: _loadBatches,
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved': return Colors.green;
+      case 'rejected': return Colors.red;
+      default: return Colors.orange;
+    }
   }
 }

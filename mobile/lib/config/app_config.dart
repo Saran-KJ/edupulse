@@ -18,6 +18,7 @@ class AppConfig {
   static const String attendanceEndpoint = '$apiVersion/attendance';
   static const String activitiesEndpoint = '$apiVersion/activities';
   static const String analyticsEndpoint = '$apiVersion/analytics';
+  static const String hodReportSummaryEndpoint = '$analyticsEndpoint/hod/report-summary';
 
   static const String predictEndpoint = '$apiVersion/predict';
   static const String adminEndpoint = '$apiVersion/admin';

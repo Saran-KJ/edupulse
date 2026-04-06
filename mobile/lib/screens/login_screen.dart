@@ -7,6 +7,7 @@ import '../config/app_theme.dart';
 import '../services/api_service.dart';
 
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 import 'role_selection_screen.dart';
 import 'project_batch_allocation_screen.dart';
 import 'students_list_screen.dart';
@@ -423,7 +424,10 @@ class _LoginScreenState extends State<LoginScreen>
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                          ),
                           child: const Text('Forgot Password?'),
                         ),
                       ),
@@ -438,6 +442,33 @@ class _LoginScreenState extends State<LoginScreen>
                             : const Text('Sign In'),
                         ),
                       ),
+                      if (_canSelfRegister(widget.selectedRole)) ...[
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Don't have an account? ",
+                              style: AppTextStyles.bodySmall,
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => RegisterScreen(selectedRole: widget.selectedRole),
+                                ),
+                              ),
+                              child: Text(
+                                'Create Account',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

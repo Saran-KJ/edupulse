@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'project_roadmap_screen.dart';
+import 'project_hub_screen.dart';
 import '../services/api_service.dart';
 import '../models/models.dart';
 import '../config/app_theme.dart';
@@ -16,9 +16,9 @@ import 'student_profile_screen.dart';
 import 'student_risk_screen.dart';
 import 'subject_listing_screen.dart';
 import 'cgpa_screen.dart';
-import 'learning_hub_screen.dart';
 import 'quiz_screen.dart';
-
+import 'learning_hub_screen.dart';
+import '../widgets/pulse_widget.dart';
 
 
 void _handleLogout(BuildContext context) async {
@@ -38,11 +38,18 @@ class StudentDashboardScreen extends StatefulWidget {
 
 class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   int _selectedIndex = 0;
+  late Future<User> _userFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _userFuture = ApiService().getCurrentUser();
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<User>(
-      future: ApiService().getCurrentUser(),
+      future: _userFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -53,8 +60,13 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
 
         final user = snapshot.data;
         
+        String title = 'Student Dashboard';
+        if (_selectedIndex == 1) title = 'My Profile';
+        if (_selectedIndex == 2) title = 'My Marks';
+        if (_selectedIndex == 3) title = 'My Attendance';
+
         return MainScaffold(
-          title: 'Student Dashboard',
+          title: title,
           selectedIndex: _selectedIndex,
           onDestinationSelected: (index) => setState(() => _selectedIndex = index),
           destinations: [
@@ -64,32 +76,28 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
             const NavDestination(icon: Icons.calendar_today_outlined, label: 'Attendance'),
           ],
           onLogout: () => _handleLogout(context),
-          actions: [
-            if (user?.role == 'student' && user?.regNo != null)
-              FutureBuilder<RiskPrediction>(
-                future: ApiService().predictRisk(user!.regNo!),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData && snapshot.data!.riskLevel == 'Low') {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: IconButton(
-                        icon: const Icon(Icons.auto_awesome_rounded, color: AppColors.accent),
-                        tooltip: 'Learning Plan',
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LearningHubScreen()),
-                        ),
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-          ],
-          body: _buildBody(user),
+          userName: user?.name,
+          userRole: user?.role,
+          onProfileTap: () => setState(() => _selectedIndex = 1),
+          body: _buildSelectedBody(user),
         );
       },
     );
+  }
+
+  Widget _buildSelectedBody(User? user) {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildBody(user);
+      case 1:
+        return const StudentProfileScreen(hideScaffold: true);
+      case 2:
+        return const StudentMarksScreen(hideScaffold: true);
+      case 3:
+        return const StudentAttendanceScreen(hideScaffold: true);
+      default:
+        return _buildBody(user);
+    }
   }
 
   Widget _buildBody(User? user) {
@@ -97,8 +105,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildWelcomeHeader(),
-          const SizedBox(height: 28),
+          const SizedBox(height: 12),
           _buildProjectBatch(),
           const SizedBox(height: 28),
           _buildPendingQuizzes(),
@@ -106,8 +113,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           _buildSummaryCards(),
           const SizedBox(height: 28),
           _buildAcademicAlerts(),
-          const SizedBox(height: 28),
-          _buildPersonalizedLearning(),
           const SizedBox(height: 28),
           SectionHeader(
             title: 'Quick Actions',
@@ -262,100 +267,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     );
   }
 
-  Widget _buildWelcomeHeader() {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: ApiService().getStudentDashboardStats(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-        }
-
-        if (snapshot.hasError) {
-          return Text('Error: ${snapshot.error}', style: AppTextStyles.body);
-        }
-
-        final stats = snapshot.data;
-        final studentInfo = stats?['student_info'];
-
-        return GradientBanner(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      studentInfo?['name']?[0]?.toUpperCase() ?? 'S',
-                      style: GoogleFonts.poppins(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 18),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome Back,',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        studentInfo?['name'] ?? 'Student',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${studentInfo?['dept'] ?? ''} • Year ${studentInfo?['year'] ?? ''} ${studentInfo?['section'] != null ? "• Sec ${studentInfo!['section']}" : ""}',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildSummaryCards() {
     return FutureBuilder<Map<String, dynamic>>(
@@ -385,7 +296,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
             'color': AppColors.success,
           },
           {
-            'title': 'Activities',
+            'title': 'Co/Extra-curricular',
             'value': '${stats?['activities_count'] ?? '0'}',
             'icon': Icons.emoji_events_rounded,
             'color': AppColors.accentWarm,
@@ -450,7 +361,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentAttendanceScreen())),
       },
       {
-        'label': 'Activities',
+        'label': 'Co/Extra-curricular',
         'icon': Icons.emoji_events_rounded,
         'color': const Color(0xFFAB47BC),
         'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentActivityScreen())),
@@ -470,6 +381,12 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           if (regNo.isEmpty) return;
           Navigator.push(context, MaterialPageRoute(builder: (_) => CgpaScreen(regNo: regNo)));
         },
+      },
+      {
+        'label': 'Skill Hub',
+        'icon': Icons.psychology_rounded,
+        'color': const Color(0xFF6200EE),
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => LearningHubScreen())),
       },
     ];
 
@@ -541,229 +458,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     );
   }
 
-  Widget _buildPersonalizedLearning() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: 'Personalized Learning',
-          icon: Icons.auto_awesome_rounded,
-          color: AppColors.primaryLight,
-        ),
-        const SizedBox(height: 16),
-        FutureBuilder<Map<String, dynamic>>(
-          future: ApiService().getLearningRecommendations(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-            }
-
-            if (snapshot.hasError) {
-              return Text('Error loading resources: ${snapshot.error}', style: AppTextStyles.body);
-            }
-
-            final data = snapshot.data ?? {};
-            final resourcesList = data['resources'] is List ? data['resources'] as List<dynamic> : [];
-            final resources = resourcesList.map((json) => LearningResource.fromJson(json)).toList();
-            final progress = data['progress'] is Map<String, dynamic> ? data['progress'] : {};
-            final progressPercentage = (progress['percentage'] as num?)?.toDouble() ?? 0.0;
-
-            if (resources.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: AppShadows.subtle,
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.auto_stories_rounded, size: 32, color: AppColors.textHint),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        'No recommended resources found at this time.',
-                        style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Progress
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: AppShadows.subtle,
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.08)),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Your Progress', style: AppTextStyles.label.copyWith(color: AppColors.primary)),
-                          Text('${progressPercentage.toInt()}% Completed', style: AppTextStyles.label.copyWith(color: AppColors.primary)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: progressPercentage / 100,
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                          color: AppColors.primary,
-                          minHeight: 8,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Resources List
-                SizedBox(
-                  height: 240,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: resources.length,
-                    itemBuilder: (context, index) {
-                      final resource = resources[index];
-                      return Container(
-                        width: 280,
-                        margin: const EdgeInsets.only(right: 14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: AppShadows.card,
-                          border: Border.all(color: Colors.grey.shade100),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                gradient: AppGradients.card(_getResourceColor(resource.type)),
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  topRight: Radius.circular(16),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(_getResourceIcon(resource.type), size: 16, color: _getResourceColor(resource.type)),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    resource.type.toUpperCase(),
-                                    style: AppTextStyles.label.copyWith(
-                                      color: _getResourceColor(resource.type),
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  if (resource.dept != null)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(resource.dept!, style: AppTextStyles.bodySmall.copyWith(fontSize: 9)),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      resource.title,
-                                      style: AppTextStyles.headingSmall.copyWith(fontSize: 14),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      resource.description ?? 'No description',
-                                      style: AppTextStyles.bodySmall,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const Spacer(),
-                                    if (resource.tags != null)
-                                      Wrap(
-                                        spacing: 4,
-                                        children: resource.tags!.split(',').take(2).map((tag) {
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.surface,
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: Text(tag.trim(), style: AppTextStyles.bodySmall.copyWith(fontSize: 10)),
-                                          );
-                                        }).toList(),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton(
-                                  onPressed: () async {
-                                    final uri = Uri.parse(resource.url);
-                                    if (await canLaunchUrl(uri)) {
-                                      await launchUrl(uri);
-                                    }
-                                  },
-                                  child: Text('View', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Color _getResourceColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'video': return AppColors.error;
-      case 'article': return AppColors.success;
-      case 'course': return AppColors.info;
-      default: return AppColors.accentWarm;
-    }
-  }
-
-  IconData _getResourceIcon(String type) {
-    switch (type.toLowerCase()) {
-      case 'video': return Icons.play_circle_rounded;
-      case 'article': return Icons.article_rounded;
-      case 'course': return Icons.school_rounded;
-      default: return Icons.link_rounded;
-    }
-  }
 
   Widget _buildPendingQuizzes() {
     return FutureBuilder<List<Map<String, dynamic>>>(
@@ -998,7 +692,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProjectRoadmapScreen(batch: batch),
+                    builder: (context) => ProjectHubScreen(batch: batch),
                   ),
                 );
               },

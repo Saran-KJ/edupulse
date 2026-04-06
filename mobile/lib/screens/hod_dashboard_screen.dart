@@ -293,9 +293,9 @@ class _HODDashboardScreenState extends State<HODDashboardScreen> {
         // HOD views Global (Department) stats
         final List<Map<String, dynamic>> summaryData = [
           {'title': 'Total Students', 'value': stats?.totalStudents.toString() ?? '0', 'icon': Icons.group, 'color': Colors.blue},
-          {'title': 'Average Attendance', 'value': '${stats?.avgAttendance.toStringAsFixed(1) ?? '0'}%', 'icon': Icons.check_circle, 'color': Colors.green},
-          {'title': 'At-Risk Students', 'value': stats?.atRiskCount.toString() ?? '0', 'icon': Icons.warning_amber, 'color': Colors.redAccent},
-          {'title': 'Activities', 'value': stats?.totalActivities.toString() ?? '0', 'icon': Icons.emoji_events, 'color': Colors.orange},
+          {'title': 'Attendance', 'value': '${stats?.avgAttendance.toStringAsFixed(1) ?? '0'}%', 'icon': Icons.check_circle, 'color': AppColors.success},
+          {'title': 'Co/Extra-curricular', 'value': stats?.totalActivities.toString() ?? '0', 'icon': Icons.emoji_events, 'color': AppColors.accentWarm},
+          {'title': 'At-Risk Students', 'value': stats?.atRiskCount.toString() ?? '0', 'icon': Icons.warning_amber, 'color': AppColors.error},
         ];
 
         final crossAxisCount = ResponsiveBreakpoints.getCrossAxisCount(
@@ -362,7 +362,7 @@ class _HODDashboardScreenState extends State<HODDashboardScreen> {
     final List<Map<String, dynamic>> actions = [
       {'label': 'All Students', 'icon': Icons.list_alt, 'color': Colors.blue, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentsListScreen(dept: user?.dept ?? '', year: null, section: null)))},
       {'label': 'Department Reports', 'icon': Icons.analytics, 'color': Colors.indigo, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()))},
-      {'label': 'Activity Approvals', 'icon': Icons.approval, 'color': Colors.deepOrange, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityApprovalScreen(dept: user!.dept!, year: 1, section: 'A')))},
+      {'label': 'Approvals (Co/Extra)', 'icon': Icons.approval, 'color': Colors.deepOrange, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityApprovalScreen(dept: user!.dept!, year: 1, section: 'A')))},
       {'label': 'Faculty Allocation', 'icon': Icons.school, 'color': Colors.green, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => FacultyAllocationScreen(dept: user!.dept!)))},
       {'label': 'Subject Selection', 'icon': Icons.library_books, 'color': Colors.teal, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => SubjectSelectionScreen(dept: user!.dept!)))},
       {'label': 'Project Batches', 'icon': Icons.group_work, 'color': Colors.purple, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectBatchAllocationScreen(dept: user!.dept!)))},

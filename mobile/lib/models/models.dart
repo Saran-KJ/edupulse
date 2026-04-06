@@ -295,6 +295,113 @@ class DashboardStats {
   }
 }
 
+class DepartmentSummary {
+  final String deptCode;
+  final int studentCount;
+  final double avgAttendance;
+  final int atRiskCount;
+  final int highPerformerCount;
+
+  DepartmentSummary({
+    required this.deptCode,
+    required this.studentCount,
+    required this.avgAttendance,
+    required this.atRiskCount,
+    required this.highPerformerCount,
+  });
+
+  factory DepartmentSummary.fromJson(Map<String, dynamic> json) {
+    return DepartmentSummary(
+      deptCode: json['dept_code'],
+      studentCount: json['student_count'],
+      avgAttendance: (json['avg_attendance'] as num).toDouble(),
+      atRiskCount: json['at_risk_count'],
+      highPerformerCount: json['high_performer_count'],
+    );
+  }
+}
+
+class SubjectRiskSummary {
+  final String subjectCode;
+  final String subjectTitle;
+  final int highRiskCount;
+  final int mediumRiskCount;
+
+  SubjectRiskSummary({
+    required this.subjectCode,
+    required this.subjectTitle,
+    required this.highRiskCount,
+    required this.mediumRiskCount,
+  });
+
+  factory SubjectRiskSummary.fromJson(Map<String, dynamic> json) {
+    return SubjectRiskSummary(
+      subjectCode: json['subject_code'],
+      subjectTitle: json['subject_title'],
+      highRiskCount: json['high_risk_count'],
+      mediumRiskCount: json['medium_risk_count'],
+    );
+  }
+}
+
+class HodReportSummary {
+  final List<SubjectRiskSummary> atRiskBySubject;
+  final List<RiskPrediction> criticalStudents;
+  final int facultyCount;
+  final int totalSubjects;
+
+  HodReportSummary({
+    required this.atRiskBySubject,
+    required this.criticalStudents,
+    required this.facultyCount,
+    required this.totalSubjects,
+  });
+
+  factory HodReportSummary.fromJson(Map<String, dynamic> json) {
+    return HodReportSummary(
+      atRiskBySubject: (json['at_risk_by_subject'] as List)
+          .map((s) => SubjectRiskSummary.fromJson(s))
+          .toList(),
+      criticalStudents: (json['critical_students'] as List)
+          .map((s) => RiskPrediction.fromJson(s))
+          .toList(),
+      facultyCount: json['faculty_count'],
+      totalSubjects: json['total_subjects'],
+    );
+  }
+}
+
+class CollegeSummaryResponse {
+  final int totalStudents;
+  final int totalActivities;
+  final double avgCollegeAttendance;
+  final int totalAtRisk;
+  final int totalHighPerformers;
+  final List<DepartmentSummary> departmentSummaries;
+
+  CollegeSummaryResponse({
+    required this.totalStudents,
+    required this.totalActivities,
+    required this.avgCollegeAttendance,
+    required this.totalAtRisk,
+    required this.totalHighPerformers,
+    required this.departmentSummaries,
+  });
+
+  factory CollegeSummaryResponse.fromJson(Map<String, dynamic> json) {
+    return CollegeSummaryResponse(
+      totalStudents: json['total_students'],
+      totalActivities: json['total_activities'],
+      avgCollegeAttendance: (json['avg_college_attendance'] as num).toDouble(),
+      totalAtRisk: json['total_at_risk'],
+      totalHighPerformers: json['total_high_performers'],
+      departmentSummaries: (json['department_summaries'] as List)
+          .map((d) => DepartmentSummary.fromJson(d))
+          .toList(),
+    );
+  }
+}
+
 // Mark Entry Models
 
 class StudentActivitySubmission {
@@ -407,6 +514,7 @@ class LearningResource {
   final String? content;  // self-written in-app content (JSON)
   final bool isPreferredType;
   bool isCompleted;
+  final bool isLocked;
 
   LearningResource({
     required this.resourceId,
@@ -424,6 +532,7 @@ class LearningResource {
     this.content,
     this.isPreferredType = false,
     this.isCompleted = false,
+    this.isLocked = false,
   });
 
   factory LearningResource.fromJson(Map<String, dynamic> json) {
@@ -443,6 +552,7 @@ class LearningResource {
       content: json['content'],
       isPreferredType: json['is_preferred_type'] ?? false,
       isCompleted: json['is_completed'] ?? false,
+      isLocked: json['is_locked'] ?? false,
     );
   }
 }

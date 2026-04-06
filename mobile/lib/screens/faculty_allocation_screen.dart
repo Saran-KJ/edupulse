@@ -32,6 +32,10 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
   List<User> _facultyMembers = [];
   List<Map<String, dynamic>> _allocations = [];
   
+  // Search
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  
   // Map to store selected faculty for each subject temporarily before saving
   final Map<String, User?> _selectedFacultyForSubject = {};
 
@@ -40,7 +44,16 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
     super.initState();
     if (widget.year != null) _selectedYear = widget.year!;
     if (widget.section != null) _selectedSection = widget.section!;
+    _searchController.addListener(() {
+      setState(() => _searchQuery = _searchController.text.toLowerCase());
+    });
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -73,7 +86,9 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
       if (hasElectiveSemester) {
          filteredSubjects = subjects.where((s) {
             final sem = s['semester']?.toString() ?? '';
-            if (sem == 'V' || sem == 'VI' || sem == 'VII') {
+            // DB stores numeric ("5","6","7") — match both numeric and roman forms
+            if (sem == '5' || sem == '6' || sem == '7' ||
+                sem == 'V' || sem == 'VI' || sem == 'VII') {
                final cat = s['category']?.toString().toUpperCase();
                if (cat == 'PEC' || cat == 'OEC' || cat == 'EEC') {
                   return selectedElectiveCodes.contains(s['subject_code'].toString());
@@ -160,12 +175,36 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
       body: Column(
         children: [
           _buildFilterSection(),
+          _buildSearchBar(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _buildAllocationList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search by subject name or code...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _searchController.clear(),
+                )
+              : null,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+        ),
       ),
     );
   }
@@ -364,15 +403,23 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
   }
 
   Widget _buildAllocationList() {
-    if (_subjects.isEmpty) {
-      return const Center(child: Text('No subjects found for this semester.'));
+    final filtered = _searchQuery.isEmpty
+        ? _subjects
+        : _subjects.where((s) {
+            final code = (s['subject_code'] ?? '').toString().toLowerCase();
+            final title = (s['subject_title'] ?? '').toString().toLowerCase();
+            return code.contains(_searchQuery) || title.contains(_searchQuery);
+          }).toList();
+
+    if (filtered.isEmpty) {
+      return Center(child: Text(_subjects.isEmpty ? 'No subjects found for this semester.' : 'No results for "$_searchQuery".'));
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _subjects.length,
+      itemCount: filtered.length,
       itemBuilder: (context, index) {
-        final subject = _subjects[index];
+        final subject = filtered[index];
         final subjectCode = subject['subject_code'];
         final subjectTitle = subject['subject_title'];
 

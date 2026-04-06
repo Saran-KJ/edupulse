@@ -3,7 +3,8 @@ import '../services/api_service.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   final String? regNo; // If null, show current user (self)
-  const StudentProfileScreen({super.key, this.regNo});
+  final bool hideScaffold;
+  const StudentProfileScreen({super.key, this.regNo, this.hideScaffold = false});
 
   @override
   State<StudentProfileScreen> createState() => _StudentProfileScreenState();
@@ -19,7 +20,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   final _dobController = TextEditingController();
   final _bloodGroupController = TextEditingController();
   final _religionController = TextEditingController();
-  final _casteController = TextEditingController();
+  final _communityController = TextEditingController();
   final _abcIdController = TextEditingController();
   final _aadharNoController = TextEditingController();
   // Family Details
@@ -136,7 +137,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     _dobController.text = _studentData?['dob'] ?? '';
     _bloodGroupController.text = _studentData?['blood_group'] ?? '';
     _religionController.text = _studentData?['religion'] ?? '';
-    _casteController.text = _studentData?['caste'] ?? '';
+    _communityController.text = _studentData?['community'] ?? '';
     _abcIdController.text = _studentData?['abc_id'] ?? '';
     _aadharNoController.text = _studentData?['aadhar_no'] ?? '';
     _fatherNameController.text = _studentData?['father_name'] ?? '';
@@ -158,7 +159,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     _dobController.dispose();
     _bloodGroupController.dispose();
     _religionController.dispose();
-    _casteController.dispose();
+    _communityController.dispose();
     _abcIdController.dispose();
     _aadharNoController.dispose();
     _fatherNameController.dispose();
@@ -184,7 +185,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           'dob': _dobController.text,
           'blood_group': _bloodGroupController.text,
           'religion': _religionController.text,
-          'caste': _casteController.text,
+          'community': _communityController.text,
           'abc_id': _abcIdController.text,
           'aadhar_no': _aadharNoController.text,
           'father_name': _fatherNameController.text,
@@ -243,6 +244,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.hideScaffold) {
+      return _isLoading ? const Center(child: CircularProgressIndicator()) : _buildProfileContent();
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Student Profile'),
@@ -251,70 +255,74 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 800),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(),
-                            const SizedBox(height: 32),
-                            
-                            _buildSectionTitle('Academic Details (Read-Only)'),
-                            _buildReadOnlyField('Semester', _studentData?['semester']?.toString() ?? ''),
-                            _buildReadOnlyField('Year', _studentData?['year']?.toString() ?? ''),
-                            _buildReadOnlyField('Section', _studentData?['section'] ?? ''),
-                            const SizedBox(height: 32),
-                            
-                            _buildSectionTitle('Personal Details'),
-                            _buildTextField('Date of Birth (YYYY-MM-DD)', _dobController, enabled: _canEdit),
-                            _buildTextField('Blood Group', _bloodGroupController, enabled: _canEdit),
-                            _buildTextField('Religion', _religionController, enabled: _canEdit),
-                            _buildTextField('Caste', _casteController, enabled: _canEdit),
-                            _buildTextField('ABC ID', _abcIdController, enabled: _canEdit, keyboardType: TextInputType.number),
-                            _buildTextField('Aadhar Number', _aadharNoController, enabled: _canEdit, keyboardType: TextInputType.number),
-                            const SizedBox(height: 32),
-                            
-                            _buildSectionTitle('Contact Details'),
-                            _buildTextField('Phone Number', _phoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
-                            _buildTextField('Email', _emailController, enabled: _canEdit, keyboardType: TextInputType.emailAddress),
-                            _buildTextField('Address', _addressController, enabled: _canEdit, maxLines: 3),
-                            const SizedBox(height: 32),
-                            
-                            _buildSectionTitle('Family Details'),
-                            _buildTextField('Father Name', _fatherNameController, enabled: _canEdit),
-                            _buildTextField('Father Occupation', _fatherOccController, enabled: _canEdit),
-                            _buildTextField('Father Phone', _fatherPhoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
-                            const SizedBox(height: 16),
-                            _buildTextField('Mother Name', _motherNameController, enabled: _canEdit),
-                            _buildTextField('Mother Occupation', _motherOccController, enabled: _canEdit),
-                            _buildTextField('Mother Phone', _motherPhoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
-                            const SizedBox(height: 16),
-                            _buildTextField('Guardian Name (Optional)', _guardianNameController, enabled: _canEdit, optional: true),
-                            _buildTextField('Guardian Occupation (Optional)', _guardianOccController, enabled: _canEdit, optional: true),
-                            _buildTextField('Guardian Phone (Optional)', _guardianPhoneController, enabled: _canEdit, keyboardType: TextInputType.phone, optional: true),
-                            const SizedBox(height: 32),
-                            
-                            _buildAcademicSummary(),
-                            const SizedBox(height: 40),
-                            if (_canEdit) _buildActionButtons(),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+          : _buildProfileContent(),
+    );
+  }
+
+  Widget _buildProfileContent() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 32),
+                    
+                    _buildSectionTitle('Academic Details (Read-Only)'),
+                    _buildReadOnlyField('Semester', _studentData?['semester']?.toString() ?? ''),
+                    _buildReadOnlyField('Year', _studentData?['year']?.toString() ?? ''),
+                    _buildReadOnlyField('Section', _studentData?['section'] ?? ''),
+                    const SizedBox(height: 32),
+                    
+                    _buildSectionTitle('Personal Details'),
+                    _buildTextField('Date of Birth (YYYY-MM-DD)', _dobController, enabled: _canEdit),
+                    _buildTextField('Blood Group', _bloodGroupController, enabled: _canEdit),
+                    _buildTextField('Religion', _religionController, enabled: _canEdit),
+                    _buildTextField('Community', _communityController, enabled: _canEdit),
+                    _buildTextField('ABC ID', _abcIdController, enabled: _canEdit, keyboardType: TextInputType.number),
+                    _buildTextField('Aadhar Number', _aadharNoController, enabled: _canEdit, keyboardType: TextInputType.number),
+                    const SizedBox(height: 32),
+                    
+                    _buildSectionTitle('Contact Details'),
+                    _buildTextField('Phone Number', _phoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
+                    _buildTextField('Email', _emailController, enabled: _canEdit, keyboardType: TextInputType.emailAddress),
+                    _buildTextField('Address', _addressController, enabled: _canEdit, maxLines: 3),
+                    const SizedBox(height: 32),
+                    
+                    _buildSectionTitle('Family Details'),
+                    _buildTextField('Father Name', _fatherNameController, enabled: _canEdit),
+                    _buildTextField('Father Occupation', _fatherOccController, enabled: _canEdit),
+                    _buildTextField('Father Phone', _fatherPhoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
+                    const SizedBox(height: 16),
+                    _buildTextField('Mother Name', _motherNameController, enabled: _canEdit),
+                    _buildTextField('Mother Occupation', _motherOccController, enabled: _canEdit),
+                    _buildTextField('Mother Phone', _motherPhoneController, enabled: _canEdit, keyboardType: TextInputType.phone),
+                    const SizedBox(height: 16),
+                    _buildTextField('Guardian Name (Optional)', _guardianNameController, enabled: _canEdit, optional: true),
+                    _buildTextField('Guardian Occupation (Optional)', _guardianOccController, enabled: _canEdit, optional: true),
+                    _buildTextField('Guardian Phone (Optional)', _guardianPhoneController, enabled: _canEdit, keyboardType: TextInputType.phone, optional: true),
+                    const SizedBox(height: 32),
+                    
+                    _buildAcademicSummary(),
+                    const SizedBox(height: 40),
+                    if (_canEdit) _buildActionButtons(),
+                  ],
                 ),
               ),
             ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -431,7 +439,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             children: [
               _buildSummaryItem('GPA', gpa),
               _buildSummaryItem('Attendance', '$attendance%'),
-              _buildSummaryItem('Activities', '${_dashboardStats?['activities_count'] ?? 0}'),
+              _buildSummaryItem('Co/Extra-curricular', '${_dashboardStats?['activities_count'] ?? 0}'),
             ],
           ),
         ],

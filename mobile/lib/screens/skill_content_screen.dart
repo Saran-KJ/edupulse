@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import 'youtube_player_screen.dart';
@@ -50,7 +51,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
   bool _isCompleted = false;
   late int _actualResourceId;
   String? _selectedLanguage;        // Programming sub-language (Python, Java…)
-  String _videoLanguage = 'English'; // Tamil or English for video content
+  String _videoLanguage = 'English'; // English only for video content
   String _selectedLevel = 'Beginner'; // Beginner, Intermediate, Advanced
   Map<String, dynamic>? _project;
 
@@ -481,13 +482,8 @@ class _SkillContentScreenState extends State<SkillContentScreen>
           ),
           const SizedBox(height: 20),
           Text(
-            'Generating AI content...',
+            'Loading...',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _skillColor),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Fetching videos & quiz from Llama 3.2:1b (Local AI) + YouTube',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
           ),
         ],
       ),
@@ -695,8 +691,6 @@ class _SkillContentScreenState extends State<SkillContentScreen>
       children: [
         _buildLevelSelector(),
         const SizedBox(height: 10),
-        _buildVideoLanguageToggle(),
-        const SizedBox(height: 10),
         _buildProfessionalProgressBar(),
         const SizedBox(height: 20),
 
@@ -807,65 +801,6 @@ class _SkillContentScreenState extends State<SkillContentScreen>
     );
   }
 
-  /// Tamil / English toggle for video content.
-  Widget _buildVideoLanguageToggle() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildLangToggleBtn('English', '🇬🇧'),
-          const SizedBox(width: 4),
-          _buildLangToggleBtn('Tamil', '🇮🇳'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLangToggleBtn(String lang, String flag) {
-    final selected = _videoLanguage == lang;
-    return GestureDetector(
-      onTap: () {
-        if (!selected) {
-          setState(() {
-            _videoLanguage = lang;
-            _youtubeVideos = []; // Clear old videos while reloading
-          });
-          _fetchFromApi();
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: selected
-              ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2))]
-              : [],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(flag, style: const TextStyle(fontSize: 14)),
-            const SizedBox(width: 6),
-            Text(
-              lang,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                color: selected ? Colors.black87 : Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildSectionLabel(String label, Color color) {
     return Row(
@@ -931,22 +866,6 @@ class _SkillContentScreenState extends State<SkillContentScreen>
                     color: Colors.grey.shade200,
                     child: Icon(Icons.play_circle_outline, color: Colors.grey.shade400, size: 40),
                   ),
-                // Language badge (top-left)
-                Positioned(
-                  top: 6,
-                  left: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isTamil ? Colors.orange.shade700 : Colors.blue.shade700,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      isTamil ? '🇮🇳 Tamil' : '🇬🇧 English',
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
                 // Play button (bottom-right)
                 Positioned(
                   bottom: 6,
@@ -1079,10 +998,115 @@ class _SkillContentScreenState extends State<SkillContentScreen>
                 children: [
                   const Divider(),
                   const SizedBox(height: 8),
-                  Text(
-                    section['body'] ?? '',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.6),
-                  ),
+                  // 1. Concept Breakdown
+                  if (section['concept_breakdown'] != null) ...[
+                    _buildSubSectionHeader(Icons.lightbulb_outline, 'Concept Breakdown', Colors.blue),
+                    const SizedBox(height: 8),
+                    Text(
+                      section['concept_breakdown'],
+                      style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.6),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // 2. Industry Context
+                  if (section['industry_context'] != null) ...[
+                    _buildSubSectionHeader(Icons.business_center_outlined, 'Industry Context', Colors.purple),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.purple.shade100)
+                      ),
+                      child: Text(
+                        section['industry_context'],
+                        style: TextStyle(fontSize: 13.5, color: Colors.purple.shade900, height: 1.5, fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // 3. Code Lab (Interactive Simulation)
+                  if (section['code_lab'] != null) ...[
+                    _buildSubSectionHeader(Icons.code, 'Code Lab Simulation', Colors.green),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E1E), // Monokai dark background
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade800),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            section['code_lab'],
+                            style: GoogleFonts.firaCode(fontSize: 13, color: Colors.greenAccent.shade100, height: 1.4),
+                          ),
+                          const SizedBox(height: 16),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Simulating Execution... Analyzing Time & Space Complexity.'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.play_arrow, color: Colors.white, size: 16),
+                              label: const Text('Run & Analyze', style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade700,
+                                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // 4. Interview Focus
+                  if (section['interview_focus'] != null) ...[
+                    _buildSubSectionHeader(Icons.record_voice_over_outlined, 'Interview Focus', Colors.deepOrange),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.deepOrange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.deepOrange.shade200)
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.deepOrange.shade700, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              section['interview_focus'],
+                              style: TextStyle(fontSize: 13.5, color: Colors.deepOrange.shade900, height: 1.5, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  // Fallback for old academic format
+                  if (section['body'] != null && section['concept_breakdown'] == null) ...[
+                     Text(
+                        section['body'] ?? '',
+                        style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.6),
+                      ),
+                  ],
                   const SizedBox(height: 16),
                 ],
               ),
@@ -1093,6 +1117,18 @@ class _SkillContentScreenState extends State<SkillContentScreen>
     );
   }
 
+  Widget _buildSubSectionHeader(IconData icon, String title, Color color) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color.withOpacity(0.9)),
+        ),
+      ],
+    );
+  }
 
   Widget _buildProfessionalRoadmap() {
     return Container(
@@ -1687,9 +1723,31 @@ class _SkillContentScreenState extends State<SkillContentScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _project!['title'] ?? 'Technical Project',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                   Expanded(
+                    child: Text(
+                      _project!['title'] ?? 'Technical Project',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (_project!['estimated_duration'] != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.deepPurple.shade50, borderRadius: BorderRadius.circular(20)),
+                      child: Row(
+                        children: [
+                          Icon(Icons.schedule, color: Colors.deepPurple.shade700, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            _project!['estimated_duration'],
+                            style: TextStyle(color: Colors.deepPurple.shade700, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 8),
               Container(
@@ -1702,15 +1760,21 @@ class _SkillContentScreenState extends State<SkillContentScreen>
               ),
               const Divider(height: 30),
               if ((_project!['objective'] ?? '').toString().trim().isNotEmpty) ...[
-                _buildProjectItem('Objective', _project!['objective'] ?? ''),
+                _buildProjectItem(Icons.track_changes, 'Objective', _project!['objective'] ?? ''),
                 const SizedBox(height: 20),
               ],
               if ((_project!['description'] ?? '').toString().trim().isNotEmpty) ...[
-                _buildProjectItem('Description', _project!['description'] ?? ''),
+                _buildProjectItem(Icons.description_outlined, 'Description', _project!['description'] ?? ''),
                 const SizedBox(height: 20),
               ],
               if ((_project!['tech_stack'] is List) && (_project!['tech_stack'] as List).isNotEmpty) ...[
-                const Text('Suggested Tech Stack:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Row(
+                  children: [
+                    Icon(Icons.layers_outlined, color: Colors.blueGrey, size: 18),
+                    const SizedBox(width: 8),
+                    const Text('Suggested Tech Stack:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blueGrey)),
+                  ]
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -1720,7 +1784,65 @@ class _SkillContentScreenState extends State<SkillContentScreen>
                     side: BorderSide.none,
                   )).toList(),
                 ),
+                const SizedBox(height: 20),
               ],
+              if ((_project!['milestones'] is List) && (_project!['milestones'] as List).isNotEmpty) ...[
+                Row(
+                  children: [
+                    Icon(Icons.flag_outlined, color: Colors.orange.shade700, size: 18),
+                    const SizedBox(width: 8),
+                    Text('Implementation Milestones:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.orange.shade800)),
+                  ]
+                ),
+                const SizedBox(height: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: (List<String>.from(_project!['milestones'])).asMap().entries.map((m) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.orange.shade100),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: Colors.orange.shade200)),
+                            child: Text('${m.key + 1}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(child: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(m.value, style: TextStyle(fontSize: 13, color: Colors.orange.shade900, height: 1.4)),
+                          )),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+              ],
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Project submission dialog opened.'))
+                    );
+                  },
+                  icon: const Icon(Icons.upload_file, color: Colors.white),
+                  label: const Text('Submit Project Link', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade700,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -1728,11 +1850,17 @@ class _SkillContentScreenState extends State<SkillContentScreen>
     );
   }
 
-  Widget _buildProjectItem(String label, String content) {
+  Widget _buildProjectItem(IconData icon, String label, String content) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blueGrey)),
+        Row(
+          children: [
+            Icon(icon, color: Colors.blueGrey, size: 18),
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blueGrey)),
+          ],
+        ),
         const SizedBox(height: 6),
         Text(content, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87)),
       ],

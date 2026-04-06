@@ -175,7 +175,7 @@ class _ContentGenerationScreenState extends State<ContentGenerationScreen> {
                       )
                     : Icon(Icons.auto_awesome),
                 label: Text(isLoading
-                    ? 'Generating Content...'
+                    ? 'Loading...'
                     : 'Generate Content'),
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: 16),

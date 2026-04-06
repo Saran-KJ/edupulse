@@ -32,10 +32,23 @@ class _SubjectSelectionScreenState extends State<SubjectSelectionScreen> {
   List<Map<String, dynamic>> _electiveSubjects = []; // PEC, OEC, EEC only
   Set<String> _selectedSubjectCodes = {};
 
+  // Search
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      setState(() => _searchQuery = _searchController.text.toLowerCase());
+    });
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -125,12 +138,36 @@ class _SubjectSelectionScreenState extends State<SubjectSelectionScreen> {
           : Column(
               children: [
                 _buildFilterHeader(),
+                _buildSearchBar(),
                 Expanded(
                   child: _buildSubjectsList(),
                 ),
                 _buildBottomBar(),
               ],
             ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search PEC / OEC / EEC subjects...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _searchController.clear(),
+                )
+              : null,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+        ),
+      ),
     );
   }
 
@@ -202,24 +239,48 @@ class _SubjectSelectionScreenState extends State<SubjectSelectionScreen> {
   }
 
   Widget _buildSubjectsList() {
-    if (_electiveSubjects.isEmpty) {
+    // Filter by selected semester first
+    const semMap = {'I': '1', 'II': '2', 'III': '3', 'IV': '4', 'V': '5', 'VI': '6', 'VII': '7', 'VIII': '8'};
+    final numericSem = semMap[_selectedSemester] ?? _selectedSemester;
+    final semesterFiltered = _electiveSubjects.where((s) {
+      final subSem = s['semester']?.toString() ?? '';
+      // Match against both roman and numeric forms
+      return subSem == numericSem || subSem == _selectedSemester;
+    }).toList();
+
+    // Then filter by search
+    final filtered = _searchQuery.isEmpty
+        ? semesterFiltered
+        : semesterFiltered.where((s) {
+            final code = (s['subject_code'] ?? '').toString().toLowerCase();
+            final title = (s['subject_title'] ?? '').toString().toLowerCase();
+            return code.contains(_searchQuery) || title.contains(_searchQuery);
+          }).toList();
+
+    if (filtered.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.library_books, size: 60, color: Colors.grey.shade400),
             const SizedBox(height: 16),
-            Text('No PEC/OEC/EEC electives found for Semester $_selectedSemester.', style: TextStyle(color: Colors.grey.shade600)),
+            Text(
+              _searchQuery.isNotEmpty
+                  ? 'No results for "$_searchQuery"'
+                  : 'No PEC/OEC/EEC electives found for Semester $_selectedSemester.',
+              style: TextStyle(color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _electiveSubjects.length,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      itemCount: filtered.length,
       itemBuilder: (context, index) {
-        final subject = _electiveSubjects[index];
+        final subject = filtered[index];
         final subjectCode = subject['subject_code'] as String;
         final isSelected = _selectedSubjectCodes.contains(subjectCode);
         final category = subject['category'] ?? 'Elective';
