@@ -14,22 +14,22 @@ class LearningResourcesScreen extends StatefulWidget {
   final String? riskLevel;
 
   const LearningResourcesScreen({
-    Key? key,
+    super.key,
     required this.subjectCode,
     required this.subjectTitle,
     this.riskLevel,
-  }) : super(key: key);
+  });
 
   @override
-  _LearningResourcesScreenState createState() => _LearningResourcesScreenState();
+  State<LearningResourcesScreen> createState() => LearningResourcesScreenState();
 }
 
-class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
+class LearningResourcesScreenState extends State<LearningResourcesScreen> {
   bool _isLoading = true;
   List<LearningResource> _resources = [];
   Map<String, dynamic>? _planData;
   String? _error;
-  String _selectedLanguage = "All"; // Use integrated All (accurate English/Tamil only)
+  final String _selectedLanguage = "All"; // Use integrated All (accurate English/Tamil only)
   int? _playingResourceId;
   yt.YoutubePlayerController? _ytController;
   Map<String, dynamic>? _progressData;
@@ -195,59 +195,6 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
     }
   }
 
-  Future<void> _showSkillSelectionDialog(List<String> skills) async {
-    final skillIcons = {
-      'Communication': Icons.chat_bubble_outline,
-      'Programming': Icons.code,
-      'Aptitude': Icons.calculate,
-      'Critical Thinking': Icons.lightbulb_outline,
-      'Leadership': Icons.groups_outlined,
-    };
-
-    final skill = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Select a Skill", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Choose a skill area to develop:",
-              style: TextStyle(color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 16),
-            ...skills.map((s) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.purple.shade100),
-                ),
-                leading: Icon(skillIcons[s] ?? Icons.star, color: Colors.purple.shade700),
-                title: Text(s, style: const TextStyle(fontWeight: FontWeight.w600)),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => Navigator.pop(ctx, s),
-              ),
-            )),
-          ],
-        ),
-      ),
-    );
-
-    if (skill != null && mounted) {
-      try {
-        await ApiService().submitSkillSelection(widget.subjectCode, skill);
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
-        }
-      }
-    }
-  }
 
   Widget _buildChoiceOption({
     required IconData icon,
@@ -263,8 +210,8 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-          color: color.withOpacity(0.05),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+          color: color.withValues(alpha: 0.05),
         ),
         child: Row(
           children: [
@@ -581,7 +528,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 18),
@@ -592,7 +539,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color),
           ),
           const SizedBox(width: 10),
-          Expanded(child: Divider(color: color.withOpacity(0.35), thickness: 1.2)),
+          Expanded(child: Divider(color: color.withValues(alpha: 0.35), thickness: 1.2)),
         ],
       ),
     );
@@ -629,10 +576,10 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: riskColor.withOpacity(0.3)),
+        border: Border.all(color: riskColor.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: riskColor.withOpacity(0.08),
+            color: riskColor.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -664,7 +611,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: riskColor.withOpacity(0.1),
+                              color: riskColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -808,13 +755,13 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: headerColor.withOpacity(0.05),
+                  color: headerColor.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: headerColor.withOpacity(0.2)),
+                  border: Border.all(color: headerColor.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.track_changes, size: 14, color: headerColor.withOpacity(0.7)),
+                    Icon(Icons.track_changes, size: 14, color: headerColor.withValues(alpha: 0.7)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -845,7 +792,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
                           height: 12,
                           margin: const EdgeInsets.only(top: 4),
                           decoration: BoxDecoration(
-                            color: headerColor.withOpacity(0.2),
+                            color: headerColor.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                             border: Border.all(color: headerColor, width: 2),
                           ),
@@ -854,7 +801,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
                           Expanded(
                             child: Container(
                               width: 2,
-                              color: headerColor.withOpacity(0.3),
+                              color: headerColor.withValues(alpha: 0.3),
                             ),
                           ),
                       ],
@@ -882,34 +829,14 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildOverallProgress() {
-    // Assuming _planData doesn't contain the raw progress fraction, we compute it locally based on the resources
-    int completedCount = _resources.where((r) => r.isCompleted).length;
-    int totalCount = _resources.length;
-    double percent = totalCount > 0 ? (completedCount / totalCount) : 0.0;
 
-    return CircularPercentIndicator(
-      radius: 20.0,
-      lineWidth: 4.0,
-      percent: percent,
-      center: Text(
-        "${(percent * 100).toInt()}%",
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-      ),
-      progressColor: percent >= 1.0 ? Colors.green : Colors.blue,
-      backgroundColor: Colors.grey.shade200,
-      circularStrokeCap: CircularStrokeCap.round,
-      animation: true,
-      animationDuration: 800,
-    );
-  }
 
   Widget _buildEmptyState() {
     return Padding(
@@ -1011,7 +938,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: typeColor.withOpacity(0.1),
+                        color: typeColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(typeIcon, color: typeColor, size: 24),
@@ -1042,7 +969,7 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: typeColor.withOpacity(0.1),
+                                  color: typeColor.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -1124,3 +1051,4 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
     );
   }
 }
+

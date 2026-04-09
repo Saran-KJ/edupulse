@@ -252,7 +252,7 @@ class _AdvisorStudentLearningScreenState extends State<AdvisorStudentLearningScr
                         children: [
                           CircleAvatar(
                             radius: 20,
-                            backgroundColor: riskColor.withOpacity(0.15),
+                            backgroundColor: riskColor.withValues(alpha: 0.15),
                             child: Icon(
                               student.overallRisk == 'High' ? Icons.warning :
                               student.overallRisk == 'Medium' ? Icons.info : Icons.check,
@@ -323,7 +323,7 @@ class _AdvisorStudentLearningScreenState extends State<AdvisorStudentLearningScr
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: _getRiskColor(sub.riskLevel).withOpacity(0.1),
+                                  color: _getRiskColor(sub.riskLevel).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(sub.riskLevel,
@@ -355,7 +355,7 @@ class _AdvisorStudentLearningScreenState extends State<AdvisorStudentLearningScr
       margin: const EdgeInsets.only(left: 4),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text('$letter:$count',

@@ -109,7 +109,7 @@ class _StudentsListScreenState extends State<StudentsListScreen> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
-                    value: _selectedYear,
+                    initialValue: _selectedYear,
                     items: [
                       const DropdownMenuItem<int?>(value: null, child: Text('All Years')),
                       ...[1, 2, 3, 4].map((y) => DropdownMenuItem<int?>(value: y, child: Text('$y Year'))),
@@ -129,7 +129,7 @@ class _StudentsListScreenState extends State<StudentsListScreen> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
-                    value: _selectedSection,
+                    initialValue: _selectedSection,
                     items: [
                       const DropdownMenuItem<String?>(value: null, child: Text('All Sections')),
                       ...['A', 'B', 'C', 'D'].map((s) => DropdownMenuItem<String?>(value: s, child: Text('Sec $s'))),

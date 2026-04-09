@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
-import 'learning_resources_screen.dart';
 
 class QuizAnsweringScreen extends StatefulWidget {
   final Quiz quiz;
@@ -9,7 +8,7 @@ class QuizAnsweringScreen extends StatefulWidget {
   final int unit;
   final String riskLevel;
 
-  const QuizAnsweringScreen({
+  const QuizAnsweringScreen({super.key, 
     required this.quiz,
     required this.subject,
     required this.unit,
@@ -17,10 +16,10 @@ class QuizAnsweringScreen extends StatefulWidget {
   });
 
   @override
-  _QuizAnsweringScreenState createState() => _QuizAnsweringScreenState();
+  QuizAnsweringScreenState createState() => QuizAnsweringScreenState();
 }
 
-class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
+class QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
   final ApiService apiService = ApiService();
   
   late Map<int, dynamic> answers; // question_id -> answer (String for MCQ, List for MCS, String for NAT)
@@ -85,7 +84,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     if (answer is String) {
       return answer.isNotEmpty;
     } else if (answer is List) {
-      return (answer as List).isNotEmpty;
+      return (answer).isNotEmpty;
     }
     return false;
   }
@@ -93,7 +92,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
   void submitQuiz() async {
     if (answers.length != widget.quiz.questions.length) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please answer all questions')),
+        const SnackBar(content: Text('Please answer all questions')),
       );
       return;
     }
@@ -102,7 +101,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     for (final question in widget.quiz.questions) {
       if (!_isQuestionAnswered(question.id)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please answer all questions')),
+          const SnackBar(content: Text('Please answer all questions')),
         );
         return;
       }
@@ -135,6 +134,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
         correctAnswers = result['correct_answers'] ?? 0;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         isSubmitting = false;
       });
@@ -166,17 +166,17 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
             value: (currentQuestionIndex + 1) / widget.quiz.questions.length,
             minHeight: 8,
             backgroundColor: Colors.grey.shade300,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.blueAccent),
           ),
           // Question counter
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Question ${currentQuestionIndex + 1} of ${widget.quiz.questions.length}',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Chip(
                   label: Text('${answers.length}/${widget.quiz.questions.length} answered'),
@@ -188,7 +188,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
           // Question Content
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -196,7 +196,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                   Card(
                     elevation: 2,
                     child: Padding(
-                      padding: EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -207,13 +207,13 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                                   height: 1.5,
                                 ),
                           ),
-                          SizedBox(height: 12),
+                          const SizedBox(height: 12),
                           _buildQuestionTypeChip(question.questionType),
                         ],
                       ),
                     ),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   // Question Type Specific UI
                   _buildQuestionTypeUI(question),
                 ],
@@ -222,14 +222,14 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
           ),
           // Navigation Buttons
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 ElevatedButton.icon(
                   onPressed: currentQuestionIndex > 0 ? previousQuestion : null,
-                  icon: Icon(Icons.arrow_back),
-                  label: Text('Previous'),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Previous'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey,
                   ),
@@ -237,8 +237,8 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                 if (currentQuestionIndex < widget.quiz.questions.length - 1)
                   ElevatedButton.icon(
                     onPressed: nextQuestion,
-                    icon: Icon(Icons.arrow_forward),
-                    label: Text('Next'),
+                    icon: const Icon(Icons.arrow_forward),
+                    label: const Text('Next'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueAccent,
                     ),
@@ -247,7 +247,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                   ElevatedButton.icon(
                     onPressed: isSubmitting ? null : submitQuiz,
                     icon: isSubmitting
-                        ? SizedBox(
+                        ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
@@ -256,7 +256,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                                   AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : Icon(Icons.check),
+                        : const Icon(Icons.check),
                     label: Text(isSubmitting ? 'Submitting...' : 'Submit'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
@@ -287,7 +287,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
 
     return Chip(
       label: Text(label),
-      backgroundColor: chipColor.withOpacity(0.2),
+      backgroundColor: chipColor.withValues(alpha: 0.2),
       labelStyle: TextStyle(
         color: chipColor,
         fontWeight: FontWeight.bold,
@@ -320,18 +320,18 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
       children: [
         Text(
           _isOptionEmpty(question.optionA) ? 'Enter numeric answer:' : 'Select one option:',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         if (!_isOptionEmpty(question.optionA))
           _buildMCQOption('Option A', question.optionA!, question.id),
-        if (!_isOptionEmpty(question.optionA)) SizedBox(height: 8),
+        if (!_isOptionEmpty(question.optionA)) const SizedBox(height: 8),
         if (!_isOptionEmpty(question.optionB))
           _buildMCQOption('Option B', question.optionB!, question.id),
-        if (!_isOptionEmpty(question.optionB)) SizedBox(height: 8),
+        if (!_isOptionEmpty(question.optionB)) const SizedBox(height: 8),
         if (!_isOptionEmpty(question.optionC))
           _buildMCQOption('Option C', question.optionC!, question.id),
-        if (!_isOptionEmpty(question.optionC)) SizedBox(height: 8),
+        if (!_isOptionEmpty(question.optionC)) const SizedBox(height: 8),
         if (!_isOptionEmpty(question.optionD))
           _buildMCQOption('Option D', question.optionD!, question.id),
         
@@ -351,19 +351,18 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
         elevation: isSelected ? 4 : 1,
         color: isSelected ? Colors.blue.shade50 : Colors.white,
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Radio<String>(
-                value: optionLabel,
-                groupValue: answers[questionId],
-                onChanged: (_) => selectMCQAnswer(optionLabel),
+              Icon(
+                isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                color: isSelected ? Colors.blue : Colors.grey,
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   optionText,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     height: 1.4,
                   ),
@@ -380,25 +379,25 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Select all correct options:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         if (question.optionA != null)
           _buildMCSOption('Option A', question.optionA!, question.id),
-        if (question.optionA != null) SizedBox(height: 8),
+        if (question.optionA != null) const SizedBox(height: 8),
         if (question.optionB != null)
           _buildMCSOption('Option B', question.optionB!, question.id),
-        if (question.optionB != null) SizedBox(height: 8),
+        if (question.optionB != null) const SizedBox(height: 8),
         if (question.optionC != null)
           _buildMCSOption('Option C', question.optionC!, question.id),
-        if (question.optionC != null) SizedBox(height: 8),
+        if (question.optionC != null) const SizedBox(height: 8),
         if (question.optionD != null)
           _buildMCSOption('Option D', question.optionD!, question.id),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         Container(
-          padding: EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.amber.shade50,
             border: Border.all(color: Colors.amber, width: 1),
@@ -407,7 +406,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
           child: Row(
             children: [
               Icon(Icons.info, color: Colors.amber.shade800, size: 20),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'You must select all correct answers and no incorrect ones',
@@ -434,18 +433,18 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
         elevation: isSelected ? 4 : 1,
         color: isSelected ? Colors.purple.shade50 : Colors.white,
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Checkbox(
                 value: isSelected,
                 onChanged: (_) => toggleMCSOption(optionLabel),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   optionText,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     height: 1.4,
                   ),
@@ -464,13 +463,13 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Enter the numeric answer:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         TextField(
-          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
             hintText: 'Enter a number (e.g., 3.14 or 1024)',
             border: OutlineInputBorder(
@@ -478,14 +477,14 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
             ),
             filled: true,
             fillColor: Colors.grey.shade50,
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
           onChanged: (value) => setNATAnswer(value),
           controller: TextEditingController(text: currentAnswer),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         Container(
-          padding: EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.blue.shade50,
             border: Border.all(color: Colors.blue, width: 1),
@@ -494,7 +493,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
           child: Row(
             children: [
               Icon(Icons.info, color: Colors.blue.shade800, size: 20),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Answer is evaluated with ±0.01 tolerance',
@@ -518,13 +517,13 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Quiz Results'),
+        title: const Text('Quiz Results'),
         backgroundColor: Colors.blueAccent,
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
             // Result Card
             Center(
               child: LayoutBuilder(
@@ -541,7 +540,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                       color: isPassed ? Colors.green.shade100 : Colors.red.shade100,
                       boxShadow: [
                         BoxShadow(
-                          color: (isPassed ? Colors.green : Colors.red).withOpacity(0.3),
+                          color: (isPassed ? Colors.green : Colors.red).withValues(alpha: 0.3),
                           spreadRadius: 8,
                           blurRadius: 16,
                         ),
@@ -559,7 +558,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                               color: isPassed ? Colors.green.shade800 : Colors.red.shade800,
                             ),
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
                             isPassed ? 'Passed!' : 'Try Again',
                             style: TextStyle(
@@ -575,14 +574,14 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                 }
               ),
             ),
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
             // Statistics
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Card(
                 elevation: 2,
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -592,26 +591,26 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       _buildStatRow('Correct Answers', '$correctAnswers/$totalQuestions'),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       _buildStatRow(
                         'Wrong Answers',
                         '${totalQuestions - correctAnswers}/$totalQuestions',
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       _buildStatRow('Score', '$percentage%'),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       _buildStatRow('Difficulty', widget.riskLevel),
                     ],
                   ),
                 ),
               ),
             ),
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
             // Answer Review
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -621,35 +620,35 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   ...widget.quiz.questions.asMap().entries.map((entry) {
                     final index = entry.key;
                     final question = entry.value;
                     final userAnswer = answers[question.id];
 
                     return _buildAnswerReviewCard(index + 1, question, userAnswer);
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
             // Action Buttons
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text('Back to Home'),
+                      child: const Text('Back to Home'),
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -663,9 +662,9 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     
     return Card(
       elevation: 1,
-      margin: EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -674,25 +673,25 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                 Container(
                   width: 32,
                   height: 32,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.blue,
                   ),
                   child: Center(
                     child: Text(
                       '$questionNumber',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Question $questionNumber',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -703,12 +702,12 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               question.question,
-              style: TextStyle(height: 1.4),
+              style: const TextStyle(height: 1.4),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               'Your answer: $userAnswerText',
               style: TextStyle(
@@ -726,7 +725,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
     if (answer == null) return 'Not answered';
     if (answer is String) return answer;
     if (answer is List) {
-      return (answer as List).join(', ');
+      return (answer).join(', ');
     }
     return answer.toString();
   }
@@ -738,7 +737,7 @@ class _QuizAnsweringScreenState extends State<QuizAnsweringScreen> {
         Text(label),
         Text(
           value,
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ],
     );

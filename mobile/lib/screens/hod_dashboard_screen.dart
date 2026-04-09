@@ -3,13 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../widgets/responsive_layout.dart';
-import '../widgets/web_scaffold.dart';
 import 'students_list_screen.dart';
 import 'analytics_screen.dart';
-import 'activity_management_screen.dart';
-import 'activity_management_screen.dart';
 import 'activity_approval_screen.dart';
-import 'attendance_entry_screen.dart';
 import 'faculty_allocation_screen.dart';
 import 'subject_selection_screen.dart';
 import 'project_batch_allocation_screen.dart';
@@ -64,13 +60,13 @@ class _HODDashboardScreenState extends State<HODDashboardScreen> {
           title: 'HOD Dashboard',
           selectedIndex: _selectedIndex,
           onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-          destinations: [
-            const NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
-            const NavDestination(icon: Icons.people_rounded, label: 'Students'),
-            const NavDestination(icon: Icons.analytics_rounded, label: 'Analytics'),
-            const NavDestination(icon: Icons.verified_user_rounded, label: 'Approvals'),
-            const NavDestination(icon: Icons.school_rounded, label: 'Faculty'),
-            const NavDestination(icon: Icons.library_books_rounded, label: 'Subjects'),
+          destinations: const [
+            NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+            NavDestination(icon: Icons.people_rounded, label: 'Students'),
+            NavDestination(icon: Icons.analytics_rounded, label: 'Analytics'),
+            NavDestination(icon: Icons.verified_user_rounded, label: 'Approvals'),
+            NavDestination(icon: Icons.school_rounded, label: 'Faculty'),
+            NavDestination(icon: Icons.library_books_rounded, label: 'Subjects'),
           ],
           onLogout: () => _handleLogout(context),
           body: _buildBody(user),
@@ -107,7 +103,7 @@ class _HODDashboardScreenState extends State<HODDashboardScreen> {
           const SizedBox(height: 32),
           _buildSummaryCards(),
           const SizedBox(height: 32),
-          SectionHeader(title: 'Department Actions', icon: Icons.grid_view_rounded, color: AppColors.primary),
+          const SectionHeader(title: 'Department Actions', icon: Icons.grid_view_rounded, color: AppColors.primary),
           const SizedBox(height: 16),
           _buildQuickActions(context, user),
           const SizedBox(height: 40),

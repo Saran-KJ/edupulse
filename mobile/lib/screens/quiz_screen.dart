@@ -11,23 +11,23 @@ class QuizScreen extends StatefulWidget {
   final int? scheduledQuizId;
 
   const QuizScreen({
-    Key? key,
+    super.key,
     required this.subjectCode,
     required this.subjectTitle,
     required this.unitNumber,
     required this.riskLevel,
     this.scheduledQuizId,
-  }) : super(key: key);
+  });
 
   @override
-  _QuizScreenState createState() => _QuizScreenState();
+  QuizScreenState createState() => QuizScreenState();
 }
 
-class _QuizScreenState extends State<QuizScreen> {
+class QuizScreenState extends State<QuizScreen> {
   bool _isLoading = true;
   List<QuizQuestion> _questions = [];
   int _currentIndex = 0;
-  Map<int, String> _userAnswers = {};
+  final Map<int, String> _userAnswers = {};
   String? _error;
   bool _isSubmitting = false;
   Map<String, dynamic>? _result;
@@ -104,11 +104,13 @@ class _QuizScreenState extends State<QuizScreen> {
         scheduledQuizId: widget.scheduledQuizId,
       );
       final result = await ApiService().submitQuiz(submission);
+      if (!mounted) return;
       setState(() {
         _result = result;
         _isSubmitting = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error submitting quiz: $e"), backgroundColor: Colors.red),
@@ -213,7 +215,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: Text(
@@ -334,7 +336,7 @@ class _QuizScreenState extends State<QuizScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -408,7 +410,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20)],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
                   ),
                   child: CircularPercentIndicator(
                     radius: radius,
@@ -437,11 +439,11 @@ class _QuizScreenState extends State<QuizScreen> {
                   color: Colors.green.shade100,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.trending_up, color: Colors.green),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    Icon(Icons.trending_up, color: Colors.green),
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text("Your risk level has been updated thanks to your strong performance!", 
                         style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
                     ),

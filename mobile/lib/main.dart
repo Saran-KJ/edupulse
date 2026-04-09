@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'config/app_config.dart';
 import 'config/app_theme.dart';
 import 'services/api_service.dart';
+import 'models/models.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/student_dashboard_screen.dart';
@@ -48,7 +49,7 @@ class EduPulseApp extends StatelessWidget {
         ),
         cardTheme: CardThemeData(
           elevation: 0,
-          shape: RoundedRectangleBorder(
+          shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(20)),
           ),
           color: Colors.white,
@@ -173,20 +174,27 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateAfterDelay() async {
-    // Wait for animation to settle
-    await Future.delayed(const Duration(milliseconds: 2200));
-    if (!mounted) return;
-
+    final startTime = DateTime.now();
+    
+    User? user;
     try {
       final apiService = ApiService();
       await apiService.loadToken();
-      
-      // Attempt to get user if token exists
-      final user = await apiService.getCurrentUser();
-      
-      if (!mounted) return;
+      user = await apiService.getCurrentUser();
+    } catch (e) {
+      debugPrint("Auto-login failed or no session: $e");
+    }
 
-      // Determine target screen based on role (logic from login_screen.dart)
+    // Ensure at least 1500ms for animation to play
+    final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+    if (elapsed < 1500) {
+      await Future.delayed(Duration(milliseconds: 1500 - elapsed));
+    }
+
+    if (!mounted) return;
+
+    if (user != null) {
+      // Determine target screen based on role
       Widget targetScreen;
       final role = user.role.toLowerCase();
       if (role == 'student') {
@@ -206,7 +214,6 @@ class _SplashScreenState extends State<SplashScreen>
       } else if (role.contains('advisor')) {
         targetScreen = const ClassAdvisorDashboardScreen();
       } else {
-        // Fallback to Role Selection if role is unrecognized
         targetScreen = const RoleSelectionScreen();
       }
 
@@ -219,10 +226,8 @@ class _SplashScreenState extends State<SplashScreen>
           transitionDuration: const Duration(milliseconds: 600),
         ),
       );
-    } catch (e) {
-      // If error (no token, expired token, network error), go to Role Selection
-      debugPrint("Auto-login failed or no session: $e");
-      if (!mounted) return;
+    } else {
+      // No user or failed login, go to Role Selection
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) => const RoleSelectionScreen(),

@@ -18,7 +18,6 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
   String? _error;
   String? _regNo;
   int _selectedSemester = 1;
-  int _currentStudentSemester = 1;
   
   DateTime _selectedDate = DateTime.now();
   int _selectedIndex = 0;
@@ -51,7 +50,6 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
           if (profileData.containsKey('student')) {
             final studentSem = profileData['student']['semester'];
             setState(() {
-              _currentStudentSemester = studentSem;
               // If it's the first load, set selected semester to current
               if (_attendanceRecords.isEmpty) {
                 _selectedSemester = studentSem;
@@ -154,7 +152,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -282,7 +280,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
               borderRadius: BorderRadius.circular(30),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -369,7 +367,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10),
         ],
       ),
       child: Column(
@@ -397,13 +395,13 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
   }
 
   Widget _buildNoRecordsView() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.history_toggle_off_rounded, color: Color(0xFF94A3B8), size: 64),
-          const SizedBox(height: 16),
-          const Text('No records found for this semester', style: TextStyle(color: Color(0xFF64748B))),
+          Icon(Icons.history_toggle_off_rounded, color: Color(0xFF94A3B8), size: 64),
+          SizedBox(height: 16),
+          Text('No records found for this semester', style: TextStyle(color: Color(0xFF64748B))),
         ],
       ),
     );
@@ -548,7 +546,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -589,7 +587,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -650,8 +648,8 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
           color: const Color(0xFFE2E8F0),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
-          children: const [
+        child: const Row(
+          children: [
             Icon(Icons.calendar_month_rounded, color: Color(0xFF1E293B), size: 18),
             SizedBox(width: 8),
             Text(
@@ -709,7 +707,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -720,7 +718,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 20),
@@ -737,10 +735,10 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF94A3B8),
+              color: Color(0xFF94A3B8),
               letterSpacing: 0.5,
             ),
           ),
@@ -796,11 +794,11 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
           color: const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(24),
         ),
-        child: Column(
+        child: const Column(
           children: [
-            const Icon(Icons.history_toggle_off_rounded, color: Color(0xFF94A3B8), size: 48),
-            const SizedBox(height: 16),
-            const Text(
+            Icon(Icons.history_toggle_off_rounded, color: Color(0xFF94A3B8), size: 48),
+            SizedBox(height: 16),
+            Text(
               'No records for today yet',
               style: TextStyle(
                 fontSize: 14,
@@ -837,7 +835,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.01),
+              color: Colors.black.withValues(alpha: 0.01),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -906,7 +904,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
+                color: statusColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(

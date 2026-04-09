@@ -346,7 +346,7 @@ class _AddActivityDialogState extends State<AddActivityDialog> {
                   Expanded(
                     child: DropdownButtonFormField<int>(
                       decoration: const InputDecoration(labelText: 'Filter by Year'),
-                      value: _selectedYear,
+                      initialValue: _selectedYear,
                       items: [
                         const DropdownMenuItem(value: null, child: Text('All Years')),
                         ..._years.map((y) => DropdownMenuItem(value: y, child: Text('Year $y'))),
@@ -364,7 +364,7 @@ class _AddActivityDialogState extends State<AddActivityDialog> {
                   Expanded(
                     child: DropdownButtonFormField<int>(
                       decoration: const InputDecoration(labelText: 'Filter by Sem'),
-                      value: _selectedSemester,
+                      initialValue: _selectedSemester,
                       items: [
                         const DropdownMenuItem(value: null, child: Text('All Sems')),
                         ..._semesters.map((s) => DropdownMenuItem(value: s, child: Text('Sem $s'))),
@@ -409,14 +409,14 @@ class _AddActivityDialogState extends State<AddActivityDialog> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Activity Type'),
-                value: _selectedType,
+                initialValue: _selectedType,
                 items: _activityTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                 onChanged: (val) => setState(() => _selectedType = val!),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Level'),
-                value: _selectedLevel,
+                initialValue: _selectedLevel,
                 items: _levels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                 onChanged: (val) => setState(() => _selectedLevel = val!),
               ),
@@ -592,14 +592,14 @@ class _EditActivityDialogState extends State<EditActivityDialog> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Activity Type'),
-                value: _selectedType,
+                initialValue: _selectedType,
                 items: _activityTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                 onChanged: (val) => setState(() => _selectedType = val!),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Level'),
-                value: _selectedLevel,
+                initialValue: _selectedLevel,
                 items: _levels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                 onChanged: (val) => setState(() => _selectedLevel = val!),
               ),

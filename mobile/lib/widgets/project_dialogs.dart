@@ -84,7 +84,7 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             DropdownButtonFormField<int>(
-              value: _selectedReview,
+              initialValue: _selectedReview,
               decoration: const InputDecoration(labelText: 'Review Phase', border: OutlineInputBorder()),
               items: const [
                 DropdownMenuItem(value: 0, child: Text('0. Zeroth Review (Ideation)')),

@@ -79,7 +79,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         });
       }
     } catch (e) {
-      print('Error loading: $e');
+      debugPrint('Error loading: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

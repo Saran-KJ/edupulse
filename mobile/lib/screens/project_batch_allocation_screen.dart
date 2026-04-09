@@ -119,9 +119,6 @@ class _ProjectBatchAllocationScreenState extends State<ProjectBatchAllocationScr
 
   @override
   Widget build(BuildContext context) {
-    final String? role = _currentUser?['role']?.toString().toLowerCase();
-    final bool isHODOrAdmin = role == 'hod' || role == 'admin';
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Project Batches'),
@@ -235,7 +232,7 @@ class _ProjectBatchAllocationScreenState extends State<ProjectBatchAllocationScr
         children: [
           Expanded(
             child: DropdownButtonFormField<int>(
-              value: _selectedYear,
+              initialValue: _selectedYear,
               decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
               items: const [
                 DropdownMenuItem(value: 3, child: Text('Year 3')),
@@ -247,7 +244,7 @@ class _ProjectBatchAllocationScreenState extends State<ProjectBatchAllocationScr
           const SizedBox(width: 16),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedSection,
+              initialValue: _selectedSection,
               decoration: const InputDecoration(labelText: 'Section', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
               items: ['A', 'B', 'C'].map((s) => DropdownMenuItem(value: s, child: Text('Section $s'))).toList(),
               onChanged: _onSectionChanged,
@@ -357,7 +354,7 @@ class _ProjectBatchAllocationScreenState extends State<ProjectBatchAllocationScr
         builder: (context, setDialogState) => AlertDialog(
           title: Text(coordId == null ? 'Assign Project Coordinator' : 'Edit Project Coordinator'),
           content: DropdownButtonFormField<int>(
-            value: selectedFacultyId,
+            initialValue: selectedFacultyId,
             decoration: const InputDecoration(labelText: 'Select Faculty', border: OutlineInputBorder()),
             items: _faculty.map((f) => DropdownMenuItem(value: f['user_id'] as int, child: Text(f['name']))).toList(),
             onChanged: (val) => setDialogState(() => selectedFacultyId = val),
@@ -381,9 +378,11 @@ class _ProjectBatchAllocationScreenState extends State<ProjectBatchAllocationScr
                       year: _selectedYear,
                     );
                   }
+                  if (!context.mounted) return;
                   Navigator.pop(context);
                   _loadCoordinator();
                 } catch (e) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
@@ -404,7 +403,7 @@ class _ProjectBatchAllocationScreenState extends State<ProjectBatchAllocationScr
         builder: (context, setDialogState) => AlertDialog(
           title: Text('Assign Reviewer - Batch #${batch['id']}'),
           content: DropdownButtonFormField<int>(
-            value: selectedReviewerId,
+            initialValue: selectedReviewerId,
             decoration: const InputDecoration(labelText: 'Select Faculty', border: OutlineInputBorder()),
             items: _faculty.map((f) => DropdownMenuItem(value: f['user_id'] as int, child: Text(f['name']))).toList(),
             onChanged: (val) => setDialogState(() => selectedReviewerId = val),
@@ -415,9 +414,11 @@ class _ProjectBatchAllocationScreenState extends State<ProjectBatchAllocationScr
               onPressed: selectedReviewerId == null ? null : () async {
                 try {
                   await ApiService().assignBatchReviewer(batch['id'], selectedReviewerId!);
+                  if (!context.mounted) return;
                   Navigator.pop(context);
                   _loadBatches();
                 } catch (e) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
@@ -464,7 +465,7 @@ class _CreateBatchDialogState extends State<_CreateBatchDialog> {
   List<Map<String, dynamic>> _students = [];
   
   int? _selectedGuideId;
-  Set<String> _selectedStudentRegNos = {};
+  final Set<String> _selectedStudentRegNos = {};
 
   @override
   void initState() {
@@ -562,7 +563,7 @@ class _CreateBatchDialogState extends State<_CreateBatchDialog> {
           children: [
             DropdownButtonFormField<int>(
               decoration: const InputDecoration(labelText: 'Select Guide', border: OutlineInputBorder()),
-              value: _selectedGuideId,
+              initialValue: _selectedGuideId,
               items: _faculty.map((f) => DropdownMenuItem(value: f['user_id'] as int, child: Text(f['name']))).toList(),
               onChanged: (val) => setState(() => _selectedGuideId = val),
             ),

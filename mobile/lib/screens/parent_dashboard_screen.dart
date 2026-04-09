@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../config/app_theme.dart';
 import '../models/models.dart';
-import 'login_screen.dart';
 import 'student_attendance_screen.dart';
 import 'student_marks_screen.dart';
 import 'student_activity_screen.dart';
@@ -82,11 +80,11 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                     const SizedBox(height: 32),
                     _buildChildInfoCard(data),
                     const SizedBox(height: 32),
-                    SectionHeader(title: 'Academic Summary', icon: Icons.analytics_rounded, color: AppColors.primary),
+                    const SectionHeader(title: 'Academic Summary', icon: Icons.analytics_rounded, color: AppColors.primary),
                     const SizedBox(height: 16),
                     _buildSummaryCards(data),
                     const SizedBox(height: 32),
-                    SectionHeader(title: 'Quick Actions', icon: Icons.bolt_rounded, color: AppColors.accent),
+                    const SectionHeader(title: 'Quick Actions', icon: Icons.bolt_rounded, color: AppColors.accent),
                     const SizedBox(height: 16),
                     _buildQuickActions(context, data),
                     const SizedBox(height: 40),
@@ -107,7 +105,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: AppColors.warning),
+            const Icon(Icons.error_outline, size: 64, color: AppColors.warning),
             const SizedBox(height: 16),
             Text(
               'Error loading dashboard',

@@ -14,7 +14,6 @@ class ProjectRoadmapScreen extends StatefulWidget {
 
 class _ProjectRoadmapScreenState extends State<ProjectRoadmapScreen> {
   late Map<String, dynamic> _batch;
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -23,7 +22,6 @@ class _ProjectRoadmapScreenState extends State<ProjectRoadmapScreen> {
   }
 
   Future<void> _refreshData() async {
-    setState(() => _isLoading = true);
     try {
       final updatedBatch = await ApiService().getMyProjectBatch();
       if (updatedBatch != null) {
@@ -32,11 +30,10 @@ class _ProjectRoadmapScreenState extends State<ProjectRoadmapScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error refreshing data: $e')),
       );
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -46,6 +43,7 @@ class _ProjectRoadmapScreenState extends State<ProjectRoadmapScreen> {
       await ApiService().updateProjectTask(taskId, newStatus);
       await _refreshData();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating task: $e')),
       );

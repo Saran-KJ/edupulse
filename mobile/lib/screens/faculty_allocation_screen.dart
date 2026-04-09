@@ -235,7 +235,7 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: dialogSemester,
+                    initialValue: dialogSemester,
                     decoration: const InputDecoration(labelText: 'Semester', border: OutlineInputBorder()),
                     items: _semesters.map((s) {
                       String label = s;
@@ -259,7 +259,7 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<Map<String, dynamic>>(
-                    value: selectedSubject,
+                    initialValue: selectedSubject,
                     decoration: const InputDecoration(labelText: 'Select Subject', border: OutlineInputBorder()),
                     isExpanded: true,
                     items: dialogSubjects.map((s) => DropdownMenuItem(
@@ -271,21 +271,21 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
-                    value: dialogYear,
+                    initialValue: dialogYear,
                     decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
                     items: [1, 2, 3, 4].map((y) => DropdownMenuItem(value: y, child: Text('Year $y'))).toList(),
                     onChanged: (val) => setState(() => dialogYear = val!),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: dialogSection,
+                    initialValue: dialogSection,
                     decoration: const InputDecoration(labelText: 'Section', border: OutlineInputBorder()),
                     items: ['A', 'B', 'C'].map((s) => DropdownMenuItem(value: s, child: Text('Section $s'))).toList(),
                     onChanged: (val) => setState(() => dialogSection = val!),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<User>(
-                    value: selectedFaculty,
+                    initialValue: selectedFaculty,
                     decoration: const InputDecoration(labelText: 'Select Faculty', border: OutlineInputBorder()),
                     items: _facultyMembers.map((f) => DropdownMenuItem(value: f, child: Text(f.name))).toList(),
                     onChanged: (val) => setState(() => selectedFaculty = val),
@@ -349,7 +349,7 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
         children: [
           Expanded(
             child: DropdownButtonFormField<int>(
-              value: _selectedYear,
+              initialValue: _selectedYear,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
               items: [1, 2, 3, 4].map((y) => DropdownMenuItem(value: y, child: Text('Year $y', overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)))).toList(),
@@ -364,7 +364,7 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedSection,
+              initialValue: _selectedSection,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Section', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
               items: ['A', 'B', 'C'].map((s) => DropdownMenuItem(value: s, child: Text('Sec $s', overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)))).toList(),
@@ -379,7 +379,7 @@ class _FacultyAllocationScreenState extends State<FacultyAllocationScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedSemester,
+              initialValue: _selectedSemester,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Sem', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
               items: _semesters.map((s) {

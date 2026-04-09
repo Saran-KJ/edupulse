@@ -218,7 +218,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           value: 0,
           child: Row(
             children: [
-              Icon(Icons.person_outline_rounded, size: 18, color: AppColors.textSecondary),
+              const Icon(Icons.person_outline_rounded, size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 12),
               Text('My Profile', style: AppTextStyles.body),
             ],
@@ -228,7 +228,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           value: 1,
           child: Row(
             children: [
-              Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+              const Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
               const SizedBox(width: 12),
               Text('Sign Out', style: AppTextStyles.body.copyWith(color: AppColors.error)),
             ],

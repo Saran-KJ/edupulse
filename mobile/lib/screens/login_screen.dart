@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,11 +7,6 @@ import '../services/api_service.dart';
 
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
-import 'role_selection_screen.dart';
-import 'project_batch_allocation_screen.dart';
-import 'students_list_screen.dart';
-import '../widgets/main_scaffold.dart';
-import '../widgets/responsive_layout.dart';
 import '../widgets/responsive_layout.dart';
 import 'student_dashboard_screen.dart';
 import 'admin_dashboard_screen.dart';

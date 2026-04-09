@@ -8,7 +8,7 @@ class EarlyRiskQuizScreen extends StatefulWidget {
   final String subjectCode;
   final int unitNumber;
 
-  const EarlyRiskQuizScreen({
+  const EarlyRiskQuizScreen({super.key, 
     required this.regNo,
     required this.subjectCode,
     required this.unitNumber,
@@ -117,7 +117,7 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
   void submitQuiz() {
     if (answers.length != (earlyRiskQuiz?.questions.length ?? 0)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please answer all questions')),
+        const SnackBar(content: Text('Please answer all questions')),
       );
       return;
     }
@@ -148,11 +148,11 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Early Risk Assessment'),
+        title: const Text('Early Risk Assessment'),
         backgroundColor: Colors.blueAccent,
       ),
       body: isLoading
-          ? Center(
+          ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -177,7 +177,7 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
     final probabilityPercent = (risk.probability * 100).toStringAsFixed(1);
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -185,15 +185,15 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
           Card(
             elevation: 3,
             child: Padding(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     risk.riskEmoji,
-                    style: TextStyle(fontSize: 64),
+                    style: const TextStyle(fontSize: 64),
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Text(
                     'Risk Level: ${risk.riskLevel}',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -201,12 +201,12 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                           color: _getRiskColor(risk.riskLevel),
                         ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     '$probabilityPercent% Risk Probability',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   // Progress bar
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
@@ -223,14 +223,14 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
               ),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
 
           // Interpretation
           Card(
             elevation: 2,
             color: Colors.blue.shade50,
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -240,22 +240,22 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Text(
                     risk.interpretation,
-                    style: TextStyle(height: 1.6),
+                    style: const TextStyle(height: 1.6),
                   ),
                 ],
               ),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
 
           // Contributing Factors
           Card(
             elevation: 2,
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -265,20 +265,20 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   ...risk.features.entries.map((entry) {
                     return Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             _formatFeatureName(entry.key),
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                           Text(
                             '${entry.value}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.blueAccent,
                             ),
@@ -286,19 +286,19 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
 
           // Recommendations
           Card(
             elevation: 2,
             color: Colors.green.shade50,
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -309,24 +309,24 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                           color: Colors.green.shade800,
                         ),
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   ...risk.recommendations.asMap().entries.map((entry) {
                     return Padding(
-                      padding: EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
                             width: 24,
                             height: 24,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               color: Colors.green,
                             ),
                             child: Center(
                               child: Text(
                                 '${entry.key + 1}',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
@@ -334,19 +334,19 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                               ),
                             ),
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(entry.value),
                           ),
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
 
           // Take Quiz Button
           SizedBox(
@@ -354,7 +354,7 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
             child: ElevatedButton.icon(
               onPressed: isLoading ? null : _generateEarlyRiskQuiz,
               icon: isLoading
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -363,12 +363,12 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                             AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : Icon(Icons.quiz),
+                  : const Icon(Icons.quiz),
               label: Text(isLoading
                   ? 'Loading...'
                   : 'Take ${riskAssessment!.riskLevel} Risk Assessment Quiz'),
               style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: _getRiskColor(riskAssessment!.riskLevel),
                 foregroundColor: Colors.white,
               ),
@@ -390,16 +390,16 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
           value: (currentQuestionIndex + 1) / quiz.questions.length,
           minHeight: 8,
           backgroundColor: Colors.grey.shade300,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+          valueColor: const AlwaysStoppedAnimation<Color>(Colors.blueAccent),
         ),
         Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Question ${currentQuestionIndex + 1}/${quiz.questions.length}',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               Chip(
                 label: Text('${answers.length}/${quiz.questions.length}'),
@@ -410,14 +410,14 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
         ),
         Expanded(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Card(
                   elevation: 2,
                   child: Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -428,34 +428,34 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                         ),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         _buildQuestionTypeChip(question.questionType),
                       ],
                     ),
                   ),
                 ),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
                 _buildQuestionUI(question),
               ],
             ),
           ),
         ),
         Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ElevatedButton.icon(
                 onPressed: currentQuestionIndex > 0 ? previousQuestion : null,
-                icon: Icon(Icons.arrow_back),
-                label: Text('Previous'),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Previous'),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
               ),
               if (currentQuestionIndex < quiz.questions.length - 1)
                 ElevatedButton.icon(
                   onPressed: nextQuestion,
-                  icon: Icon(Icons.arrow_forward),
-                  label: Text('Next'),
+                  icon: const Icon(Icons.arrow_forward),
+                  label: const Text('Next'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
                   ),
@@ -463,8 +463,8 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
               else
                 ElevatedButton.icon(
                   onPressed: submitQuiz,
-                  icon: Icon(Icons.check),
-                  label: Text('Submit'),
+                  icon: const Icon(Icons.check),
+                  label: const Text('Submit'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                   ),
@@ -489,7 +489,7 @@ class _EarlyRiskQuizScreenState extends State<EarlyRiskQuizScreen> {
     if (type == 'NAT') color = Colors.orange;
 
     return Chip(
-      label: Text(type, style: TextStyle(color: Colors.white, fontSize: 10)),
+      label: Text(type, style: const TextStyle(color: Colors.white, fontSize: 10)),
       backgroundColor: color,
       padding: EdgeInsets.zero,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -527,18 +527,18 @@ bool _isOptionEmpty(String? text) {
           question.optionD,
         ];
         final text = options[entry.key];
-        if (text == null || text.isEmpty) return SizedBox.shrink();
+        if (text == null || text.isEmpty) return const SizedBox.shrink();
         final isSelected = answers[question.id] == label;
 
         return Padding(
-          padding: EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: 12),
           child: InkWell(
             onTap: () => selectAnswer(label),
             child: Card(
               elevation: isSelected ? 4 : 1,
               color: isSelected ? Colors.blue.shade50 : Colors.white,
               child: Padding(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     Radio<String>(
@@ -546,7 +546,7 @@ bool _isOptionEmpty(String? text) {
                       groupValue: answers[question.id],
                       onChanged: (val) => selectAnswer(label),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(child: Text(text)),
                   ],
                 ),
@@ -567,11 +567,11 @@ bool _isOptionEmpty(String? text) {
         final label = entry.value;
         final options = [question.optionA, question.optionB, question.optionC, question.optionD];
         final text = options[entry.key];
-        if (text == null || text.isEmpty) return SizedBox.shrink();
+        if (text == null || text.isEmpty) return const SizedBox.shrink();
         final isSelected = selected.contains(label);
 
         return Padding(
-          padding: EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: 12),
           child: CheckboxListTile(
             title: Text(text),
             value: isSelected,
@@ -598,11 +598,11 @@ bool _isOptionEmpty(String? text) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Enter numeric answer:', style: TextStyle(fontWeight: FontWeight.bold)),
-        SizedBox(height: 12),
+        const Text('Enter numeric answer:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
         TextField(
           keyboardType: TextInputType.number,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             border: OutlineInputBorder(),
             hintText: 'e.g. 7',
           ),
@@ -624,10 +624,10 @@ bool _isOptionEmpty(String? text) {
 
     return SingleChildScrollView(
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
             // Score Circle
             Container(
               width: 200,
@@ -652,10 +652,10 @@ bool _isOptionEmpty(String? text) {
                             : Colors.red.shade800,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       '$correctAnswers/$totalQuestions correct',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -663,14 +663,14 @@ bool _isOptionEmpty(String? text) {
                 ),
               ),
             ),
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
             Text(
               'Assessment Complete',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -685,21 +685,21 @@ bool _isOptionEmpty(String? text) {
                     ),
                   );
                 },
-                icon: Icon(Icons.menu_book),
-                label: Text('View My Study Plan & Resources'),
+                icon: const Icon(Icons.menu_book),
+                label: const Text('View My Study Plan & Resources'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Back to Dashboard'),
+                child: const Text('Back to Dashboard'),
               ),
             ),
           ],
@@ -713,16 +713,16 @@ bool _isOptionEmpty(String? text) {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error, size: 64, color: Colors.red),
-          SizedBox(height: 16),
+          const Icon(Icons.error, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
           Text(
             errorMessage ?? 'Error loading assessment',
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           ElevatedButton(
             onPressed: _loadEarlyRiskAssessment,
-            child: Text('Retry'),
+            child: const Text('Retry'),
           ),
         ],
       ),

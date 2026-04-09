@@ -11,7 +11,6 @@ class SubjectSelectionScreen extends StatefulWidget {
 }
 
 class _SubjectSelectionScreenState extends State<SubjectSelectionScreen> {
-  final _formKey = GlobalKey<FormState>();
   int _selectedYear = 3;
   String _selectedSection = 'A';
   String _selectedSemester = 'V';
@@ -179,7 +178,7 @@ class _SubjectSelectionScreenState extends State<SubjectSelectionScreen> {
         children: [
           Expanded(
             child: DropdownButtonFormField<int>(
-              value: _selectedYear,
+              initialValue: _selectedYear,
               decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
               items: const [
                 DropdownMenuItem(value: 1, child: Text('Year 1')),
@@ -198,7 +197,7 @@ class _SubjectSelectionScreenState extends State<SubjectSelectionScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedSection,
+              initialValue: _selectedSection,
               decoration: const InputDecoration(labelText: 'Section', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
               items: ['A', 'B', 'C'].map((s) => DropdownMenuItem(value: s, child: Text('Sec $s'))).toList(),
               onChanged: (val) {
@@ -212,7 +211,7 @@ class _SubjectSelectionScreenState extends State<SubjectSelectionScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedSemester,
+              initialValue: _selectedSemester,
               decoration: const InputDecoration(labelText: 'Sem', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
               items: _semestersWithYears.map((s) {
                 return DropdownMenuItem<String>(
@@ -304,9 +303,9 @@ class _SubjectSelectionScreenState extends State<SubjectSelectionScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: badgeColor.withOpacity(0.1),
+                    color: badgeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: badgeColor.withOpacity(0.5)),
+                    border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
                   ),
                   child: Text(
                     category,
@@ -339,7 +338,7 @@ class _SubjectSelectionScreenState extends State<SubjectSelectionScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, -2),
             blurRadius: 10,
           )

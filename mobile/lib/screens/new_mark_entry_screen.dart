@@ -424,7 +424,7 @@ class _NewMarkEntryScreenState extends State<NewMarkEntryScreen> {
                 SizedBox(
                   width: 150,
                   child: DropdownButtonFormField<String>(
-                    value: controllers['uni']!.text,
+                    initialValue: controllers['uni']!.text,
                     decoration: const InputDecoration(
                       labelText: 'Grade',
                       border: OutlineInputBorder(),

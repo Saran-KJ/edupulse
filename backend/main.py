@@ -36,10 +36,11 @@ app = FastAPI(
 # CORS middleware - Fixed for Flutter Web (avoid wildcard + credentials conflict)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex="https?://.*", # Allows all origins while still supporting credentials
+    allow_origin_regex="https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    max_age=3600,
 )
 
 # Include routers

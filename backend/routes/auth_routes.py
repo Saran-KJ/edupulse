@@ -14,7 +14,7 @@ settings = get_settings()
 
 @router.post("/login", response_model=schemas.Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db), request: Request = None, background_tasks: BackgroundTasks = None):
-    result = auth.authenticate_user(db, form_data.username, form_data.password)
+    result = await auth.authenticate_user(db, form_data.username, form_data.password)
     
     # Handle tuple return (user, error_message) or False
     if isinstance(result, tuple):

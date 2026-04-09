@@ -103,7 +103,7 @@ class _CgpaScreenState extends State<CgpaScreen>
         children: [
           const Icon(Icons.error_outline, color: Colors.red, size: 48),
           const SizedBox(height: 12),
-          Text('Failed to load CGPA', style: TextStyle(color: Colors.white70)),
+          const Text('Failed to load CGPA', style: TextStyle(color: Colors.white70)),
           TextButton(onPressed: _loadCgpa, child: const Text('Retry')),
         ],
       ),
@@ -131,7 +131,7 @@ class _CgpaScreenState extends State<CgpaScreen>
         if (semesters.isEmpty)
           _buildEmptyState()
         else
-          ...semesters.map((sem) => _buildSemesterCard(sem)).toList(),
+          ...semesters.map((sem) => _buildSemesterCard(sem)),
       ],
     );
   }
@@ -141,17 +141,17 @@ class _CgpaScreenState extends State<CgpaScreen>
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color.withOpacity(0.15), const Color(0xFF1A2535)],
+          colors: [color.withValues(alpha: 0.15), const Color(0xFF1A2535)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
       ),
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          Text('Overall CGPA', style: TextStyle(color: Colors.white54, fontSize: 14, letterSpacing: 1.2)),
+          const Text('Overall CGPA', style: TextStyle(color: Colors.white54, fontSize: 14, letterSpacing: 1.2)),
           const SizedBox(height: 12),
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: cgpa),
@@ -161,7 +161,7 @@ class _CgpaScreenState extends State<CgpaScreen>
               val.toStringAsFixed(2),
               style: TextStyle(
                 color: color, fontSize: 64, fontWeight: FontWeight.bold,
-                shadows: [Shadow(color: color.withOpacity(0.4), blurRadius: 12)],
+                shadows: [Shadow(color: color.withValues(alpha: 0.4), blurRadius: 12)],
               ),
             ),
           ),
@@ -169,9 +169,9 @@ class _CgpaScreenState extends State<CgpaScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: color.withOpacity(0.3)),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
             ),
             child: Text(_cgpaLabel(cgpa), style: TextStyle(color: color, fontWeight: FontWeight.w600)),
           ),
@@ -193,7 +193,7 @@ class _CgpaScreenState extends State<CgpaScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.07),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -216,7 +216,7 @@ class _CgpaScreenState extends State<CgpaScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF1A2535),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -236,9 +236,9 @@ class _CgpaScreenState extends State<CgpaScreen>
                     width: 36, height: 28,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
+                      color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: color.withOpacity(0.3)),
+                      border: Border.all(color: color.withValues(alpha: 0.3)),
                     ),
                     child: Text(grade, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
@@ -248,7 +248,7 @@ class _CgpaScreenState extends State<CgpaScreen>
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: pct,
-                        backgroundColor: Colors.white.withOpacity(0.06),
+                        backgroundColor: Colors.white.withValues(alpha: 0.06),
                         valueColor: AlwaysStoppedAnimation(color),
                         minHeight: 10,
                       ),
@@ -276,7 +276,7 @@ class _CgpaScreenState extends State<CgpaScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF1A2535),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -287,7 +287,7 @@ class _CgpaScreenState extends State<CgpaScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(sem['semester_label'] ?? 'Semester', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
@@ -305,7 +305,7 @@ class _CgpaScreenState extends State<CgpaScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.15),
+                  color: Colors.red.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text('$arrears Arrear${arrears > 1 ? 's' : ''}', style: const TextStyle(color: Colors.red, fontSize: 10)),
@@ -327,7 +327,7 @@ class _CgpaScreenState extends State<CgpaScreen>
               },
               children: [
                 TableRow(
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     border: Border(bottom: BorderSide(color: Colors.white12)),
                   ),
                   children: [
@@ -349,7 +349,7 @@ class _CgpaScreenState extends State<CgpaScreen>
                       child: Container(
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: gc.withOpacity(0.12),
+                          color: gc.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(s['grade'] ?? '-', style: TextStyle(color: gc, fontSize: 12, fontWeight: FontWeight.bold)),
@@ -357,7 +357,7 @@ class _CgpaScreenState extends State<CgpaScreen>
                     ),
                     _tableCell('${s['credit_points']?.toStringAsFixed(1) ?? '-'}', align: TextAlign.center),
                   ]);
-                }).toList(),
+                }),
               ],
             ),
           ),
@@ -377,16 +377,16 @@ class _CgpaScreenState extends State<CgpaScreen>
   );
 
   Widget _buildEmptyState() {
-    return Center(
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: EdgeInsets.all(40),
         child: Column(
           children: [
             Icon(Icons.school_outlined, size: 64, color: Colors.white24),
-            const SizedBox(height: 12),
-            const Text('No university results yet', style: TextStyle(color: Colors.white38, fontSize: 16)),
-            const SizedBox(height: 8),
-            const Text('Grades will appear once university exam results are entered', style: TextStyle(color: Colors.white24, fontSize: 13), textAlign: TextAlign.center),
+            SizedBox(height: 12),
+            Text('No university results yet', style: TextStyle(color: Colors.white38, fontSize: 16)),
+            SizedBox(height: 8),
+            Text('Grades will appear once university exam results are entered', style: TextStyle(color: Colors.white24, fontSize: 13), textAlign: TextAlign.center),
           ],
         ),
       ),

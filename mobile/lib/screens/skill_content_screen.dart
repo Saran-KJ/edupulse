@@ -10,10 +10,10 @@ class SkillContentScreen extends StatefulWidget {
   final int initialTab;
 
   const SkillContentScreen({
-    Key? key,
+    super.key,
     required this.resource,
     this.initialTab = 0,
-  }) : super(key: key);
+  });
 
   @override
   State<SkillContentScreen> createState() => _SkillContentScreenState();
@@ -39,10 +39,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
 
   // ── Professional Progression ──────────────────────────────────────────────
   Set<int> _completedSections = {};
-  Map<int, int?> _sectionQuizAnswers = {}; // Mapping of section index to selected option A(0), B(1)...
-  Map<int, bool?> _sectionQuizCorrect = {}; // Mapping of section index to correctness
   List<String> _roadmap = [];
-  bool _showRoadmap = false;
 
   // ── State ─────────────────────────────────────────────────────────────────
   bool _isLoading = true;
@@ -51,7 +48,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
   bool _isCompleted = false;
   late int _actualResourceId;
   String? _selectedLanguage;        // Programming sub-language (Python, Java…)
-  String _videoLanguage = 'English'; // English only for video content
+  final String _videoLanguage = 'English'; // English only for video content
   String _selectedLevel = 'Beginner'; // Beginner, Intermediate, Advanced
   Map<String, dynamic>? _project;
 
@@ -68,9 +65,9 @@ class _SkillContentScreenState extends State<SkillContentScreen>
   @override
   void initState() {
     super.initState();
-    final bool _isProgCategory = widget.resource.skillCategory == 'Programming';
+    final bool isProgCategory = widget.resource.skillCategory == 'Programming';
     _tabController = TabController(
-      length: _isProgCategory ? 3 : 2,
+      length: isProgCategory ? 3 : 2,
       vsync: this,
       initialIndex: widget.initialTab,
     );
@@ -256,8 +253,6 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         }).toList();
         _userNatAnswers = {};
         _completedSections = {};
-        _sectionQuizAnswers = {};
-        _sectionQuizCorrect = {};
         _quizSubmitted = false;
         _score = 0;
 
@@ -326,7 +321,6 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         for (int i = 0; i < _sections.length; i++) {
           _completedSections.add(i);
         }
-        _showRoadmap = true;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -473,7 +467,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: _skillColor.withOpacity(0.1),
+              color: _skillColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -578,7 +572,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: _skillColor.withOpacity(0.12),
+              color: _skillColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(_skillIcon, color: _skillColor, size: 28),
@@ -622,9 +616,9 @@ class _SkillContentScreenState extends State<SkillContentScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
     );
@@ -642,10 +636,10 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         indicatorWeight: 3,
         labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         tabs: [
-          Tab(
+          const Tab(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
+              children: [
                 Icon(Icons.menu_book_outlined, size: 16),
                 SizedBox(width: 6),
                 Text('Learn'),
@@ -653,10 +647,10 @@ class _SkillContentScreenState extends State<SkillContentScreen>
             ),
           ),
           if (widget.resource.skillCategory == 'Programming')
-            Tab(
+            const Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   Icon(Icons.assignment_outlined, size: 16),
                   SizedBox(width: 6),
                   Text('Project'),
@@ -791,7 +785,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
 
         ..._sections.asMap().entries.map((entry) {
           return _buildLearningSection(entry.key, entry.value);
-        }).toList(),
+        }),
 
         if (_completedSections.length == _sections.length && _roadmap.isNotEmpty)
           _buildProfessionalRoadmap(),
@@ -818,8 +812,6 @@ class _SkillContentScreenState extends State<SkillContentScreen>
     final thumbnail = video['thumbnail'] as String? ?? '';
     final videoUrl = video['video_url'] as String? ?? '';
     final videoId = video['video_id'] as String? ?? _extractVideoId(videoUrl);
-    final lang = video['language'] as String? ?? _videoLanguage;
-    final isTamil = lang == 'Tamil';
 
     return GestureDetector(
       onTap: () {
@@ -838,7 +830,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         clipBehavior: Clip.hardEdge,
@@ -910,9 +902,9 @@ class _SkillContentScreenState extends State<SkillContentScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _skillColor.withOpacity(0.05),
+        color: _skillColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _skillColor.withOpacity(0.1)),
+        border: Border.all(color: _skillColor.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -935,7 +927,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: _skillColor.withOpacity(0.1),
+              backgroundColor: _skillColor.withValues(alpha: 0.1),
               valueColor: AlwaysStoppedAnimation<Color>(_skillColor),
               minHeight: 8,
             ),
@@ -961,9 +953,9 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
         ],
-        border: Border.all(color: isCompleted ? Colors.green.withOpacity(0.3) : Colors.grey.shade100),
+        border: Border.all(color: isCompleted ? Colors.green.withValues(alpha: 0.3) : Colors.grey.shade100),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -973,7 +965,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: isCompleted ? Colors.green.shade50 : _skillColor.withOpacity(0.1),
+              color: isCompleted ? Colors.green.shade50 : _skillColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -1124,7 +1116,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         const SizedBox(width: 8),
         Text(
           title,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color.withOpacity(0.9)),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color.withValues(alpha: 0.9)),
         ),
       ],
     );
@@ -1136,20 +1128,20 @@ class _SkillContentScreenState extends State<SkillContentScreen>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_skillColor, _skillColor.withOpacity(0.8)],
+          colors: [_skillColor, _skillColor.withValues(alpha: 0.8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: _skillColor.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+          BoxShadow(color: _skillColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: const [
+          const Row(
+            children: [
               Icon(Icons.auto_awesome, color: Colors.white, size: 24),
               SizedBox(width: 10),
               Text(
@@ -1174,13 +1166,13 @@ class _SkillContentScreenState extends State<SkillContentScreen>
                 Expanded(child: Text(step, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4))),
               ],
             ),
-          )).toList(),
+          )),
           const SizedBox(height: 10),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Center(
@@ -1273,10 +1265,10 @@ class _SkillContentScreenState extends State<SkillContentScreen>
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [_skillColor.withOpacity(0.08), _skillColor.withOpacity(0.02)],
+                colors: [_skillColor.withValues(alpha: 0.08), _skillColor.withValues(alpha: 0.02)],
               ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _skillColor.withOpacity(0.2)),
+              border: Border.all(color: _skillColor.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
@@ -1357,9 +1349,9 @@ class _SkillContentScreenState extends State<SkillContentScreen>
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: resultColor.withOpacity(0.06),
+        color: resultColor.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: resultColor.withOpacity(0.3)),
+        border: Border.all(color: resultColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -1393,7 +1385,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 3),
           )
@@ -1410,7 +1402,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
                 Container(
                   width: 28,
                   height: 28,
-                  decoration: BoxDecoration(color: _skillColor.withOpacity(0.12), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: _skillColor.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Center(
                     child: Text('${index + 1}',
                         style: TextStyle(color: _skillColor, fontWeight: FontWeight.bold, fontSize: 12)),
@@ -1638,7 +1630,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         borderColor = Colors.grey.shade200;
       }
     } else {
-      bgColor = isSelected ? _skillColor.withOpacity(0.08) : Colors.white;
+      bgColor = isSelected ? _skillColor.withValues(alpha: 0.08) : Colors.white;
       borderColor = isSelected ? _skillColor : Colors.grey.shade200;
     }
 
@@ -1696,7 +1688,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         style: SegmentedButton.styleFrom(
           selectedBackgroundColor: _skillColor,
           selectedForegroundColor: Colors.white,
-          side: BorderSide(color: _skillColor.withOpacity(0.5)),
+          side: BorderSide(color: _skillColor.withValues(alpha: 0.5)),
         ),
       ),
     );
@@ -1717,7 +1709,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5)),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5)),
             ],
           ),
           child: Column(
@@ -1768,11 +1760,11 @@ class _SkillContentScreenState extends State<SkillContentScreen>
                 const SizedBox(height: 20),
               ],
               if ((_project!['tech_stack'] is List) && (_project!['tech_stack'] as List).isNotEmpty) ...[
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.layers_outlined, color: Colors.blueGrey, size: 18),
-                    const SizedBox(width: 8),
-                    const Text('Suggested Tech Stack:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blueGrey)),
+                    SizedBox(width: 8),
+                    Text('Suggested Tech Stack:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blueGrey)),
                   ]
                 ),
                 const SizedBox(height: 8),
@@ -1802,7 +1794,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade50.withOpacity(0.5),
+                        color: Colors.orange.shade50.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.orange.shade100),
                       ),
@@ -1874,7 +1866,7 @@ class _SkillContentScreenState extends State<SkillContentScreen>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, -3))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, -3))],
         ),
         child: Row(
           children: [

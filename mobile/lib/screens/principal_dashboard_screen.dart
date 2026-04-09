@@ -96,7 +96,7 @@ class _PrincipalDashboardScreenState extends State<PrincipalDashboardScreen> {
           children: [
             _buildLeadershipHeader(),
             const SizedBox(height: 32),
-            SectionHeader(
+            const SectionHeader(
               title: 'Institutional Vital Signs',
               icon: Icons.analytics_rounded,
               color: AppColors.primary,
@@ -104,7 +104,7 @@ class _PrincipalDashboardScreenState extends State<PrincipalDashboardScreen> {
             const SizedBox(height: 16),
             _buildInstitutionalStats(),
             const SizedBox(height: 32),
-            SectionHeader(
+            const SectionHeader(
               title: 'Department Performance Matrix',
               icon: Icons.domain_rounded,
               color: AppColors.accent,

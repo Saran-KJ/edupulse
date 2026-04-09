@@ -10,25 +10,23 @@ class YoutubePlayerScreen extends StatefulWidget {
 
   /// Open from a LearningResource (URL will be converted to videoId).
   const YoutubePlayerScreen({
-    Key? key,
+    super.key,
     required LearningResource this.resource,
   })  : videoId = null,
-        title = null,
-        super(key: key);
+        title = null;
 
   /// Open directly with a videoId and title string.
   const YoutubePlayerScreen.fromId({
-    Key? key,
+    super.key,
     required String this.videoId,
     required String this.title,
-  })  : resource = null,
-        super(key: key);
+  })  : resource = null;
 
   @override
-  _YoutubePlayerScreenState createState() => _YoutubePlayerScreenState();
+  YoutubePlayerScreenState createState() => YoutubePlayerScreenState();
 }
 
-class _YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
+class YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
   late YoutubePlayerController _controller;
 
   String get _effectiveVideoId {

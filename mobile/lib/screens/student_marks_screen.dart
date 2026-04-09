@@ -120,7 +120,7 @@ class _StudentMarksScreenState extends State<StudentMarksScreen> {
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    value: _selectedSemester,
+                    initialValue: _selectedSemester,
                     items: [
                       const DropdownMenuItem(
                         value: null,

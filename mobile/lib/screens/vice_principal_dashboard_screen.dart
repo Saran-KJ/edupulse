@@ -96,7 +96,7 @@ class _VicePrincipalDashboardScreenState extends State<VicePrincipalDashboardScr
           children: [
             _buildLeadershipHeader(),
             const SizedBox(height: 32),
-            SectionHeader(
+            const SectionHeader(
               title: 'Academic Performance Sync',
               icon: Icons.sync_rounded,
               color: AppColors.info,
@@ -104,7 +104,7 @@ class _VicePrincipalDashboardScreenState extends State<VicePrincipalDashboardScr
             const SizedBox(height: 16),
             _buildInstitutionalStats(),
             const SizedBox(height: 32),
-            SectionHeader(
+            const SectionHeader(
               title: 'Departmental Breakdown',
               icon: Icons.bar_chart_rounded,
               color: AppColors.success,

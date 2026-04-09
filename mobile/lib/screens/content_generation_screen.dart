@@ -3,6 +3,8 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 
 class ContentGenerationScreen extends StatefulWidget {
+  const ContentGenerationScreen({super.key});
+
   @override
   _ContentGenerationScreenState createState() =>
       _ContentGenerationScreenState();
@@ -72,17 +74,17 @@ class _ContentGenerationScreenState extends State<ContentGenerationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Learning Content Generator'),
+        title: const Text('Learning Content Generator'),
         backgroundColor: Colors.blueAccent,
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (errorMessage != null)
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.red.shade100,
                   borderRadius: BorderRadius.circular(8),
@@ -92,37 +94,37 @@ class _ContentGenerationScreenState extends State<ContentGenerationScreen> {
                   style: TextStyle(color: Colors.red.shade800),
                 ),
               ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Content Generation Form',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             // Subject Input
             TextField(
               controller: subjectController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Subject Name',
                 hintText: 'e.g., Data Structures, Database Systems',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.book),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             // Topic Input
             TextField(
               controller: topicController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Topic',
                 hintText: 'e.g., Binary Search Trees',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.topic),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             // Unit Selection
-            Text('Unit Number'),
-            SizedBox(height: 8),
+            const Text('Unit Number'),
+            const SizedBox(height: 8),
             SegmentedButton<int>(
               segments: [1, 2, 3, 4, 5].map((unit) {
                 return ButtonSegment(
@@ -137,14 +139,14 @@ class _ContentGenerationScreenState extends State<ContentGenerationScreen> {
                 });
               },
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             // Learning Preference
-            Text('Learning Preference'),
-            SizedBox(height: 8),
+            const Text('Learning Preference'),
+            const SizedBox(height: 8),
             DropdownButton<String>(
               value: selectedPreference,
               isExpanded: true,
-              items: [
+              items: const [
                 DropdownMenuItem(value: 'text', child: Text('Text-based')),
                 DropdownMenuItem(value: 'visual', child: Text('Visual')),
                 DropdownMenuItem(value: 'mixed', child: Text('Mixed')),
@@ -157,14 +159,14 @@ class _ContentGenerationScreenState extends State<ContentGenerationScreen> {
                 }
               },
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             // Generate Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: isLoading ? null : generateContent,
                 icon: isLoading
-                    ? SizedBox(
+                    ? const SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
@@ -173,18 +175,18 @@ class _ContentGenerationScreenState extends State<ContentGenerationScreen> {
                               AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                    : Icon(Icons.auto_awesome),
+                    : const Icon(Icons.auto_awesome),
                 label: Text(isLoading
                     ? 'Loading...'
                     : 'Generate Content'),
                 style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: Colors.blueAccent,
                   foregroundColor: Colors.white,
                 ),
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             // Display Generated Content
             if (generatedContent != null) ...[
               ContentDisplayWidget(content: generatedContent!),
@@ -199,25 +201,25 @@ class _ContentGenerationScreenState extends State<ContentGenerationScreen> {
 class ContentDisplayWidget extends StatelessWidget {
   final LearningContent content;
 
-  const ContentDisplayWidget({required this.content});
+  const ContentDisplayWidget({super.key, required this.content});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Divider(thickness: 2),
-        SizedBox(height: 16),
+        const Divider(thickness: 2),
+        const SizedBox(height: 16),
         Text(
           'Generated Content',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         // Title
         Card(
           elevation: 2,
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -228,19 +230,19 @@ class ContentDisplayWidget extends StatelessWidget {
                         color: Colors.blueAccent,
                       ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Chip(
                       label: Text('Unit ${content.unit}'),
                       backgroundColor: Colors.blue.shade100,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Chip(
                       label: Text(content.difficultyLevel),
                       backgroundColor: Colors.orange.shade100,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Chip(
                       label: Text(content.estimatedReadTime),
                       backgroundColor: Colors.green.shade100,
@@ -251,12 +253,12 @@ class ContentDisplayWidget extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         // Learning Objectives
         Card(
           elevation: 2,
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -266,16 +268,16 @@ class ContentDisplayWidget extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 ...content.learningObjectives.asMap().entries.map((entry) {
                   return Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           '${entry.key + 1}. ',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Expanded(
                           child: Text(entry.value),
@@ -283,17 +285,17 @@ class ContentDisplayWidget extends StatelessWidget {
                       ],
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         // Introduction
         Card(
           elevation: 2,
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -303,13 +305,13 @@ class ContentDisplayWidget extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(content.introduction),
               ],
             ),
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         // Sections
         ...content.sections.asMap().entries.map((entry) {
           final section = entry.value;
@@ -319,7 +321,7 @@ class ContentDisplayWidget extends StatelessWidget {
               Card(
                 elevation: 2,
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -330,66 +332,66 @@ class ContentDisplayWidget extends StatelessWidget {
                               color: Colors.blueAccent,
                             ),
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Text(
                         section.content,
-                        style: TextStyle(height: 1.6),
+                        style: const TextStyle(height: 1.6),
                       ),
                       if (section.keyPoints.isNotEmpty) ...[
-                        SizedBox(height: 16),
-                        Text(
+                        const SizedBox(height: 16),
+                        const Text(
                           'Key Points:',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         ...section.keyPoints.map((point) {
                           return Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('• ', style: TextStyle(fontSize: 18)),
+                                const Text('• ', style: TextStyle(fontSize: 18)),
                                 Expanded(child: Text(point)),
                               ],
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                       if (section.examples != null &&
                           section.examples!.isNotEmpty) ...[
-                        SizedBox(height: 16),
-                        Text(
+                        const SizedBox(height: 16),
+                        const Text(
                           'Examples:',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         ...section.examples!.map((example) {
                           return Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('→ ', style: TextStyle(fontSize: 18)),
+                                const Text('→ ', style: TextStyle(fontSize: 18)),
                                 Expanded(child: Text(example)),
                               ],
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     ],
                   ),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
             ],
           );
-        }).toList(),
+        }),
         // Summary
         Card(
           elevation: 2,
           color: Colors.green.shade50,
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -400,7 +402,7 @@ class ContentDisplayWidget extends StatelessWidget {
                         color: Colors.green.shade800,
                       ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(content.summary),
               ],
             ),

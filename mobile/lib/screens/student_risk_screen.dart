@@ -7,13 +7,13 @@ import 'learning_resources_screen.dart';
 // import 'overall_learning_screen.dart';
 
 class StudentRiskScreen extends StatefulWidget {
-  const StudentRiskScreen({Key? key}) : super(key: key);
+  const StudentRiskScreen({super.key});
 
   @override
-  _StudentRiskScreenState createState() => _StudentRiskScreenState();
+  StudentRiskScreenState createState() => StudentRiskScreenState();
 }
 
-class _StudentRiskScreenState extends State<StudentRiskScreen> {
+class StudentRiskScreenState extends State<StudentRiskScreen> {
   bool _isLoading = true;
   RiskPrediction? _overallRisk;
   List<SubjectRisk> _subjectRisks = [];
@@ -38,7 +38,7 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
       try {
         _overallRisk = await ApiService().predictRisk(user.regNo!);
       } catch (e) {
-        print("Error fetching ML risk: $e");
+        debugPrint("Error fetching ML risk: $e");
       }
 
       // Fetch Consolidated Subject-wise Risk Analysis & Raw Marks
@@ -149,7 +149,7 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: riskColor.withOpacity(0.1),
+                    color: riskColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: riskColor),
                   ),
@@ -194,7 +194,7 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
                     Expanded(child: Text(reason.trim())),
                   ],
                 ),
-              )).toList(),
+              )),
             ],
 
           ],
@@ -465,18 +465,7 @@ class _StudentRiskScreenState extends State<StudentRiskScreen> {
     );
   }
 
-  Widget _buildMarkSection(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-        const SizedBox(height: 8),
-        ...children
-      ],
-    );
-  }
-
-  Widget _buildMarkRow(String label, int? value, {int max = 0, String? customValue}) {
+  Widget _buildMarkRow(String label, int? value, {String? customValue}) {
     // If value is 0 or null, we can treat it as pending/not entered for display
     bool isEntered = (value != null && value >= 0) || (customValue != null && customValue.isNotEmpty);
     

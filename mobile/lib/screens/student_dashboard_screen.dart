@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'project_roadmap_screen.dart';
 import 'project_hub_screen.dart';
 import '../services/api_service.dart';
 import '../models/models.dart';
 import '../config/app_theme.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/main_scaffold.dart';
-import '../widgets/web_scaffold.dart';
 import 'student_attendance_screen.dart';
 import 'student_activity_screen.dart';
 import 'student_marks_screen.dart';
@@ -18,7 +16,7 @@ import 'subject_listing_screen.dart';
 import 'cgpa_screen.dart';
 import 'quiz_screen.dart';
 import 'learning_hub_screen.dart';
-import '../widgets/pulse_widget.dart';
+
 
 
 void _handleLogout(BuildContext context) async {
@@ -69,11 +67,11 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           title: title,
           selectedIndex: _selectedIndex,
           onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-          destinations: [
-            const NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
-            const NavDestination(icon: Icons.person_outline_rounded, label: 'Profile'),
-            const NavDestination(icon: Icons.assignment_outlined, label: 'View Marks'),
-            const NavDestination(icon: Icons.calendar_today_outlined, label: 'Attendance'),
+          destinations: const [
+            NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+            NavDestination(icon: Icons.person_outline_rounded, label: 'Profile'),
+            NavDestination(icon: Icons.assignment_outlined, label: 'View Marks'),
+            NavDestination(icon: Icons.calendar_today_outlined, label: 'Attendance'),
           ],
           onLogout: () => _handleLogout(context),
           userName: user?.name,
@@ -114,7 +112,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           const SizedBox(height: 28),
           _buildAcademicAlerts(),
           const SizedBox(height: 28),
-          SectionHeader(
+          const SectionHeader(
             title: 'Quick Actions',
             icon: Icons.bolt_rounded,
             color: AppColors.accentWarm,
@@ -147,7 +145,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(
+            const SectionHeader(
               title: 'Academic Alerts',
               icon: Icons.warning_amber_rounded,
               color: AppColors.error,
@@ -224,48 +222,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     );
   }
 
-  Widget _buildUserHeader(User? user) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: Colors.white,
-          child: Text(
-            user?.name[0].toUpperCase() ?? 'S',
-            style: GoogleFonts.poppins(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user?.name ?? 'Student',
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              Text(
-                user?.email ?? '',
-                style: GoogleFonts.inter(
-                  color: Colors.white60,
-                  fontSize: 11,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+
 
 
   Widget _buildSummaryCards() {
@@ -386,7 +343,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         'label': 'Skill Hub',
         'icon': Icons.psychology_rounded,
         'color': const Color(0xFF6200EE),
-        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => LearningHubScreen())),
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LearningHubScreen())),
       },
     ];
 
@@ -469,10 +426,10 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(
+            const SectionHeader(
               title: 'Early Risk Quiz',
               icon: Icons.quiz_rounded,
-              color: const Color(0xFF7B2FF7),
+              color: Color(0xFF7B2FF7),
             ),
             const SizedBox(height: 12),
 
@@ -524,7 +481,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.notifications_active_outlined, size: 12, color: const Color(0xFF7B2FF7)),
+                                const Icon(Icons.notifications_active_outlined, size: 12, color: Color(0xFF7B2FF7)),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Available before every assessment',
@@ -629,7 +586,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                   Row(
                                     children: [
                                       if (quiz['start_time'] != null) ...[
-                                        Icon(Icons.play_circle_outline_rounded, color: Colors.white60, size: 13),
+                                        const Icon(Icons.play_circle_outline_rounded, color: Colors.white60, size: 13),
                                         const SizedBox(width: 4),
                                         Text(
                                           'Starts: ${DateTime.parse(quiz['start_time']).toLocal().day}/${DateTime.parse(quiz['start_time']).toLocal().month}/${DateTime.parse(quiz['start_time']).toLocal().year}',
@@ -637,7 +594,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                         ),
                                         const SizedBox(width: 12),
                                       ],
-                                      Icon(Icons.schedule_rounded, color: Colors.white60, size: 13),
+                                      const Icon(Icons.schedule_rounded, color: Colors.white60, size: 13),
                                       const SizedBox(width: 4),
                                       Text(
                                         'Due: ${deadline.day}/${deadline.month}/${deadline.year} ${deadline.hour.toString().padLeft(2, '0')}:${deadline.minute.toString().padLeft(2, '0')}',
@@ -681,7 +638,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(
+            const SectionHeader(
               title: 'My Project Batch',
               icon: Icons.group_work_rounded,
               color: AppColors.info,

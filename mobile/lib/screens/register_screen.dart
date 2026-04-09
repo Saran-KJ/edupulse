@@ -460,7 +460,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           // Department Dropdown
                           DropdownButtonFormField<String>(
-                            value: _selectedDept,
+                            initialValue: _selectedDept,
                             decoration: InputDecoration(
                               labelText: 'Department',
                               prefixIcon: const Icon(Icons.school_outlined),
@@ -489,7 +489,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           // Year Dropdown
                           if (_isStudent || _isClassAdvisor || _isParent || _isFaculty) ...[
                             DropdownButtonFormField<String>(
-                              value: _selectedYear,
+                              initialValue: _selectedYear,
                               decoration: InputDecoration(
                                 labelText: 'Year',
                                 prefixIcon: const Icon(Icons.calendar_today_outlined),

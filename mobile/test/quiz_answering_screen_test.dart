@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/models/models.dart';
-import 'package:mobile/screens/quiz_answering_screen.dart';
+import 'package:edupulse/models/models.dart';
+import 'package:edupulse/screens/quiz_answering_screen.dart';
 
 void main() {
   group('QuizAnsweringScreen Tests', () {
@@ -90,7 +90,7 @@ void main() {
       // Verify MCQ UI elements
       expect(find.text('Select one option:'), findsOneWidget);
       expect(find.text('MCQ - Single Answer'), findsOneWidget);
-      expect(find.byType(Radio<String>), findsWidgets);
+      expect(find.byIcon(Icons.radio_button_unchecked), findsWidgets);
       expect(find.text('3'), findsWidgets); // Option A
       expect(find.text('4'), findsWidgets); // Option B
       expect(find.text('5'), findsWidgets); // Option C
@@ -110,8 +110,8 @@ void main() {
       );
 
       // Tap option B (correct answer)
-      await tester.tap(find.byType(Radio<String>).first);
-      await tester.pump();
+      await tester.tap(find.text('4'));
+      await tester.pumpAndSettle();
 
       // Verify chip shows 1 answer selected
       expect(find.text('1/3 answered'), findsOneWidget);
@@ -130,8 +130,8 @@ void main() {
       );
 
       // Answer first question
-      await tester.tap(find.byType(Radio<String>).first);
-      await tester.pump();
+      await tester.tap(find.text('3'));
+      await tester.pumpAndSettle();
 
       // Click Next
       await tester.tap(find.text('Next'));
@@ -180,7 +180,7 @@ void main() {
       expect(find.text('Select all correct options:'), findsOneWidget);
       expect(find.text('MCS - Multiple Answers'), findsOneWidget);
       expect(find.byType(Checkbox), findsWidgets);
-      expect(find.text('You must select all correct answers'), findsOneWidget);
+      expect(find.text('You must select all correct answers and no incorrect ones'), findsOneWidget);
     });
 
     testWidgets('MCS answer selection works', (WidgetTester tester) async {
@@ -216,10 +216,10 @@ void main() {
       );
 
       // Select multiple options
-      await tester.tap(find.byType(Checkbox).at(0)); // Option A
-      await tester.pump();
-      await tester.tap(find.byType(Checkbox).at(1)); // Option B
-      await tester.pump();
+      await tester.tap(find.text('2')); // Option A
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('3')); // Option B
+      await tester.pumpAndSettle();
 
       // Verify both are selected
       expect(find.text('1/1 answered'), findsOneWidget);
@@ -238,14 +238,14 @@ void main() {
       );
 
       // Answer first two questions
-      await tester.tap(find.byType(Radio<String>).first);
-      await tester.pump();
+      await tester.tap(find.text('3'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Next'));
       await tester.pump();
 
       // Answer MCS
-      await tester.tap(find.byType(Checkbox).at(0));
-      await tester.pump();
+      await tester.tap(find.text('2'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Next'));
       await tester.pump();
 
@@ -350,8 +350,8 @@ void main() {
       expect(find.byIcon(Icons.arrow_back), findsOneWidget);
 
       // Answer first question
-      await tester.tap(find.byType(Radio<String>).first);
-      await tester.pump();
+      await tester.tap(find.text('3'));
+      await tester.pumpAndSettle();
 
       // Click Next
       await tester.tap(find.text('Next'));
@@ -407,8 +407,8 @@ void main() {
       expect(find.text('MCQ - Single Answer'), findsOneWidget);
 
       // Navigate to next question
-      await tester.tap(find.byType(Radio<String>).first);
-      await tester.pump();
+      await tester.tap(find.text('3'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Next'));
       await tester.pump();
 
@@ -416,8 +416,8 @@ void main() {
       expect(find.text('MCS - Multiple Answers'), findsOneWidget);
 
       // Navigate to next question
-      await tester.tap(find.byType(Checkbox).at(0));
-      await tester.pump();
+      await tester.tap(find.text('2'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Next'));
       await tester.pump();
 

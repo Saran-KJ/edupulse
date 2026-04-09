@@ -383,9 +383,13 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
     int od = 0;
     for (var s in _students) {
       final status = _attendanceStatus[s.regNo];
-      if (status == 'Present') present++;
-      else if (status == 'Absent') absent++;
-      else if (status == 'OD') od++;
+      if (status == 'Present') {
+        present++;
+      } else if (status == 'Absent') {
+        absent++;
+      } else if (status == 'OD') {
+        od++;
+      }
     }
 
     return Container(
@@ -454,7 +458,7 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -541,7 +545,7 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
           borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected ? [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             )
@@ -566,7 +570,7 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -594,51 +598,7 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
     );
   }
 
-  Widget _buildStatusButton(String label, String value, String regNo) {
-    final isSelected = _attendanceStatus[regNo] == value;
-    Color color;
-    if (value == 'Present') {
-      color = Colors.green;
-    } else if (value == 'OD') {
-      color = Colors.blue;
-    } else {
-      color = Colors.red;
-    }
-    
-    return InkWell(
-      onTap: () {
-        if (value == 'OD') {
-          _showReasonDialog(regNo);
-        } else {
-          setState(() {
-            _attendanceStatus[regNo] = value;
-            // Clear reason if not OD
-            if (value != 'OD') {
-              _attendanceReasons.remove(regNo);
-            }
-          });
-        }
-      },
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: isSelected ? color : Colors.transparent,
-          border: Border.all(color: color),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : color,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Future<void> _showReasonDialog(String regNo) async {
     final controller = TextEditingController(text: _attendanceReasons[regNo] ?? '');
@@ -676,3 +636,4 @@ class _AttendanceEntryScreenState extends State<AttendanceEntryScreen> {
     );
   }
 }
+

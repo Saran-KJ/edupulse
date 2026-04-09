@@ -133,7 +133,7 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: activityType,
+                          initialValue: activityType,
                           decoration: InputDecoration(
                             labelText: 'Category *',
                             prefixIcon: const Icon(Icons.category),
@@ -144,7 +144,7 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: level,
+                          initialValue: level,
                           decoration: InputDecoration(
                             labelText: 'Level',
                             prefixIcon: const Icon(Icons.leaderboard),
@@ -187,7 +187,7 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: role,
+                          initialValue: role,
                           decoration: InputDecoration(
                             labelText: 'Your Role',
                             prefixIcon: const Icon(Icons.person),
@@ -227,33 +227,31 @@ class _StudentActivityScreenState extends State<StudentActivityScreen> {
                   onPressed: () async {
                     if (formKey.currentState!.validate()) {
                       formKey.currentState!.save();
-                      try {
-                        await ApiService().submitActivity({
-                          'activity_name': activityName,
-                          'activity_type': activityType,
-                          'level': level,
-                          'activity_date': DateFormat('yyyy-MM-dd').format(activityDate),
-                          'description': description,
-                          'role': role,
-                          'achievement': achievement.isEmpty ? null : achievement,
-                        });
-                        if (mounted) Navigator.pop(context);
-                        _loadSubmissions();
-                        if (mounted) {
+                        try {
+                          await ApiService().submitActivity({
+                            'activity_name': activityName,
+                            'activity_type': activityType,
+                            'level': level,
+                            'activity_date': DateFormat('yyyy-MM-dd').format(activityDate),
+                            'description': description,
+                            'role': role,
+                            'achievement': achievement.isEmpty ? null : achievement,
+                          });
+                          if (!context.mounted) return;
+                          Navigator.pop(context);
+                          _loadSubmissions();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Activity submitted for approval!'),
                               backgroundColor: Colors.green,
                             ),
                           );
-                        }
-                      } catch (e) {
-                        if (mounted) {
+                        } catch (e) {
+                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
                           );
                         }
-                      }
                     }
                   },
                 ),

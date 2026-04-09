@@ -5,15 +5,11 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../config/app_theme.dart';
 import 'quiz_status_screen.dart';
-import 'class_quiz_scores_screen.dart';
 import '../widgets/main_scaffold.dart';
 import '../widgets/responsive_layout.dart';
-import 'student_dashboard_screen.dart';
 import 'attendance_entry_screen.dart';
 import 'new_mark_entry_screen.dart';
-import 'project_roadmap_screen.dart';
 import 'project_hub_screen.dart';
-import 'project_batch_allocation_screen.dart';
 import 'project_coordinator_management_screen.dart';
 import '../widgets/project_dialogs.dart';
 
@@ -60,9 +56,9 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           title: 'Faculty Dashboard',
           selectedIndex: _selectedIndex,
           onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-          destinations: [
-            const NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
-            const NavDestination(icon: Icons.school_rounded, label: 'My Classes'),
+          destinations: const [
+            NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+            NavDestination(icon: Icons.school_rounded, label: 'My Classes'),
           ],
           onLogout: () => _handleLogout(context),
           userName: user.name,
@@ -82,7 +78,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           const SizedBox(height: 32),
           _buildSummaryCards(),
           const SizedBox(height: 32),
-          SectionHeader(title: 'My Classes', icon: Icons.class_rounded, color: AppColors.info),
+          const SectionHeader(title: 'My Classes', icon: Icons.class_rounded, color: AppColors.info),
           const SizedBox(height: 16),
           _buildClassesList(),
           const SizedBox(height: 32),
@@ -339,7 +335,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.menu_book_rounded, color: AppColors.info, size: 20),
+                    child: const Icon(Icons.menu_book_rounded, color: AppColors.info, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -368,7 +364,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                   Expanded(
                     child: TextButton.icon(
                       onPressed: () => _navigateToMarks(cls.dept, cls.year, cls.section, cls.subjectCode, cls.subjectTitle),
-                      icon: Icon(Icons.grade_rounded, size: 16, color: AppColors.success),
+                      icon: const Icon(Icons.grade_rounded, size: 16, color: AppColors.success),
                       label: Text('Marks', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.success)),
                       style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 8)),
                     ),
@@ -388,7 +384,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                           ),
                         ),
                       ),
-                      icon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.info),
+                      icon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.info),
                       label: Text('Attendance', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.info)),
                       style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 8)),
                     ),
@@ -481,14 +477,14 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('${quiz.subjectTitle}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(quiz.subjectTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
                         Text('${quiz.dept} - Year ${quiz.year} ${quiz.section}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                         const SizedBox(height: 20),
                         
                         const Text('Target Assessment:', style: TextStyle(fontWeight: FontWeight.w500)),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          value: selectedAssessment,
+                          initialValue: selectedAssessment,
                           decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
                           items: ['Slip Test', 'CIA', 'Model Exam'].map((String value) {
                             return DropdownMenuItem<String>(
@@ -503,7 +499,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                         const Text('Syllabus Unit:', style: TextStyle(fontWeight: FontWeight.w500)),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<int>(
-                          value: selectedUnit,
+                          initialValue: selectedUnit,
                           decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
                           items: [1, 2, 3, 4, 5].map((int value) {
                             return DropdownMenuItem<int>(
@@ -626,7 +622,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Quiz deleted successfully')),
                   );
-                  this.setState(() {}); // Trigger refresh
+                  setState(() {}); // Trigger refresh
                 }
               } catch (e) {
                 if (context.mounted) {
@@ -665,14 +661,14 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('$subjectTitle', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(subjectTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
                         Text('$dept - Year $year $section', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                         const SizedBox(height: 20),
                         
                         const Text('Target Assessment:', style: TextStyle(fontWeight: FontWeight.w500)),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          value: selectedAssessment,
+                          initialValue: selectedAssessment,
                           decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
                           items: ['Slip Test', 'CIA', 'Model Exam'].map((String value) {
                             return DropdownMenuItem<String>(
@@ -687,7 +683,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                         const Text('Syllabus Unit:', style: TextStyle(fontWeight: FontWeight.w500)),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<int>(
-                          value: selectedUnit,
+                          initialValue: selectedUnit,
                           decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
                           items: [1, 2, 3, 4, 5].map((int value) {
                             return DropdownMenuItem<int>(
@@ -1117,7 +1113,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: AppShadows.card,
-          border: Border.all(color: Colors.purple.withOpacity(0.1)),
+          border: Border.all(color: Colors.purple.withValues(alpha: 0.1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1180,7 +1176,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
             const Spacer(),
             Text(
               '${quiz.dept} - ${quiz.year}${quiz.section}',
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 2),
             Text(
@@ -1241,5 +1237,6 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
     );
   }
 }
+
 
 

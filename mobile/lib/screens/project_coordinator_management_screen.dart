@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../widgets/project_dialogs.dart';
-import '../models/models.dart';
 import '../config/app_theme.dart';
 
 class ProjectCoordinatorManagementScreen extends StatefulWidget {
@@ -94,7 +93,7 @@ class _ProjectCoordinatorManagementScreenState extends State<ProjectCoordinatorM
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.folder_open, size: 64, color: Colors.grey.withOpacity(0.5)),
+                            Icon(Icons.folder_open, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
                             const SizedBox(height: 16),
                             Text(
                               'No batches found for Section ${_selectedSection ?? "All"} in Year ${widget.assignedYear}',
@@ -150,7 +149,7 @@ class _ProjectCoordinatorManagementScreenState extends State<ProjectCoordinatorM
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: _getStatusColor(batch['zeroth_review_status'] ?? 'Pending').withOpacity(0.1),
+                                            color: _getStatusColor(batch['zeroth_review_status'] ?? 'Pending').withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(8),
                                             border: Border.all(color: _getStatusColor(batch['zeroth_review_status'] ?? 'Pending')),
                                           ),
@@ -201,7 +200,7 @@ class _ProjectCoordinatorManagementScreenState extends State<ProjectCoordinatorM
                                               icon: const Icon(Icons.rate_review, size: 18),
                                               style: OutlinedButton.styleFrom(
                                                 foregroundColor: AppColors.primary,
-                                                side: BorderSide(color: AppColors.primary),
+                                                side: const BorderSide(color: AppColors.primary),
                                               ),
                                               label: const Text('Add Review'),
                                             ),
@@ -257,7 +256,7 @@ class _ProjectCoordinatorManagementScreenState extends State<ProjectCoordinatorM
         builder: (context, setDialogState) => AlertDialog(
           title: Text('Assign Reviewer - Batch #${batch['id']}'),
           content: DropdownButtonFormField<int>(
-            value: selectedReviewerId,
+            initialValue: selectedReviewerId,
             decoration: const InputDecoration(labelText: 'Select Faculty', border: OutlineInputBorder()),
             items: _faculty.map((f) => DropdownMenuItem(value: f['user_id'] as int, child: Text(f['name']))).toList(),
             onChanged: (val) => setDialogState(() => selectedReviewerId = val),
@@ -268,9 +267,11 @@ class _ProjectCoordinatorManagementScreenState extends State<ProjectCoordinatorM
               onPressed: selectedReviewerId == null ? null : () async {
                 try {
                   await ApiService().assignBatchReviewer(batch['id'], selectedReviewerId!);
+                  if (!context.mounted) return;
                   Navigator.pop(context);
                   _loadBatches();
                 } catch (e) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },

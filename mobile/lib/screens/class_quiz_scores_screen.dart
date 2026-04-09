@@ -169,7 +169,7 @@ class _ClassQuizScoresScreenState extends State<ClassQuizScoresScreen> {
         scrollDirection: Axis.horizontal,
         child: DataTable(
           columnSpacing: 24,
-          headingRowColor: MaterialStateProperty.all(Colors.blue.shade50),
+          headingRowColor: WidgetStateProperty.all(Colors.blue.shade50),
           columns: [
             DataColumn(label: Text('Student', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13))),
             DataColumn(label: Text('U1', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13))),
@@ -214,15 +214,16 @@ class _ClassQuizScoresScreenState extends State<ClassQuizScoresScreen> {
     
     final double val = score.toDouble();
     Color color = Colors.green;
-    if (val < 50) color = Colors.red;
-    else if (val < 75) color = Colors.orange;
+    if (val < 50) {
+      color = Colors.red;
+    } else if (val < 75) color = Colors.orange;
 
     return DataCell(
       Center(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(

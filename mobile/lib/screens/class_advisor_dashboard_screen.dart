@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../widgets/responsive_layout.dart';
-import '../widgets/web_scaffold.dart';
 import '../config/app_theme.dart';
 import '../widgets/main_scaffold.dart';
 import 'students_list_screen.dart';
@@ -62,17 +61,17 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
           title: isHOD ? 'HOD Dashboard' : 'Class Advisor Dashboard',
           selectedIndex: _selectedIndex,
           onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-          destinations: [
-            const NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
-            const NavDestination(icon: Icons.people_rounded, label: 'Students'),
-            const NavDestination(icon: Icons.grade_rounded, label: 'Marks'),
-            const NavDestination(icon: Icons.calendar_today_rounded, label: 'Attendance'),
-            const NavDestination(icon: Icons.local_activity_rounded, label: 'Co/Extra-curricular'),
-            const NavDestination(icon: Icons.analytics_rounded, label: 'Analytics'),
+          destinations: const [
+            NavDestination(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+            NavDestination(icon: Icons.people_rounded, label: 'Students'),
+            NavDestination(icon: Icons.grade_rounded, label: 'Marks'),
+            NavDestination(icon: Icons.calendar_today_rounded, label: 'Attendance'),
+            NavDestination(icon: Icons.local_activity_rounded, label: 'Co/Extra-curricular'),
+            NavDestination(icon: Icons.analytics_rounded, label: 'Analytics'),
           ],
           onLogout: () => _handleLogout(context),
-          userName: user?.name,
-          userRole: user?.role,
+          userName: user.name,
+          userRole: user.role,
           body: _buildBody(user),
         );
       },
@@ -105,7 +104,7 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
           const SizedBox(height: 32),
           _buildSummaryCards(),
           const SizedBox(height: 32),
-          SectionHeader(title: 'Quick Actions', icon: Icons.bolt_rounded, color: AppColors.accent),
+          const SectionHeader(title: 'Quick Actions', icon: Icons.bolt_rounded, color: AppColors.accent),
           const SizedBox(height: 16),
           _buildQuickActions(context, user),
           const SizedBox(height: 40),
@@ -249,8 +248,10 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
       );
 
       if (user.dept == null) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+                  Navigator.pop(context);
+        if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid department'), backgroundColor: Colors.red),
         );
         return;
@@ -263,10 +264,12 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
       );
 
       if (!mounted) return;
-      Navigator.pop(context);
+      if (!mounted) return;
+                  Navigator.pop(context);
 
       if (students.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No students found in your class'), backgroundColor: Colors.orange),
         );
         return;
@@ -285,14 +288,16 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
       );
 
       if (result == true && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Operation completed successfully!'), backgroundColor: Colors.green),
         );
       }
     } catch (e) {
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
@@ -429,14 +434,16 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
       )))},
       {'label': 'Co/Extra-curricular', 'icon': Icons.local_activity, 'color': Colors.purple, 'onTap': () {
         if (user?.dept == null) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid department')));
+          if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid department')));
           return;
         }
         Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityManagementScreen(dept: user!.dept!, year: int.tryParse(user.year ?? '') ?? 1, section: user.section ?? '')));
       }},
       {'label': 'Approvals (Co/Extra)', 'icon': Icons.approval, 'color': Colors.deepOrange, 'onTap': () {
       if (user?.dept == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid department')));
+        if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid department')));
         return;
       }
       Navigator.push(context, MaterialPageRoute(builder: (_) => ActivityApprovalScreen(dept: user!.dept!, year: int.tryParse(user.year ?? '') ?? 1, section: user.section ?? 'A')));
@@ -444,7 +451,8 @@ class _ClassAdvisorDashboardScreenState extends State<ClassAdvisorDashboardScree
     {'label': 'View Reports & Analytics', 'icon': Icons.analytics, 'color': Colors.indigo, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()))},
     {'label': 'Learning Progress', 'icon': Icons.auto_stories, 'color': Colors.deepPurple, 'onTap': () {
       if (user?.dept == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid department')));
+        if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid department')));
         return;
       }
       Navigator.push(context, MaterialPageRoute(builder: (_) => AdvisorStudentLearningScreen(

@@ -3,6 +3,8 @@ from typing import Optional
 from jose import JWTError, jwt
 import bcrypt
 import smtplib
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from fastapi import Depends, HTTPException, status
@@ -14,6 +16,7 @@ import models
 import schemas
 
 settings = get_settings()
+_executor = ThreadPoolExecutor(max_workers=4)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
@@ -21,7 +24,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 def get_password_hash(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=10)).decode('utf-8')
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=6)).decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -33,11 +36,17 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
     return encoded_jwt
 
-def authenticate_user(db: Session, email: str, password: str):
+async def authenticate_user(db: Session, email: str, password: str):
     user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
         return False, "User not found"
-    if not verify_password(password, user.password):
+    # Run bcrypt in thread pool — it's CPU intensive and blocks the event loop
+    loop = asyncio.get_event_loop()
+    is_valid = await loop.run_in_executor(
+        _executor,
+        lambda: bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8'))
+    )
+    if not is_valid:
         return False, "Incorrect password"
     if user.is_approved == 0:
         return False, "Account pending approval"

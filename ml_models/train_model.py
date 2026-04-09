@@ -7,8 +7,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
-import matplotlib.pyplot as plt
-import seaborn as sns
+try:
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    PLOTTING_AVAILABLE = True
+except ImportError:
+    PLOTTING_AVAILABLE = False
 
 def load_data(filepath='training_data.csv'):
     """Load training data"""
@@ -70,17 +74,18 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test):
         cm = confusion_matrix(y_test, y_pred)
         print(cm)
         
-        # Plot confusion matrix
-        plt.figure(figsize=(8, 6))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                    xticklabels=['Low', 'Medium', 'High'],
-                    yticklabels=['Low', 'Medium', 'High'])
-        plt.title(f'Confusion Matrix - {name}')
-        plt.ylabel('True Label')
-        plt.xlabel('Predicted Label')
-        plt.tight_layout()
-        plt.savefig(f'confusion_matrix_{name.replace(" ", "_").lower()}.png')
-        print(f"Confusion matrix saved as confusion_matrix_{name.replace(' ', '_').lower()}.png")
+        if PLOTTING_AVAILABLE:
+            # Plot confusion matrix
+            plt.figure(figsize=(8, 6))
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                        xticklabels=['Low', 'Medium', 'High'],
+                        yticklabels=['Low', 'Medium', 'High'])
+            plt.title(f'Confusion Matrix - {name}')
+            plt.ylabel('True Label')
+            plt.xlabel('Predicted Label')
+            plt.tight_layout()
+            plt.savefig(f'confusion_matrix_{name.replace(" ", "_").lower()}.png')
+            print(f"Confusion matrix saved as confusion_matrix_{name.replace(' ', '_').lower()}.png")
     
     return results
 
@@ -105,8 +110,7 @@ def save_model(model, scaler, model_path='best_model.pkl', scaler_path='feature_
     print(f"Scaler saved to {scaler_path}")
 
 def plot_feature_importance(model, feature_names, model_name):
-    """Plot feature importance for tree-based models"""
-    if hasattr(model, 'feature_importances_'):
+    if PLOTTING_AVAILABLE and hasattr(model, 'feature_importances_'):
         importances = model.feature_importances_
         indices = np.argsort(importances)[::-1]
         

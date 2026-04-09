@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import '../config/app_theme.dart';
 import '../models/models.dart';
-import 'package:intl/intl.dart';
 
 class ProjectHubScreen extends StatefulWidget {
   final Map<String, dynamic> batch;
@@ -37,6 +35,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
         setState(() => _currentBatch = updated);
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _isLoading = false);
@@ -89,7 +88,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.indigo.withOpacity(0.3),
+            color: Colors.indigo.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 10),
           ),
@@ -105,7 +104,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(status).withOpacity(0.2),
+                  color: _getStatusColor(status).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: _getStatusColor(status)),
                 ),
@@ -171,7 +170,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -299,6 +298,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       await ApiService().selectBasePaper(paperId, feedback: feedback);
       _refreshBatch();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
@@ -306,7 +306,6 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
   // PHASE 3: Approval
   Widget _buildPhase3Content() {
     final status = _currentBatch['zeroth_review_status'] ?? 'Pending';
-    final bool isCoord = _currentBatch['reviewer_id'] == _currentUser?.userId; // Check coord status properly in real app
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,6 +360,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       await ApiService().updateProjectTask(taskId, status);
       _refreshBatch();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
@@ -441,6 +441,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
             onPressed: () async {
               if (ctrl.text.isEmpty) return;
               await ApiService().submitBasePaper(_currentBatch['id'], ctrl.text, 'N/A');
+              if (!context.mounted) return;
               Navigator.pop(context);
               _refreshBatch();
             },
@@ -463,6 +464,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
           ElevatedButton(
             onPressed: () async {
               await ApiService().updateProjectBatch(_currentBatch['id'], {'project_title': ctrl.text});
+              if (!context.mounted) return;
               Navigator.pop(context);
               _refreshBatch();
             },
@@ -481,6 +483,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         ElevatedButton(onPressed: () async {
           await ApiService().uploadReviewPPT(_currentBatch['id'], reviewNum, 'PPT_LINK');
+          if (!context.mounted) return;
           Navigator.pop(context);
           _refreshBatch();
         }, child: const Text('Submit PPT')),

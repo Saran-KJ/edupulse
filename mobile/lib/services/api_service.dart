@@ -156,7 +156,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('${AppConfig.baseUrl}${AppConfig.meEndpoint}'),
       headers: _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('Connection timeout'));
 
     if (response.statusCode == 200) {
       return User.fromJson(json.decode(response.body));

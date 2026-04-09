@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/models.dart';
-import '../widgets/responsive_layout.dart';
-import '../widgets/web_scaffold.dart';
 import '../config/app_theme.dart';
 import '../widgets/main_scaffold.dart';
 import 'role_selection_screen.dart';
@@ -109,7 +107,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             children: [
               // Role Filter
               DropdownButtonFormField<String>(
-                value: _selectedFilterRole,
+                initialValue: _selectedFilterRole,
                 decoration: InputDecoration(
                   labelText: 'Filter by Role',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -545,7 +543,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: selectedRole,
+                    initialValue: selectedRole,
                     decoration: const InputDecoration(labelText: 'Role'),
                     items: const [
                       DropdownMenuItem(value: 'Faculty', child: Text('Faculty')),
@@ -569,7 +567,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   if (showDept) ...[
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: selectedDept,
+                      initialValue: selectedDept,
                       decoration: const InputDecoration(labelText: 'Department'),
                       items: departments.map((dept) => DropdownMenuItem(
                         value: dept,
@@ -588,7 +586,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   if (showYear) ...[
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: selectedYear,
+                      initialValue: selectedYear,
                       decoration: const InputDecoration(labelText: 'Year'),
                       items: years.map((year) => DropdownMenuItem(
                         value: year,
@@ -601,7 +599,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   if (showSection) ...[
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: selectedSection,
+                      initialValue: selectedSection,
                       decoration: const InputDecoration(labelText: 'Section'),
                       items: sections.map((sec) => DropdownMenuItem(
                         value: sec,

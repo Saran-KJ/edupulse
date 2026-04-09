@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
-import 'quiz_screen.dart';
 import 'skill_content_screen.dart';
 import '../widgets/responsive_layout.dart';
 
@@ -74,6 +73,7 @@ class _LearningHubScreenState extends State<LearningHubScreen> {
       await ApiService().submitGlobalPathPreference("Skill Development", subChoice: skillCode);
       await _fetchData();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
       setState(() => _isLoading = false);
     }
@@ -135,7 +135,7 @@ class _LearningHubScreenState extends State<LearningHubScreen> {
                 ),
                 Text(
                   path == "Skill Development" ? "Choose a skill to pursue" : "AI-powered study strategy ready",
-                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
                 ),
               ],
             ),
@@ -251,61 +251,6 @@ class _LearningHubScreenState extends State<LearningHubScreen> {
     );
   }
 
-  Widget _buildSkillContent() {
-    final skill = _skills.firstWhere((s) => s['code'] == _selectedSkill);
-    
-    // Map hub codes to backend skill categories
-    final Map<String, String> categoryMap = {
-      'SKILL_APT': 'Aptitude',
-      'SKILL_PROG': 'Programming',
-      'SKILL_COMM': 'Communication',
-      'SKILL_SOFT': 'Leadership',
-    };
-    final backendCategory = categoryMap[_selectedSkill] ?? 'Aptitude';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.play_circle_fill, color: Colors.red),
-              const SizedBox(width: 8),
-              Text("Content for ${skill['title']}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildContentPlaceholder(
-            "Video Lecture: Introduction to ${skill['title']}",
-            backendCategory,
-            'video',
-          ),
-          _buildContentPlaceholder(
-            "PDF Guide: ${skill['title']} Mastery",
-            backendCategory,
-            'article',
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => _openSkillModule(backendCategory, initialTab: 1), // Open Quiz tab
-            icon: const Icon(Icons.quiz),
-            label: const Text("Take Mandatory Quiz"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange.shade800,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildContentPlaceholder(String title, String category, String type) {
     return Card(
       child: ListTile(
@@ -351,15 +296,5 @@ class _LearningHubScreenState extends State<LearningHubScreen> {
     ).then((_) => _fetchData());
   }
 
-  // Obsolete - removed in favor of unified SkillContentScreen experience
-  void _startSkillQuiz(Map<String, dynamic> skill) {
-     final Map<String, String> categoryMap = {
-      'SKILL_APT': 'Aptitude',
-      'SKILL_PROG': 'Programming',
-      'SKILL_COMM': 'Communication',
-      'SKILL_SOFT': 'Leadership',
-    };
-    final backendCategory = categoryMap[skill['code']] ?? 'Aptitude';
-    _openSkillModule(backendCategory, initialTab: 1);
-  }
+
 }
