@@ -160,6 +160,27 @@ class SMSService:
 
         return self.send_bilingual_sms(phone_number, en, ta)
 
+    def notify_attendance_good(self, phone_number: str, student_name: str, percentage: float):
+        """
+        Alerts parent when student's attendance is at or above 75%.
+        """
+        en = f"EduPulse: {student_name}'s attendance is {percentage:.1f}%, which is good (>=75%). Keep up the consistency!"
+        ta = f"எடியுபல்ஸ் தகவல்: {student_name}-ன் வருகைப்பதிவு {percentage:.1f}% ஆக உள்ளது (75% க்கு மேல்). மாணவர் தொடர்ந்து கல்லூரிக்கு வருவதை பாரட்டுகிறோம்."
+
+        return self.send_bilingual_sms(phone_number, en, ta)
+
+    def notify_absence(self, phone_number: str, student_name: str, date_str: str, period: str = None):
+        """
+        Immediate alert for a specific absence.
+        """
+        period_text = f" for Period {period}" if period else ""
+        period_ta = f" {period}-வது பீரியட்" if period else ""
+        
+        en = f"EduPulse: {student_name} was marked ABSENT today ({date_str}){period_text}. Please check with your ward."
+        ta = f"எடியுபல்ஸ்: {student_name} இன்று ({date_str}){period_ta} வருகை புரியவில்லை (ABSENT). தயவுசெய்து கவனிக்கவும்."
+
+        return self.send_bilingual_sms(phone_number, en, ta)
+
     def notify_risk_alert(self, phone_number: str, student_name: str, risk_level: str, score: float):
         """
         Alerts parent when student is flagged as Medium or High Risk.

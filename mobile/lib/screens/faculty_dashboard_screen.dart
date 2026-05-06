@@ -14,8 +14,7 @@ import 'project_coordinator_management_screen.dart';
 import '../widgets/project_dialogs.dart';
 
 void _handleLogout(BuildContext context) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.remove('token');
+  await ApiService().clearToken();
   if (context.mounted) {
     Navigator.of(context).pushNamedAndRemoveUntil('/role-selection', (route) => false);
   }

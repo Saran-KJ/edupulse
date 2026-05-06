@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'config/app_config.dart';
 import 'config/app_theme.dart';
 import 'services/api_service.dart';
@@ -17,6 +19,51 @@ import 'screens/vice_principal_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Custom Error Widget for premium UI even on crash
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      child: Container(
+        color: const Color(0xFF1A1F71),
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.white, size: 48),
+              const SizedBox(height: 24),
+              Text(
+                'Initialization Error',
+                style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Please refresh the page or clear your browser cache. This can happen due to an outdated session.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => SharedPreferences.getInstance().then((p) => p.clear()),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF1A1F71)),
+                child: const Text('Reset App Session'),
+              ),
+              if (kDebugMode) ...[
+                const SizedBox(height: 24),
+                SingleChildScrollView(
+                  child: Text(
+                    details.exception.toString(),
+                    style: const TextStyle(color: Colors.white38, fontSize: 10, fontFamily: 'monospace'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  };
+
   runApp(const EduPulseApp());
 }
 
@@ -196,7 +243,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (user != null) {
       // Determine target screen based on role
       Widget targetScreen;
-      final role = user.role.toLowerCase();
+      final role = (user.role ?? 'student').toString().toLowerCase();
       if (role == 'student') {
         targetScreen = const StudentDashboardScreen();
       } else if (role == 'admin') {

@@ -67,10 +67,22 @@ async def create_bulk_attendance(
     for r in created_records:
         db.refresh(r)
     
-    # Trigger low attendance alerts in the background
+    # Trigger real-time absence SMS and threshold alerts in the background
+    for record in created_records:
+        if record.status == "Absent":
+            try:
+                phone, name = sms_service.get_parent_phone(db, record.reg_no, record.dept)
+                if phone:
+                    background_tasks.add_task(
+                        sms_service.notify_absence, 
+                        phone, name, str(record.date), str(record.period)
+                    )
+            except Exception as e:
+                print(f"Error triggering immediate absence SMS for {record.reg_no}: {e}")
+
     affected_students = list(set(item.reg_no for item in bulk_data.attendance_list))
     
-    def check_and_notify_attendance(reg_nos: List[str], semester: int, dept: str, db_session: Session):
+    def check_and_notify_attendance_threshold(reg_nos: List[str], semester: int, dept: str, db_session: Session):
         for reg_no in reg_nos:
             try:
                 # Calculate cumulative attendance for this semester
@@ -88,15 +100,20 @@ async def create_bulk_attendance(
                 ).count()
                 
                 percentage = (present / total) * 100
+                phone, name = sms_service.get_parent_phone(db_session, reg_no, dept)
                 
-                if percentage < 75:
-                    phone, name = sms_service.get_parent_phone(db_session, reg_no, dept)
-                    if phone:
-                        sms_service.notify_low_attendance(phone, name, percentage)
-            except Exception as e:
-                print(f"Error checking attendance alert for {reg_no}: {e}")
+                if not phone: continue
 
-    background_tasks.add_task(check_and_notify_attendance, affected_students, bulk_data.semester, bulk_data.dept, db)
+                if percentage < 75:
+                    sms_service.notify_low_attendance(phone, name, percentage)
+                else:
+                    # Notify good attendance (requested by user)
+                    sms_service.notify_attendance_good(phone, name, percentage)
+                    
+            except Exception as e:
+                print(f"Error checking attendance threshold for {reg_no}: {e}")
+
+    background_tasks.add_task(check_and_notify_attendance_threshold, affected_students, bulk_data.semester, bulk_data.dept, db)
     
     return created_records
 

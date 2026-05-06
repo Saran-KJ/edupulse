@@ -17,6 +17,7 @@ from datetime import datetime
 import schemas
 import json
 import requests
+import concurrent.futures
 import config as cfg
 import gemini_service
 
@@ -1804,6 +1805,8 @@ def get_youtube_learning_resources(
 
 # ─── Skill Development — Gemini Content + YouTube + Quiz ─────────────────────
 
+SKILL_CONTENT_VERSION = "4.0"
+
 # English video search queries — optimised for educational / placement-prep content
 SKILL_YOUTUBE_QUERIES_EN = {
     "Communication": "communication skills engineering students placement interview tips",
@@ -2001,48 +2004,59 @@ def get_skill_content(
     except Exception as e:
         print(f"DEBUG: Could not parse student year: {e}")
 
-    # ── 2. Check Cache ────────────────────────────────────────────────────────
+    # ── 2. Check Cache with Version Invalidation (v4.0) ─────────────────────────
     if resource.content:
         try:
             cached_data = json.loads(resource.content)
-            # Fetch YouTube videos dynamically even if content is cached —
-            # always use the requested language and level so videos stay distinct
-            video_query = f"{skill} {level}"
-            if sub_category: 
-                video_query = f"{skill} {sub_category} {level}"
-            youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
-
-            cached_data["youtube_videos"] = youtube_videos
-            cached_data["language"] = language
-            cached_data["resource_id"] = resource.resource_id  # Inject real ID
             
-            # Backwards compatibility for old cached data missing project details
-            if "project" in cached_data:
-                topic = sub_category or skill
-                if "objective" not in cached_data["project"]:
-                    cached_data["project"]["objective"] = f"Apply {level} {topic} principles to build a functional prototype."
-                if "tech_stack" not in cached_data["project"]:
-                    cached_data["project"]["tech_stack"] = [topic, "Standard Library"]
-                    
-            return cached_data
+            # CACHE INVALIDATION LOGIC (v4.0)
+            cached_version = cached_data.get("version", "1.0")
+            if cached_version == SKILL_CONTENT_VERSION:
+                # Fetch YouTube videos dynamically even if content is cached —
+                # always use the requested language and level so videos stay distinct
+                video_query = f"{skill} {level}"
+                if sub_category: 
+                    video_query = f"{skill} {sub_category} {level}"
+                youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
+
+                cached_data["youtube_videos"] = youtube_videos
+                cached_data["language"] = language
+                cached_data["resource_id"] = resource.resource_id  # Inject real ID
+                
+                # Backwards compatibility for old cached data missing project details
+                if "project" in cached_data:
+                    topic = sub_category or skill
+                    if "objective" not in cached_data["project"]:
+                        cached_data["project"]["objective"] = f"Apply {level} {topic} principles to build a functional prototype."
+                    if "tech_stack" not in cached_data["project"]:
+                        cached_data["project"]["tech_stack"] = [topic, "Standard Library"]
+                        
+                return cached_data
+            else:
+                print(f"DEBUG: Cache version mismatch ({cached_version} != {SKILL_CONTENT_VERSION}). Regenerating...")
         except Exception as e:
             print(f"DEBUG: Cache corrupted for {resource_url}, regenerating... Error: {e}")
             pass
 
-    # ── 3. Generate Gemini Content ────────────────────────────────────────────
-    content_data = gemini_service.generate_skill_content(skill, sub_category=sub_category, level=level, year=student_year)
+    # ── 3, 4, 5. Generate Content, Videos, and Quiz in Parallel ───────────────────────────
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        # Submit AI tasks (these take the most time)
+        future_content = executor.submit(gemini_service.generate_skill_content, skill, sub_category=sub_category, level=level, year=student_year)
+        future_quiz = executor.submit(gemini_service.generate_skill_quiz, skill, difficulty=level, sub_category=sub_category)
+
+        # While AI is working, fetch YouTube videos (uses DB session)
+        video_query = f"{skill} {level}"
+        if sub_category: 
+            video_query = f"{skill} {sub_category} {level}"
+        youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
+
+        # Wait for AI tasks to finish
+        content_data = future_content.result()
+        quiz_questions = future_quiz.result()
+
     summary = content_data.get("summary", "")
     sections = content_data.get("sections", [])
     project = content_data.get("project", {})
-
-    # ── 4. YouTube Videos (language and level aware) ───────────────────────────
-    video_query = f"{skill} {level}"
-    if sub_category: 
-        video_query = f"{skill} {sub_category} {level}"
-    youtube_videos = fetch_skill_youtube_videos(db, video_query, language)
-
-    # ── 5. Generate Quiz ──────────────────────────────────────────────────────
-    quiz_questions = gemini_service.generate_skill_quiz(skill, difficulty=level, sub_category=sub_category)
 
     # ── 6. Save to Cache ──────────────────────────────────────────────────────
     final_response = {

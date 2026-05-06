@@ -2,7 +2,9 @@ import os
 import json
 import re
 import requests
-import google.generativeai as genai
+import concurrent.futures
+from google import genai
+
 import config as cfg
 
 # Sentinel to signal quota/rate-limit hit so caller can fall back to Gemini
@@ -167,7 +169,7 @@ def _call_nvidia(prompt: str, is_json: bool, api_key: str):
 
     try:
         print(f"DEBUG: Calling NVIDIA NIM API...")
-        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        response = requests.post(url, headers=headers, json=payload, timeout=180)
         
         if response.status_code == 429:
             print(f"WARNING: NVIDIA rate-limit hit. Status 429.")
@@ -188,6 +190,9 @@ def _call_nvidia(prompt: str, is_json: bool, api_key: str):
         data = json.loads(text) if is_json else text
         print(f"SUCCESS: Successfully called NVIDIA NIM")
         return data
+    except requests.exceptions.Timeout:
+        print("NVIDIA API Error: Read timed out (180s).")
+        return None
     except Exception as e:
         print(f"NVIDIA API Error: {str(e)}")
         if hasattr(e, 'response') and e.response is not None:
@@ -334,9 +339,30 @@ def _get_syllabus_context(subject_code: str, unit_number: int):
                     "title": subject_info["title"],
                     "topics": subject_info["units"][unit_key]
                 }
+        
+        # Fallback: Search for the subject name within the titles of all entries
+        print(f"DEBUG: Code '{code}' not found. Trying fuzzy title match...")
+        
+        # Normalize search term: lower case and collapse whitespace
+        search_term = " ".join(subject_code.lower().split())
+        
+        for key, info in syllabus_data.items():
+            # Normalize title for comparison
+            normalized_title = " ".join(info["title"].lower().split())
+            
+            if search_term in normalized_title or (code and code.lower() in normalized_title):
+                unit_key = str(unit_number)
+                topics = info["units"].get(unit_key, "Specific topics for this unit are currently being indexed. Generating relevant curriculum-based questions.")
+                print(f"DEBUG: Found fuzzy match in key '{key}'")
+                return {
+                    "title": info["title"][:200] + "..." if len(info["title"]) > 200 else info["title"],
+                    "topics": topics
+                }
     except Exception as e:
         print(f"DEBUG: Error loading syllabus context: {e}")
     return None
+
+
 
 def generate_quiz_questions(subject_name: str, unit_number: int, risk_level: str):
     from dynamic_quiz_generator import DynamicQuizGenerator
@@ -527,58 +553,36 @@ def generate_skill_content(skill_category: str, sub_category: str = None, level:
         else:
             level_instruction = f"Target: {topic}. LEVEL: ADVANCED. Cover systems thinking, Socratic method, complex ethical dilemmas, adversarial thinking, and applying critical thinking to engineering and business decisions at scale."
 
-    prompt = f"""
-    Generate a highly comprehensive, elite technical learning guide for "{topic}". 
-    The content MUST be broad, accurate, and structured perfectly for a student in Year {year}.
-    Audience: University Engineering Students. Level: {level}.
+    # STAGE 1: SKELETON GENERATION
+    skeleton_prompt = f"""
+    Generate an ELITE technical learning structure for "{topic}". 
+    Target: Year {year} Engineering Student. Level: {level}.
+    VERSION: 4.0 Skeleton
     {level_instruction}
     
-    STRICT CONTENT REVOLUTION REQUIREMENTS (NO EXCEPTIONS):
-    1. Generate between 4 to 6 COMPREHENSIVE sections.
-    2. Skip "Hello World" basics. Assume they are engineering students. Use professional/university-level elite terminology.
-    3. Every section MUST include these exactly named nested keys:
-       - "concept_breakdown": Deep technical explanation.
-       - "industry_context": Real-world application in modern MNCs/Tech-stacks.
-       - "code_lab": A highly advanced, production-ready code snippet. NO toy examples. Put the raw code directly as a string here.
-       - "interview_focus": Top FAANG/MAANG level interview expectations and common pitfalls.
+    Return a JSON skeleton with:
+    - "version": "4.0"
+    - "summary": (approx 60 words on why this is critical)
+    - "section_titles": List of 4-6 professional technical topic names for sections.
+    - "roadmap": List of 3 mastery steps.
+    - "project": {{ "title", "objective", "description", "milestones", "tech_stack", "estimated_duration" }}
     
-    Return JSON format EXACTLY like this:
-    {{
-      "summary": "High level paragraph.",
-      "sections": [
-        {{
-          "title": "Topic Name",
-          "concept_breakdown": "detailed explanation...",
-          "industry_context": "How Uber uses this...",
-          "code_lab": "def complex_algo():...",
-          "interview_focus": "Watch out for O(N^2) complexity here..."
-        }}
-      ],
-      "roadmap": ["Step 1", "Step 2"],
-      "project": {{
-        "title": "Build an Enterprise System", 
-        "objective": "string", 
-        "description": "string", 
-        "milestones": ["Milestone 1", "Milestone 2", "Milestone 3", "Milestone 4", "Milestone 5"],
-        "tech_stack": ["string"],
-        "estimated_duration": "x Hours"
-      }}
-    }}
-    Return ONLY the raw JSON. No markdown backticks.
+    Return ONLY JSON.
     """
     settings = cfg.get_settings()
-    # Prioritize SkillHub key, then Nvidia if available, otherwise category-specific or skill-global Gemini key
     override_key = (
         settings.skillhub_api_key if settings.skillhub_api_key else
         (settings.nvidia_api_key if settings.nvidia_api_key else
         (settings.programming_api_key if skill_category.lower() == "programming" and settings.programming_api_key else settings.skill_gemini_api_key))
     )
+
+    print(f"DEBUG: Generating v4.0 Skeleton for {topic}...")
+    skeleton = _call_ai_service(skeleton_prompt, is_json=True, override_api_key=override_key)
     
-    data = _call_ai_service(prompt, is_json=True, override_api_key=override_key)
-    
-    if not data:
-        # Dynamic Fallback
+    if not skeleton or "section_titles" not in skeleton:
+        print("WARNING: Skeleton generation failed. Falling back.")
         return {
+            "version": "4.0-fallback",
             "summary": f"Mastering {topic} at {level} level for Year {year} students.",
             "sections": [
                 {
@@ -591,15 +595,53 @@ def generate_skill_content(skill_category: str, sub_category: str = None, level:
             ],
             "roadmap": [f"Deep dive into {topic} {level} documentation"],
             "project": {
-                "title": f"{topic} {level} Capstone",
-                "objective": f"Apply {level} {topic} principles to build a functional prototype.",
-                "description": f"A comprehensive project covering {level} concepts.",
-                "milestones": ["Set up environment", "Implement core logic", "Write unit tests", "Optimize for scale"],
-                "tech_stack": [topic, "Standard Library"],
-                "estimated_duration": "10 Hours"
+                "title": f"{topic} {level} Capstone", "objective": "Build a prototype", "description": "Project details",
+                "milestones": ["Setup", "Implementation"], "tech_stack": [topic], "estimated_duration": "10 Hours"
             }
         }
-    return data
+
+    # STAGE 2: BATCHED SECTION CONTENT GENERATION
+    def generate_single_section(title):
+        print(f"DEBUG: Generating details for section: {title}...")
+        section_prompt = f"""
+        Generate ELITE technical content for the section "{title}" within the module "{topic}".
+        Level: {level} (Year {year} Student).
+        
+        Requirements:
+        - "concept_breakdown": Deep technical explanation (min 100 words).
+        - "industry_context": How MNCs (Netflix, Google, Tesla etc.) use {title}.
+        - "code_lab": Advanced, production-ready code snippet with comments.
+        - "interview_focus": FAANG/MAANG level interview patterns for {title}.
+        
+        Return JSON object with these 4 keys only. Return ONLY JSON.
+        """
+        
+        section_data = _call_ai_service(section_prompt, is_json=True, override_api_key=override_key)
+        if section_data:
+            section_data["title"] = title
+            return section_data
+        else:
+            # Minor fallback for a single failed section
+            return {
+                "title": title,
+                "concept_breakdown": f"Advanced architectural breakdown for {title} in the context of {topic}.",
+                "industry_context": "Standard enterprise implementation patterns.",
+                "code_lab": f"// Production-ready logic for {title}\nvoid process() {{ }}",
+                "interview_focus": "System design trade-offs and complexity analysis."
+            }
+
+    titles = skeleton["section_titles"]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(titles)) as executor:
+        final_sections = list(executor.map(generate_single_section, titles))
+
+    # COMBINE INTO FINAL STRUCTURE
+    return {
+        "version": "4.0",
+        "summary": skeleton.get("summary", ""),
+        "sections": final_sections,
+        "roadmap": skeleton.get("roadmap", []),
+        "project": skeleton.get("project", {})
+    }
 
 def generate_skill_quiz(skill_category: str, difficulty: str = "Intermediate", sub_category: str = None) -> list:
     topic = sub_category or skill_category
@@ -636,7 +678,30 @@ Return ONLY the raw JSON list, no markdown, no extra text."""
     )
     
     data = _call_ai_service(prompt, is_json=True, override_api_key=override_key)
-    return data if isinstance(data, list) else []
+    
+    # Robustly handle wrapped JSON or non-list responses
+    questions = []
+    if isinstance(data, list):
+        questions = data
+    elif isinstance(data, dict):
+        # Handle cases where AI wraps the list in a key like {"questions": [...]} or {"quiz": [...]}
+        for v in data.values():
+            if isinstance(v, list) and len(v) > 0:
+                questions = v
+                break
+        if not questions and "question" in data:
+            questions = [data]
+            
+    # Fallback to DynamicQuizGenerator if AI failed or returned empty
+    if not questions:
+        print(f"DEBUG: AI Quiz generation failed for {topic}. Falling back to DynamicQuizGenerator.")
+        try:
+            from dynamic_quiz_generator import DynamicQuizGenerator
+            questions = DynamicQuizGenerator.generate_quiz(topic, 1, "MEDIUM", 20)
+        except Exception as e:
+            print(f"DEBUG: DynamicQuizGenerator fallback failed: {e}")
+            
+    return questions
 
 def generate_learning_content(subject_name: str, unit_number: int, topic: str, risk_level: str = "MEDIUM") -> dict:
     """

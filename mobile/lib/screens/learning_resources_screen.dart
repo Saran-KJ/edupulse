@@ -33,6 +33,7 @@ class LearningResourcesScreenState extends State<LearningResourcesScreen> {
   int? _playingResourceId;
   yt.YoutubePlayerController? _ytController;
   Map<String, dynamic>? _progressData;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -134,6 +135,7 @@ class LearningResourcesScreenState extends State<LearningResourcesScreen> {
   @override
   void dispose() {
     _ytController?.close();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -299,11 +301,13 @@ class LearningResourcesScreenState extends State<LearningResourcesScreen> {
               : RefreshIndicator(
                   onRefresh: _loadPlanAndResources,
                   child: Scrollbar(
+                    controller: _scrollController,
                     thumbVisibility: true,
                     trackVisibility: true,
                     thickness: 8,
                     radius: const Radius.circular(10),
                     child: CustomScrollView(
+                      controller: _scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
                         SliverToBoxAdapter(

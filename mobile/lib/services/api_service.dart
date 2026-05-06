@@ -585,8 +585,7 @@ class ApiService {
       
       // If the email was changed, the backend issues a new token. Save it!
       if (responseData.containsKey('access_token')) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', responseData['access_token']);
+        await saveToken(responseData['access_token']);
       }
       
       return responseData;

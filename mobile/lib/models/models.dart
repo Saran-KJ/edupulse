@@ -32,19 +32,19 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      userId: json['user_id'],
-      name: json['name'],
-      email: json['email'],
-      role: json['role'],
-      isActive: json['is_active'] ?? 1,
-      regNo: json['reg_no'],
-      phone: json['phone'],
-      dept: json['dept'],
-      year: json['year'],
-      section: json['section'],
-      childName: json['child_name'],
-      childPhone: json['child_phone'],
-      occupation: json['occupation'],
+      userId: (json['user_id'] as num?)?.toInt() ?? 0,
+      name: json['name']?.toString() ?? 'Unknown',
+      email: json['email']?.toString() ?? 'No Email',
+      role: json['role']?.toString() ?? 'student',
+      isActive: (json['is_active'] as num?)?.toInt() ?? 1,
+      regNo: json['reg_no']?.toString(),
+      phone: json['phone']?.toString(),
+      dept: json['dept']?.toString(),
+      year: json['year']?.toString(),
+      section: json['section']?.toString(),
+      childName: json['child_name']?.toString(),
+      childPhone: json['child_phone']?.toString(),
+      occupation: json['occupation']?.toString(),
     );
   }
 
@@ -96,17 +96,17 @@ class Student {
 
   factory Student.fromJson(Map<String, dynamic> json) {
     return Student(
-      studentId: json['student_id'] ?? 0, // Handle potential missing ID if not returned
-      regNo: json['reg_no'],
-      name: json['name'],
-      email: json['email'],
-      phone: json['phone'],
-      dept: json['dept'], // Changed from dept_id
-      year: json['year'],
-      semester: json['semester'],
-      section: json['section'],
-      dob: json['dob'],
-      address: json['address'],
+      studentId: (json['student_id'] as num?)?.toInt() ?? 0, 
+      regNo: json['reg_no']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString(),
+      phone: json['phone']?.toString(),
+      dept: json['dept']?.toString() ?? '', 
+      year: (json['year'] as num?)?.toInt() ?? int.tryParse(json['year']?.toString() ?? '1') ?? 1,
+      semester: (json['semester'] as num?)?.toInt() ?? int.tryParse(json['semester']?.toString() ?? '1') ?? 1,
+      section: json['section']?.toString(),
+      dob: json['dob']?.toString(),
+      address: json['address']?.toString(),
     );
   }
 
@@ -145,12 +145,12 @@ class Activity {
 
   factory Activity.fromJson(Map<String, dynamic> json) {
     return Activity(
-      activityId: json['activity_id'],
-      activityName: json['activity_name'],
-      activityType: json['activity_type'],
-      level: json['level'],
-      activityDate: json['activity_date'],
-      description: json['description'],
+      activityId: (json['activity_id'] as num?)?.toInt() ?? 0,
+      activityName: json['activity_name']?.toString() ?? 'Unknown',
+      activityType: json['activity_type']?.toString() ?? 'General',
+      level: json['level']?.toString(),
+      activityDate: json['activity_date']?.toString() ?? '',
+      description: json['description']?.toString(),
     );
   }
 }
@@ -174,11 +174,11 @@ class ActivityParticipation {
 
   factory ActivityParticipation.fromJson(Map<String, dynamic> json) {
     return ActivityParticipation(
-      participationId: json['participation_id'],
-      activityId: json['activity_id'],
-      regNo: json['reg_no'], // Changed from student_id
-      role: json['role'],
-      achievement: json['achievement'],
+      participationId: (json['participation_id'] as num?)?.toInt() ?? 0,
+      activityId: (json['activity_id'] as num?)?.toInt() ?? 0,
+      regNo: json['reg_no']?.toString() ?? '',
+      role: json['role']?.toString(),
+      achievement: json['achievement']?.toString(),
       activity: json['activity'] != null ? Activity.fromJson(json['activity']) : null,
     );
   }
@@ -215,24 +215,18 @@ class RiskPrediction {
 
   factory RiskPrediction.fromJson(Map<String, dynamic> json) {
     return RiskPrediction(
-      predictionId: json['prediction_id'],
-      regNo: json['reg_no'],
-      riskLevel: json['risk_level'],
-      riskScore: (json['risk_score'] as num).toDouble(),
-      attendancePercentage: json['attendance_percentage'] != null
-          ? (json['attendance_percentage'] as num).toDouble()
-          : null,
-      internalAvg: json['internal_avg'] != null
-          ? (json['internal_avg'] as num).toDouble()
-          : null,
-      externalGpa: json['external_gpa'] != null
-          ? (json['external_gpa'] as num).toDouble()
-          : null,
-      activityCount: json['activity_count'],
-      backlogCount: json['backlog_count'],
-      learningPathPreference: json['learning_path_preference'],
-      reasons: json['reasons'],
-      predictionDate: json['prediction_date'],
+      predictionId: (json['prediction_id'] as num?)?.toInt() ?? 0,
+      regNo: json['reg_no']?.toString() ?? '',
+      riskLevel: json['risk_level']?.toString() ?? 'Low',
+      riskScore: (json['risk_score'] as num?)?.toDouble() ?? 0.0,
+      attendancePercentage: (json['attendance_percentage'] as num?)?.toDouble(),
+      internalAvg: (json['internal_avg'] as num?)?.toDouble(),
+      externalGpa: (json['external_gpa'] as num?)?.toDouble(),
+      activityCount: (json['activity_count'] as num?)?.toInt(),
+      backlogCount: (json['backlog_count'] as num?)?.toInt(),
+      learningPathPreference: json['learning_path_preference']?.toString(),
+      reasons: json['reasons']?.toString(),
+      predictionDate: json['prediction_date']?.toString() ?? '',
     );
   }
 }
@@ -286,11 +280,11 @@ class DashboardStats {
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
     return DashboardStats(
-      totalStudents: json['total_students'],
-      totalActivities: json['total_activities'],
-      avgAttendance: (json['avg_attendance'] as num).toDouble(),
-      atRiskCount: json['at_risk_count'],
-      highPerformers: json['high_performers'],
+      totalStudents: (json['total_students'] as num?)?.toInt() ?? 0,
+      totalActivities: (json['total_activities'] as num?)?.toInt() ?? 0,
+      avgAttendance: (json['avg_attendance'] as num?)?.toDouble() ?? 0.0,
+      atRiskCount: (json['at_risk_count'] as num?)?.toInt() ?? 0,
+      highPerformers: (json['high_performers'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -312,11 +306,11 @@ class DepartmentSummary {
 
   factory DepartmentSummary.fromJson(Map<String, dynamic> json) {
     return DepartmentSummary(
-      deptCode: json['dept_code'],
-      studentCount: json['student_count'],
-      avgAttendance: (json['avg_attendance'] as num).toDouble(),
-      atRiskCount: json['at_risk_count'],
-      highPerformerCount: json['high_performer_count'],
+      deptCode: json['dept_code']?.toString() ?? 'Unknown',
+      studentCount: (json['student_count'] as num?)?.toInt() ?? 0,
+      avgAttendance: (json['avg_attendance'] as num?)?.toDouble() ?? 0.0,
+      atRiskCount: (json['at_risk_count'] as num?)?.toInt() ?? 0,
+      highPerformerCount: (json['high_performer_count'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -336,10 +330,10 @@ class SubjectRiskSummary {
 
   factory SubjectRiskSummary.fromJson(Map<String, dynamic> json) {
     return SubjectRiskSummary(
-      subjectCode: json['subject_code'],
-      subjectTitle: json['subject_title'],
-      highRiskCount: json['high_risk_count'],
-      mediumRiskCount: json['medium_risk_count'],
+      subjectCode: json['subject_code']?.toString() ?? '',
+      subjectTitle: json['subject_title']?.toString() ?? '',
+      highRiskCount: (json['high_risk_count'] as num?)?.toInt() ?? 0,
+      mediumRiskCount: (json['medium_risk_count'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -390,12 +384,12 @@ class CollegeSummaryResponse {
 
   factory CollegeSummaryResponse.fromJson(Map<String, dynamic> json) {
     return CollegeSummaryResponse(
-      totalStudents: json['total_students'],
-      totalActivities: json['total_activities'],
-      avgCollegeAttendance: (json['avg_college_attendance'] as num).toDouble(),
-      totalAtRisk: json['total_at_risk'],
-      totalHighPerformers: json['total_high_performers'],
-      departmentSummaries: (json['department_summaries'] as List)
+      totalStudents: (json['total_students'] as num?)?.toInt() ?? 0,
+      totalActivities: (json['total_activities'] as num?)?.toInt() ?? 0,
+      avgCollegeAttendance: (json['avg_college_attendance'] as num?)?.toDouble() ?? 0.0,
+      totalAtRisk: (json['total_at_risk'] as num?)?.toInt() ?? 0,
+      totalHighPerformers: (json['total_high_performers'] as num?)?.toInt() ?? 0,
+      departmentSummaries: (json['department_summaries'] as List? ?? [])
           .map((d) => DepartmentSummary.fromJson(d))
           .toList(),
     );

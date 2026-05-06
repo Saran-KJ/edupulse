@@ -13,8 +13,7 @@ import '../config/app_theme.dart';
 import '../widgets/main_scaffold.dart';
 
 void _handleLogout(BuildContext context) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.remove('token');
+  await ApiService().clearToken();
   if (context.mounted) {
     Navigator.of(context).pushNamedAndRemoveUntil('/role-selection', (route) => false);
   }

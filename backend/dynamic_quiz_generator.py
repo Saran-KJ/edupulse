@@ -678,6 +678,104 @@ class DynamicQuizGenerator:
                     },
                 ]
             }
+        },
+        "Aptitude": {
+            1: {
+                "title": "Quantitative & Logical Mastery",
+                "mcq": [
+                    {
+                        "question": "A train 120m long passes a man standing on the platform in 6 seconds. What is the speed of the train?",
+                        "option_a": "60 km/hr",
+                        "option_b": "72 km/hr",
+                        "option_c": "80 km/hr",
+                        "option_d": "90 km/hr",
+                        "correct_answer": "Option B",
+                        "difficulty_level": "Medium"
+                    },
+                    {
+                        "question": "If 5 workers can build a wall in 12 days, how many days will it take 3 workers to build the same wall?",
+                        "option_a": "15 days",
+                        "option_b": "18 days",
+                        "option_c": "20 days",
+                        "option_d": "24 days",
+                        "correct_answer": "Option C",
+                        "difficulty_level": "Easy"
+                    },
+                    {
+                        "question": "What is the next number in the series: 2, 6, 12, 20, 30, ...?",
+                        "option_a": "40",
+                        "option_b": "42",
+                        "option_c": "44",
+                        "option_d": "46",
+                        "correct_answer": "Option B",
+                        "difficulty_level": "Easy"
+                    },
+                    {
+                        "question": "The ratio of ages of A and B is 3:4. If the sum of their ages is 28, what is B's age?",
+                        "option_a": "12",
+                        "option_b": "14",
+                        "option_c": "16",
+                        "option_d": "18",
+                        "correct_answer": "Option C",
+                        "difficulty_level": "Easy"
+                    },
+                    {
+                        "question": "A person sold an article for $450 at a loss of 10%. At what price should he sell it to gain 10%?",
+                        "option_a": "$500",
+                        "option_b": "$550",
+                        "option_c": "$600",
+                        "option_d": "$650",
+                        "correct_answer": "Option B",
+                        "difficulty_level": "Medium"
+                    },
+                    {
+                        "question": "Pointing to a photograph, a man said, 'I have no brother or sister but that man's father is my father's son.' Whose photograph was it?",
+                        "option_a": "His own",
+                        "option_b": "His son's",
+                        "option_c": "His father's",
+                        "option_d": "His nephew's",
+                        "correct_answer": "Option B",
+                        "difficulty_level": "Hard"
+                    }
+                ],
+                "mcs": [
+                    {
+                        "question": "Which of the following are prime numbers between 20 and 40?",
+                        "option_a": "23",
+                        "option_b": "29",
+                        "option_c": "31",
+                        "option_d": "37",
+                        "correct_answer": "Option A, Option B, Option C, Option D",
+                        "difficulty_level": "Medium"
+                    },
+                    {
+                        "question": "Select the Leap Years from the following list:",
+                        "option_a": "1900",
+                        "option_b": "2000",
+                        "option_c": "2024",
+                        "option_d": "2100",
+                        "correct_answer": "Option B, Option C",
+                        "difficulty_level": "Hard"
+                    }
+                ],
+                "nat": [
+                    {
+                        "question": "What is the square root of 625?",
+                        "correct_answer": "25",
+                        "difficulty_level": "Easy"
+                    },
+                    {
+                        "question": "If x + y = 10 and x - y = 4, what is the value of x * y?",
+                        "correct_answer": "21",
+                        "difficulty_level": "Medium"
+                    },
+                    {
+                        "question": "A rectangle has a perimeter of 40cm and a width of 8cm. What is its area in square cm?",
+                        "correct_answer": "96",
+                        "difficulty_level": "Medium"
+                    }
+                ]
+            }
         }
     }
 

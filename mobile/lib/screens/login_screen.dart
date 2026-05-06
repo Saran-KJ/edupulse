@@ -83,8 +83,7 @@ class _LoginScreenState extends State<LoginScreen>
           
           if (normalizedUserRole != normalizedSelectedRole) {
             // Role mismatch — clear token and show error
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.remove('token');
+            await _apiService.clearToken();
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
